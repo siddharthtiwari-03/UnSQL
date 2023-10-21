@@ -1,7 +1,7 @@
 {
   "name": "unsql",
   "version": "1.5.8",
-  "description": "UnSQL is the modern way to interact with MySQL databases. UnSQL can also be defined as a schemaless ORM that provides dynamic query generation. UnSQL has an easy to grasp interface and provides with extremely fast way of interacting with the MySQL database. UnSQL gracefully handles the errors and provides a cleaner and streamline error messages. UnSQL is promise based hence allows you to write a cleaner code.",
+  "description": "UnSQL is the modern way to interact with MySQL databases. UnSQL can also be defined as a schemaless ORM that provides dynamic query generation. UnSQL has an easy to grasp interface and provides with extremely fast way of interacting with the MySQL database. UnSQL gracefully handles the errors and produces cleaner and streamline error messages, helping in faster debugging. UnSQL is promise based hence allows you to write a cleaner code.",
   "main": "unsql.js",
   "keywords": [
     "UnSQL",
