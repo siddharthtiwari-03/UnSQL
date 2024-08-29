@@ -113,11 +113,8 @@ class  Product  extends  UnSQL {
 ```
 
 All of the aforementioned methods return the result as a promise,
-
 which then resolves (or rejects) into a JavaScript object,
-
 and every such result object has an acknowledgement status named ``success``.
-
 It has a boolean value, which reflects the query being successful or failure.
 
 Below is the example of the result object on failure:
