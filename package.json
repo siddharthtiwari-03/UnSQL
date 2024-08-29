@@ -1,8 +1,19 @@
 {
   "name": "unsql",
-  "version": "1.5.8",
-  "description": "UnSQL is the modern way to interact with MySQL databases. UnSQL can also be defined as a schemaless ORM that provides dynamic query generation. UnSQL has an easy to grasp interface and provides with extremely fast way of interacting with the MySQL database. UnSQL gracefully handles the errors and produces cleaner and streamline error messages, helping in faster debugging. UnSQL is promise based hence allows you to write a cleaner code.",
+  "version": "1.6.8",
+  "description": "UnSQL can be defined as a light weight schemaless ORM. It provides clean and yet extensive interface to interact with MySQL Databases without getting into the complexities. It provides dynamic query generation through easy to understand Javascript based methods and data types, while structuring the actual sql in the background for you.",
   "main": "unsql.js",
+  "files": [
+    "./unsql.js",
+    "legacy.js",
+    "legacy-callbacks.js"
+  ],
+  "exports": {
+    ".": "./unsql.js",
+    "./legacy": "./legacy.js",
+    "./legacy-callbacks": "./legacy-callbacks.js",
+    "./package.json": "./package.json"
+  },
   "keywords": [
     "UnSQL",
     "unsql",
@@ -16,8 +27,7 @@
   ],
   "author": "Siddharth Tiwari <siddharthtiwari0308@gmail.com>",
   "contributors": [
-    "Siddharth Tiwari"
+    "Siddharth Tiwari <siddharthtiwari0308@gmail.com>"
   ],
-  "license": "MIT",
-  "dependencies": {}
+  "license": "MIT"
 }
