@@ -1,7 +1,6 @@
 # UnSQL
 
 UnSQL is a library, written in JavaScript. It provides for a modern way to interact with the **MySQL** databases. It provides simple yet very powerful interface that uses common JavaScript data forms like objects and arrays to define different query parameters and execute MySQL commands (with any level of complexity) without actually writing a single line of SQL. It automatically generates the structured query in the background and also takes care of the transactions, rollbacks and graceful termination.
-
 It also supports the option to enter structured SQL into the parameters for even more complex querying purposes.
 
 ## Breaking Changes
@@ -79,7 +78,7 @@ To access these three methods, you require a separate **Model** file correspondi
 
 Below are the examples of how to create a Model file for functional and object oriented programing:
 
-### Model Class: Object oriented programing (Recommended)
+### Model Class:
 
 Here ``Product`` is the demo Model class. By extending the ``Product`` with the ``UnSQL`` class, ``Product`` gains access to all the built-in functionalities and methods required to interact with the database.
 
@@ -120,7 +119,7 @@ It has a boolean value, which reflects the query being successful or failure.
 Below is the example of the result object on failure:
 ```javascript
 resultObject = {
-    success:  false,
+    success: false,
     error: { 'Actual error object containing code, message and stack' }
 }
 
@@ -137,18 +136,18 @@ Below is an example of this findQuery object with all the parameters and their c
 
 ```javascript
 findQuery = {
-    select:  '*',
-    alias:  null,
-    join:  null,
-    where:  null,
-    whereOr:  null,
-    junction:  'AND',
-    groupBy:  null,
-    having:  null,
-    orderBy:  null,
-    orderDirection:  'DESC',
-    rowCount:  null,
-    offset:  null
+    select: '*',
+    alias: null,
+    join: null,
+    where: null,
+    whereOr: null,
+    junction: 'AND',
+    groupBy: null,
+    having: null,
+    orderBy: null,
+    orderDirection: 'DESC',
+    rowCount: null,
+    offset: null
 }
 
 ```
@@ -156,7 +155,7 @@ findQuery = {
 Below is the example of the result **resolved** from the ``find`` method:
 ```javascript
 resultObject = {
-    success:  true,
+    success: true,
     result: ['Array of results'] // Empty array [] if no results for matching conditions
 }
 
@@ -189,9 +188,9 @@ alias = 't1'
 - on: Condition to map the join, as a string value
 
 ```javascript
-condition1 = { type:  'LEFT', table:  'firstTable a', on:  't1.commonColumn = a.commonColumn' }
+condition1 = { type: 'LEFT', table: 'firstTable a', on: 't1.commonColumn = a.commonColumn' }
 
-condition2 = { type:  'LEFT', table:  'secondTable b', on:  't1.commonColumn = b.commonColumn' }
+condition2 = { type: 'LEFT', table: 'secondTable b', on: 't1.commonColumn = b.commonColumn' }
 
 join = [ condition1, condition2 ]
 
@@ -283,12 +282,12 @@ Below is an example of this saveQuery object with all the parameters and their c
 
 ```javascript
 saveQuery = {
-    alias:  null,
+    alias: null,
     data,
-    updateObj:  null,
-    where:  null,
-    whereOr:  null,
-    junction:  'AND'
+    updateObj: null,
+    where: null,
+    whereOr: null,
+    junction: 'AND'
 }
 
 ```
@@ -300,7 +299,7 @@ Different combinations of parameters to achieve different operations are explain
 **Insert:** When only ``data`` parameter is passed inside the saveQuery, the ``save`` method will generate ``insert`` sql.
 
 ```javascript
-saveQuery = { data:  dataToBeInserted }
+saveQuery = { data: dataToBeInserted }
 
 ```
 
@@ -310,7 +309,7 @@ Sample 1
 ```javascript
 
 saveQuery = {
-    data:  dataToBeUpdated,
+    data: dataToBeUpdated,
     where: [conditions]
 }
 
@@ -320,7 +319,7 @@ Sample 2
 ```javascript
 
 saveQuery = {
-    data:  dataToBeUpdated,
+    data: dataToBeUpdated,
     whereOr: [conditions]
 }
 
@@ -330,10 +329,10 @@ Sample 3
 ```javascript
 
 saveQuery = {
-    data:  dataToBeUpdated,
+    data: dataToBeUpdated,
     where: [conditions1],
     whereOr: [conditions2],
-    junction:  'OR'
+    junction: 'OR'
 }
 
 ```
@@ -343,8 +342,8 @@ saveQuery = {
 ```javascript
 
 saveQuery = {
-    data:  dataToBeInserted,
-    updateObj:  dataToBeUpdated
+    data: dataToBeInserted,
+    updateObj: dataToBeUpdated
 }
 
 ```
@@ -366,8 +365,8 @@ Below is the example of the result resolved from an ``save`` method after **inse
 ```javascript
 
 resultObject = {
-    success:  true,
-    insertID:  'ID_of_newly_added_row'
+    success: true,
+    insertID: 'ID_of_newly_added_row'
 }
 
 ```
@@ -386,9 +385,9 @@ Below is the example for this saveQuery object with all the parameters and their
 ```javascript
 
 delQuery = {
-    where:  null,
-    whereOr:  null,
-    junction:  'AND'
+    where: null,
+    whereOr: null,
+    junction: 'AND'
 }
 
 ```
