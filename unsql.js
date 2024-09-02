@@ -82,10 +82,10 @@ class UnSQL {
             await connection.beginTransaction()
 
             try {
-                const result = await connection.query(sql, data)
+                const [result, fields] = await connection.query(sql, data)
 
                 await connection.commit()
-                return { success: true, insertID: result }
+                return { success: true, insertID: result.insertId }
             } catch (error) {
                 await connection.rollback()
                 return { success: false, error }
