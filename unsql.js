@@ -85,7 +85,7 @@ class UnSQL {
                 const result = await connection.query(sql, data)
 
                 await connection.commit()
-                return { success: true, insertID: result.insertId }
+                return { success: true, insertID: result }
             } catch (error) {
                 await connection.rollback()
                 return { success: false, error }
