@@ -1,45 +1,3 @@
-const _applyJoin = async (sql, join) => {
-    if (join != null) {
-        for await (const element of join) {
-            if (element.type && element.table && element.on)
-                sql += ` ${element.type} JOIN ${element.table} ON ${element.on} `
-        }
-    }
-
-}
-
-const _applyWhere = (sql, where, whereOr) => {
-    console.log('new where clause invoked')
-    if (where != null || whereOr != null) {
-        sql += ' WHERE '
-        if (where) sql += ` (${where.map(condition => condition.join(' ')).join(' AND ')}) `
-        if (where && whereOr) sql += ` ${junction || 'AND'} `
-        if (whereOr) sql += ` (${whereOr.map(condition => condition.join(' ')).join(' OR ')}) `
-        return sql
-    }
-}
-
-const _applyGroupHavingOrderby = (sql, groupBy, having, orderBy, orderDirection) => {
-    console.log('new group having order by block invoked')
-    if (groupBy != null) sql += ` GROUP BY ${groupBy} `
-    if (having != null) sql += ` HAVING ${having} `
-    if (orderBy != null) {
-        sql += ` ORDER BY ${orderBy} `
-        if (['ASC', 'DESC'].includes(orderDirection.toUpperCase())) sql += ` ${orderDirection} `
-    }
-    return sql
-}
-
-const _applyPagination = (sql, rowCount, offset) => {
-    console.log('new pagination method invoked')
-    if (rowCount && !isNaN(rowCount) && offset && !isNaN(offset)) {
-        sql += ` LIMIT ${rowCount} OFFSET ${offset} `
-    } else if (!offset && rowCount && !isNaN(rowCount)) {
-        sql += ` LIMIT ${rowCount} `
-    }
-    return sql
-}
-
 class UnSQL {
 
     static async find({ select = '*', alias = null, join = null, where = null, whereOr = null, junction = 'AND', groupBy = null, having = null, orderBy = null, orderDirection = 'DESC', rowCount = null, offset = null }) {
@@ -127,7 +85,7 @@ class UnSQL {
                 const result = await connection.query(sql, data)
 
                 await connection.commit()
-                return { success: true, result }
+                return { success: true, insertID: result.insertId }
             } catch (error) {
                 await connection.rollback()
                 return { success: false, error }
