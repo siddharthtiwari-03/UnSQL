@@ -41,14 +41,14 @@ class UnSQL {
         try {
             await connection.beginTransaction()
 
-            const [rows] = await connection.execute(sql)
+            const [rows, fields] = await connection.execute(sql)
 
             await connection.commit()
 
-            return { success: true, result: rows }
+            return { success: true, result: rows, fields }
 
         } catch (error) {
-            await connection.rollback()
+            if (connection) await connection.rollback()
             return { success: false, error }
         } finally {
             if (connection) await connection.release()
@@ -85,9 +85,9 @@ class UnSQL {
                 const [result, fields] = await connection.query(sql, data)
 
                 await connection.commit()
-                return { success: true, insertID: result.insertId }
+                return { success: true, insertID: result.insertId, result, fields }
             } catch (error) {
-                await connection.rollback()
+                if (connection) await connection.rollback()
                 return { success: false, error }
             } finally {
                 if (connection) await connection.release()
@@ -122,13 +122,12 @@ class UnSQL {
 
             await connection.commit()
 
-            if (connection) await connection.release()
-
             return { success: true, result }
         } catch (error) {
-            await connection.rollback()
-            if (connection) await connection.release()
+            if (connection) await connection.rollback()
             return { success: false, error }
+        } finally {
+            if (connection) await connection.release()
         }
 
     }
