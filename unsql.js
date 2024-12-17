@@ -22,7 +22,7 @@ class UnSQL {
         console.groupEnd('UnSQL constructor ends!')
     }
 
-    static async find({ alias = null, select = [], join = [], where = {}, junction = 'and', windows = [], groupBy = null, having = null, orderBy = [], rowCount = null, offset = null, debug = false } = {}) {
+    static async find({ alias = null, select = [], join = [], where = {}, junction = 'and', windows = [], groupBy = null, having = null, orderBy = [], rowCount = null, offset = null, debug = false }) {
 
         if (!this?.config?.pool && !this?.config?.connection) {
             console.log(colors.red, 'Please provide mysql connection or connection pool inside config for', this.name, 'model class', colors.reset)

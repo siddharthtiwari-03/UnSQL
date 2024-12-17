@@ -84,7 +84,7 @@ const prepareString = ({ alias, key, value }) => {
             sql += patchInline(parseInt(cropRight), 'RIGHT(')
 
             // patch substring method
-            sql += patchInline(startIndex && endIndex && !delimiter, 'SUBSTRING(')
+            sql += patchInline(startIndex && endIndex, 'SUBSTRING(')
 
 
             // trim start here
@@ -104,10 +104,10 @@ const prepareString = ({ alias, key, value }) => {
             sql += patchInline(trim === 'left' || trim === 'right' || trim == true, ')')
 
             // patch substring method
-            sql += patchInline(startIndex, ', ?)')
-            patchToArray(values, startIndex != undefined || startIndex != null, startIndex)
+            sql += patchInline(startIndex, ', ?')
+            patchToArray(values, startIndex, startIndex)
             sql += patchInline(endIndex, ', ?)')
-            patchToArray(values, endIndex != undefined || endIndex != null, endIndex)
+            patchToArray(values, endIndex, endIndex)
 
             // patch search criteria
             if (search) {
