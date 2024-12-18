@@ -20,7 +20,7 @@ class UnSQL {
         console.dir(this.constructor)
     }
 
-    static async find({ alias = null, select = [], join = [], where = {}, junction = 'and', windows = [], groupBy = null, having = null, orderBy = [], rowCount = null, offset = null, debug = false }={}) {
+    static async find({ alias = null, select = [], join = [], where = {}, junction = 'and', windows = [], groupBy = null, having = null, orderBy = [], rowCount = null, offset = null, debug = false } = {}) {
 
         if (!this?.config?.pool && !this?.config?.connection) {
             console.log(colors.red, 'Please provide mysql connection or connection pool inside config (static property) of', this.name, 'model class', colors.reset)
@@ -233,7 +233,7 @@ class UnSQL {
 
     }
 
-    static delete({ where = null }) {
+    static async delete({ where = null }) {
 
         if (!this?.config?.pool && !this?.config?.connection) {
             console.error(colors.red, 'Please provide mysql connection or connection pool inside config (static property) of', this.name, 'model class', colors.reset)
@@ -248,6 +248,43 @@ class UnSQL {
         if (!where && (!this?.config?.safeMode || false)) {
             console.error(colors.red, 'Action Denied! Since no where argument is provided inside delete method, this action will wipe out entire table from your database schema', colors.reset)
             return { success: false, error: 'Please provide database table name inside config (static property) of ' + this.name + ' model class' }
+        }
+
+        let sql = 'DELETE FROM ??'
+        values.push(this.config.table)
+
+        if (Object.keys(where).length) {
+            sql += ' WHERE '
+            const whereResp = prepareWhere({ where })
+            sql += whereResp.sql
+            values.push(...whereResp.values)
+        }
+
+        const conn = await(this?.config?.connection || this?.config?.pool?.getConnection())
+
+        try {
+            await conn.beginTransaction()
+
+            const prepared = conn.format(sql, values)
+
+            handleQueryDebug(debug, sql, values, prepared)
+
+            const [result] = await conn.query(sql, values)
+
+            console.log('result', result)
+
+            await conn.commit()
+            return { success: true, ...result }
+
+        } catch (error) {
+            handleError(debug, error)
+            if (conn) await conn.rollback()
+            return { success: false, error }
+        } finally {
+            if (this.config?.pool) {
+                await conn.release()
+                // console.log('connection released to pool')
+            }
         }
 
     }
