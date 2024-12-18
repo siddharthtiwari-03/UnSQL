@@ -17,16 +17,19 @@ class UnSQL {
     static schema = null
 
     constructor() {
-        console.group('UnSQL constructor invoked!')
         console.dir(this.constructor)
-        console.groupEnd('UnSQL constructor ends!')
     }
 
     static async find({ alias = null, select = [], join = [], where = {}, junction = 'and', windows = [], groupBy = null, having = null, orderBy = [], rowCount = null, offset = null, debug = false }) {
 
         if (!this?.config?.pool && !this?.config?.connection) {
-            console.log(colors.red, 'Please provide mysql connection or connection pool inside config for', this.name, 'model class', colors.reset)
-            return { success: false, error: 'Please provide mysql "connection" or connection "pool" inside "config" for ' + this.name + ' model class' }
+            console.log(colors.red, 'Please provide mysql connection or connection pool inside config (static property) of', this.name, 'model class', colors.reset)
+            return { success: false, error: 'Please provide mysql connection or connection pool inside config (static property) of ' + this.name + ' model class' }
+        }
+
+        if (!this?.config?.table) {
+            console.error(colors.red, 'Please provide database table name inside config (static property) of', this.name, 'model class', colors.reset)
+            return { success: false, error: 'Please provide database table name inside config (static property) of ' + this.name + ' model class' }
         }
 
         let sql = 'SELECT '
@@ -34,9 +37,9 @@ class UnSQL {
         const values = []
 
         try {
-            console.log('inside if block')
+            // console.log('inside if block')
             const selectResp = prepareSelect({ alias, select })
-            console.log('selectResp', selectResp)
+            // console.log('selectResp', selectResp)
             sql += patchInline(selectResp.sql, selectResp.sql)
             patchToArray(values, selectResp.values.length > 0, selectResp.values)
 
@@ -48,7 +51,7 @@ class UnSQL {
 
             if (join.length) {
                 const joinResp = prepareJoin({ alias, join })
-                console.log('joinResp', joinResp)
+                // console.log('joinResp', joinResp)
                 sql += joinResp.sql
                 values.push(...joinResp?.values)
             }
@@ -56,7 +59,7 @@ class UnSQL {
             if (Object.keys(where).length) {
                 sql += ' WHERE '
                 const whereResp = prepareWhere({ alias, where, junction })
-                console.log('where resp', whereResp)
+                // console.log('where resp', whereResp)
                 sql += whereResp.sql
                 values.push(...whereResp?.values)
             }
@@ -77,7 +80,7 @@ class UnSQL {
 
             const conn = await (this?.config?.connection || this?.config?.pool?.getConnection())
 
-            console.log('conn', conn.connection.database)
+            // console.log('conn', conn.connection.database)
 
             try {
                 await conn.beginTransaction()
@@ -100,21 +103,152 @@ class UnSQL {
             } finally {
                 if (this.config?.pool) {
                     await conn.release()
-                    console.log('connection released to pool')
+                    // console.log('connection released to pool')
                 }
             }
 
         } catch (error) {
-            console.error('error caught by global try catch', error)
+            // console.error('error caught by global try catch', error)
             return { success: false, error: error.sqlMessage || error.message || error }
         }
     }
 
-    static save({ }) {
+    static async save({ data = [] || {}, where = {}, upsert, encrypt = { columns: [] }, debug = false }) {
+
+        if (!this?.config?.pool && !this?.config?.connection) {
+            console.error(colors.red, 'Please provide mysql connection or connection pool inside config (static property) of', this.name, 'model class', colors.reset)
+            return { success: false, error: 'Please provide mysql connection or connection pool inside config (static property) of ' + this.name + ' model class' }
+        }
+
+        if (!this?.config?.table) {
+            console.error(colors.red, 'Please provide database table name inside config (static property) of', this.name, 'model class', colors.reset)
+            return { success: false, error: 'Please provide database table name inside config (static property) of ' + this.name + ' model class' }
+        }
+
+        if (Array.isArray(data) && Object.keys(where).length) {
+            console.error(colors.red, 'Data argument accepts single json object as value with where clause, array was provided', colors.reset)
+            return { success: false, error: 'Data argument accepts single json object as value with where clause, array was provided' }
+        }
+
+        const values = []
+
+        let sql = patchInline(where, 'UPDATE ?? ', 'INSERT INTO ?? ')
+
+        values.push(this.config.table)
+
+        switch (true) {
+
+            // handle if data is array of json object(s)
+            case Array.isArray(data): {
+
+                const insertColumns = []
+
+                // loop over each json object for columns
+                for (let i = 0; i < data.length; i++) {
+
+                    // extract keys from each object
+                    Object.keys(data[i]).forEach(col => {
+
+                        // track if col not already tracked
+                        if (!insertColumns.includes(col)) {
+                            insertColumns.push(col)
+                        }
+
+                    })
+
+                }
+                // loop for columns ended
+
+                sql += '(??)'
+                values.push(insertColumns)
+
+                const insertValues = []
+
+                // loop over each json object for values
+                for (let i = 0; i < data.length; i++) {
+
+                    const rows = []
+
+                    for (let j = 0; j < insertColumns.length; j++) {
+                        rows.push(data[i][insertColumns[j]] || null)
+                    }
+
+                    insertValues.push(rows)
+
+                }
+
+                // loop for values ended
+                values.push(insertValues)
+                sql += ' VALUES ? '
+                break
+            }
+
+            case typeof data === 'object': {
+                // extract all columns from data object
+                sql += 'SET ? '
+                values.push(data)
+                break
+            }
+
+            default: {
+                return { success: false, error: "Invalid data type! Data argument accepts only object or array of objects" }
+            }
+
+        }
+
+        if (Object.keys(where).length) {
+            sql += 'WHERE '
+            const whereResp = prepareWhere({ where })
+            sql += whereResp.sql
+            values.push(...whereResp.values)
+        }
+
+        const conn = await (this?.config?.connection || this?.config?.pool?.getConnection())
+
+        try {
+            await conn.beginTransaction()
+
+            const prepared = conn.format(sql, values)
+
+            handleQueryDebug(debug, sql, values, prepared)
+
+            const [result] = await conn.query(sql, values)
+
+            console.log('result', result)
+
+            await conn.commit()
+            return { success: true, ...result }
+
+        } catch (error) {
+            handleError(debug, error)
+            if (conn) await conn.rollback()
+            return { success: false, error }
+        } finally {
+            if (this.config?.pool) {
+                await conn.release()
+                // console.log('connection released to pool')
+            }
+        }
+
 
     }
 
-    static delete({ }) {
+    static delete({ where = null }) {
+
+        if (!this?.config?.pool && !this?.config?.connection) {
+            console.error(colors.red, 'Please provide mysql connection or connection pool inside config (static property) of', this.name, 'model class', colors.reset)
+            return { success: false, error: 'Please provide mysql connection or connection pool inside config (static property) of ' + this.name + ' model class' }
+        }
+
+        if (!this?.config?.table) {
+            console.error(colors.red, 'Please provide database table name inside config (static property) of', this.name, 'model class', colors.reset)
+            return { success: false, error: 'Please provide database table name inside config (static property) of ' + this.name + ' model class' }
+        }
+
+        if (!where && (!this?.config?.safeMode || false)) {
+            console.error(colors.red, 'Action Denied! Since no where argument is provided inside delete method, this action will wipe out entire table from your database schema', colors.reset)
+            return { success: false, error: 'Please provide database table name inside config (static property) of ' + this.name + ' model class' }
+        }
 
     }
 
