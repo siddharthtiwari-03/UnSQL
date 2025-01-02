@@ -18,10 +18,12 @@ class UnSQL {
         }
 
         if (where != null || whereOr != null) {
+            console.log('where', where)
+            console.log('whereOr', whereOr)
             sql += ' WHERE '
-            sql += patchInline(where, ` (${where.map(condition => condition.join(' ')).join(' AND ')}) `)
+            sql += patchInline(where, ` (${where && where.map(condition => condition.join(' ')).join(' AND ')}) `)
             sql += patchInline(where && whereOr, ` ${junction || 'AND'} `)
-            sql += patchInline(whereOr, ` (${whereOr.map(condition => condition.join(' ')).join(' OR ')}) `)
+            sql += patchInline(whereOr, ` (${whereOr && whereOr.map(condition => condition.join(' ')).join(' OR ')}) `)
         }
 
         sql += patchInline(groupBy != null, ` GROUP BY ${groupBy} `)
@@ -64,10 +66,10 @@ class UnSQL {
 
         if (where != null || whereOr != null) {
             sql = `UPDATE ${this.TABLE_NAME + patchInline(alias != null, ' ' + alias)} SET ? WHERE`
-            sql += patchInline(where, ` (${where.map(condition => condition.join(' ')).join(' AND ')})`)
+            sql += patchInline(where, ` (${where && where.map(condition => condition.join(' ')).join(' AND ')})`)
             // sql += patchInline(checkAnd(where, whereOr), ` ${junction || 'AND'} `)
             sql += patchInline(where && whereOr, ` ${junction || 'AND'} `)
-            sql += patchInline(whereOr, ` (${whereOr.map(condition => condition.join(' ')).join(' OR ')}) `)
+            sql += patchInline(whereOr, ` (${whereOr && whereOr.map(condition => condition.join(' ')).join(' OR ')}) `)
         } else {
             sql = `INSERT INTO ${this.TABLE_NAME + patchInline(alias != null, ' ' + alias)} SET ? `
 
@@ -108,9 +110,9 @@ class UnSQL {
 
         if (where != null || whereOr != null) {
             sql += ' WHERE '
-            sql += patchInline(where, ` (${where.map(condition => condition.join(' ')).join(' AND ')}) `)
+            sql += patchInline(where, ` (${where && where.map(condition => condition.join(' ')).join(' AND ')}) `)
             sql += patchInline(where && whereOr, ` ${junction || 'AND'} `)
-            sql += patchInline(whereOr, ` (${whereOr.map(condition => condition.join(' ')).join(' OR ')}) `)
+            sql += patchInline(whereOr, ` (${whereOr && whereOr.map(condition => condition.join(' ')).join(' OR ')}) `)
         }
 
         const connection = await this.POOL.getConnection()
