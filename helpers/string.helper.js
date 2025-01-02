@@ -4,7 +4,7 @@ const { prepareName, extractName } = require("./name.helper")
 const { patchInline, patchToArray } = require("./patch.helper")
 const { preparePlaceholder } = require("./placeholder.helper")
 
-const prepareString = ({ alias, key, value }) => {
+const prepareString = ({ alias, key, value, encryption = null, ctx = null }) => {
 
     console.group(colors.blue, 'prepare string method invoked', colors.reset)
 
@@ -14,13 +14,14 @@ const prepareString = ({ alias, key, value }) => {
     let sql = ''
     const values = []
 
-    const { value: v, case: c, search, pattern = '', substr, pad, decimals, reverse, cropLeft, cropRight, trim, repeat, replace, cast, as } = value
+    const { value: v, case: c, search, pattern = '', substr = [], pad = [], decimals, reverse, cropLeft, cropRight, trim, repeat, replace = [], decrypt = { secret: null, iv: null, sha: 512 }, cast, as } = value
 
-    const [padDirection, padding, padStr] = pad || []
 
-    const [startIndex, endIndex, delimiter, offsetIndex] = substr || []
+    const [padDirection, padding, padStr] = pad
 
-    const [identifier, replaceWith] = replace || []
+    const [startIndex, endIndex, delimiter, offsetIndex] = substr
+
+    const [identifier, replaceWith] = replace
 
     console.log('search', search)
 
@@ -36,6 +37,32 @@ const prepareString = ({ alias, key, value }) => {
     // upper / lower case start here
     sql += patchInline(c === 'upper' || c === 'lower', stringFunctions[c] + '(')
 
+    // patch padding
+    sql += patchInline(padding && padDirection === 'left', 'LPAD(')
+    sql += patchInline(padding && padDirection === 'right', 'RPAD(')
+
+    // patch format for decimal values
+    sql += patchInline(decimals, 'FORMAT(')
+
+    // patch instr for search values
+    sql += patchInline(search, 'INSTR(')
+
+    // patch reverse values method
+    sql += patchInline(reverse, 'REVERSE(')
+
+    // patch crop from left method
+    sql += patchInline(parseInt(cropLeft), 'LEFT(')
+
+    // patch crop from right method
+    sql += patchInline(parseInt(cropRight), 'RIGHT(')
+
+    // patch substring method
+    sql += patchInline(substr.length, 'SUBSTRING(')
+
+    // trim start here
+    sql += patchInline(trim === 'left', 'LTRIM(')
+    sql += patchInline(trim === 'right', 'RTRIM(')
+    sql += patchInline(trim === true, 'TRIM(')
 
     switch (true) {
 
@@ -62,35 +89,10 @@ const prepareString = ({ alias, key, value }) => {
             sql += patchInline(key != 'str', stringFunctions[key] + '(')
 
             // apply casting
-            sql += patchInline(cast in dataTypes, 'CAST(')
+            sql += patchInline(cast in dataTypes || decrypt?.secret, 'CAST(')
 
-            // patch padding
-            sql += patchInline(padding && padDirection === 'left', 'LPAD(')
-            sql += patchInline(padding && padDirection === 'right', 'RPAD(')
-
-            // patch format for decimal values
-            sql += patchInline(decimals, 'FORMAT(')
-
-            // patch instr for search values
-            sql += patchInline(search, 'INSTR(')
-
-            // patch reverse values method
-            sql += patchInline(reverse, 'REVERSE(')
-
-            // patch crop from left method
-            sql += patchInline(parseInt(cropLeft), 'LEFT(')
-
-            // patch crop from right method
-            sql += patchInline(parseInt(cropRight), 'RIGHT(')
-
-            // patch substring method
-            sql += patchInline(startIndex && endIndex, 'SUBSTRING(')
-
-
-            // trim start here
-            sql += patchInline(trim === 'left', 'LTRIM(')
-            sql += patchInline(trim === 'right', 'RTRIM(')
-            sql += patchInline(trim === true, 'TRIM(')
+            // decryption method start here
+            sql += patchInline(decrypt, 'AES_DECRYPT(')
 
             // ##################################################
 
@@ -100,52 +102,54 @@ const prepareString = ({ alias, key, value }) => {
 
             // ##################################################
 
-            // trim end here
-            sql += patchInline(trim === 'left' || trim === 'right' || trim == true, ')')
+            // handle decryption method block starts here
+            if (decrypt) {
+                // console.log('ctx', ctx)
+                console.log('encryption', encryption)
 
-            // patch substring method
-            sql += patchInline(startIndex, ', ?')
-            patchToArray(values, startIndex, startIndex)
-            sql += patchInline(endIndex, ', ?)')
-            patchToArray(values, endIndex, endIndex)
+                // handle if local query encryption mode is set
+                if (encryption?.mode) {
 
-            // patch search criteria
-            if (search) {
-                const sn = prepareName({ alias, value: search })
-                const sp = preparePlaceholder(search)
-                sql += ', ' + sp
-                patchToArray(values, !checkConstants(search), sn)
+                    sql += patchInline(encryption?.mode?.includes('-cbc'), ', ?')
+                    sql += ', UNHEX(SHA2(?, ?))'
+
+                    values.push(decrypt?.secret || encryption?.secret || ctx?.config?.encryption?.secret)
+
+                    // check if encryption mode requires iv or sha
+                    if (encryption?.mode?.includes('-cbc')) {
+                        values.push(decrypt?.iv || encryption?.iv || ctx?.config?.encryption?.iv)
+                    }
+
+                    values.push(decrypt?.sha || encryption?.sha || ctx?.config?.encryption?.sha || 512)
+
+                }
+                // handle if global encryption mode is set
+                else if (ctx?.config?.encryption?.mode) {
+
+                    sql += patchInline(ctx?.config?.encryption?.mode?.includes('-cbc'), ', ?')
+
+                    sql += ', UNHEX(SHA2(?, ?))'
+
+                    values.push(decrypt?.secret || encryption?.secret || ctx?.config?.encryption?.secret)
+
+                    // check if encryption mode requires iv or sha
+                    if (ctx?.config?.encryption?.mode?.includes('-cbc')) {
+                        values.push(decrypt?.iv || encryption?.iv || ctx?.config?.encryption?.iv)
+                    }
+
+                    values.push(decrypt?.sha || encryption?.sha || ctx?.config?.encryption?.sha || 512)
+
+                }
+
+                sql += ')'
+
             }
-
-            // patch crop right ends here
-            sql += patchInline(cropRight, ', ?)')
-            patchToArray(values, parseInt(cropRight), cropRight)
-
-            // patch crop left ends here
-            sql += patchInline(cropLeft, ', ?)')
-            patchToArray(values, parseInt(cropLeft), cropLeft)
-
-            // reverse method end here
-            sql += patchInline(reverse, ')')
-
-            // search end here
-            sql += patchInline(search, ')')
-
-            // format end here
-            // patch decimal length for format method
-            sql += patchInline(decimals, ', ?)')
-            patchToArray(values, typeof decimals === 'number', decimals)
-
-            sql += patchInline(padding && (padDirection === 'left' || padDirection === 'right'), ', ?)')
-            patchToArray(values, padding && (padDirection === 'left' || padDirection === 'right'), padding)
-            sql += patchInline(padStr && (padDirection === 'left' || padDirection === 'right'), ', ?)')
-            patchToArray(values, padStr && (padDirection === 'left' || padDirection === 'right'), padStr)
-
+            // handle decryption method block ends here
 
             sql += patchInline(key != 'str', ')')
 
             // casting end here
-            sql += patchInline(cast in dataTypes, ' AS ' + dataTypes[cast] + ')')
+            sql += patchInline(cast in dataTypes || decrypt?.secret, ' AS ' + (dataTypes[cast] || 'CHAR') + ')')
 
             console.groupEnd()
             break
@@ -153,13 +157,64 @@ const prepareString = ({ alias, key, value }) => {
 
     }
 
+    // trim end here
+    sql += patchInline(trim === 'left' || trim === 'right' || trim == true, ')')
+
+    // patch substring method
+    if (substr.length) {
+        sql += ', ?, ?)'
+        values.push(startIndex || 1)
+        values.push(endIndex || 1)
+    }
+
+    // patch crop right ends here
+    if (parseInt(cropRight)) {
+        sql += ', ?)'
+        values.push(cropRight)
+    }
+
+    // patch crop left ends here
+    if (parseInt(cropLeft)) {
+        sql += ', ?)'
+        values.push(cropLeft)
+    }
+
+    // reverse method end here
+    sql += patchInline(reverse, ')')
+
+    // patch search criteria
+    if (search) {
+        const sn = prepareName({ alias, value: search })
+        const sp = preparePlaceholder(search)
+        sql += ', ' + sp + ')'
+        patchToArray(values, !checkConstants(search), sn)
+    }
+
+    // format end here
+    if (typeof decimals === 'number' || decimals === 'floor' || decimals === 'ceil' || decimals === 'round') {
+        // patch decimal length for format method
+        sql += ', ?)'
+        values.push(decimals)
+    }
+
+    if (padding && (padDirection === 'left' || padDirection === 'right')) {
+        sql += ', ?)'
+        values.push(padding)
+    }
+
+    if (padStr && (padDirection === 'left' || padDirection === 'right')) {
+        sql += ', ?)'
+        values.push(padStr)
+    }
+
     // upper / lower case end here
     sql += patchInline(c === 'upper' || c === 'lower', ')')
 
     // repeat method end here
-    sql += patchInline(parseInt(repeat), ', ?')
-    patchToArray(values, parseInt(repeat), repeat)
-    sql += patchInline(parseInt(repeat), ')')
+    if (parseInt(repeat)) {
+        sql += ', ?)'
+        values.push(repeat)
+    }
 
     // replace end here
     if (identifier && replaceWith) {
@@ -172,9 +227,12 @@ const prepareString = ({ alias, key, value }) => {
         patchToArray(values, !checkConstants(replaceWith), replaceName)
         sql += ')'
     }
+
     // patch local name here
-    sql += patchInline(sql != '', ' AS ?')
-    patchToArray(values, sql != '', patchInline(as, as, extractName(v)))
+    if (sql != '') {
+        sql += ' AS ?'
+        values.push(patchInline(as, as, extractName(v)))
+    }
 
     console.groupEnd()
 

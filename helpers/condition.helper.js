@@ -4,7 +4,7 @@ const { prepareName } = require("./name.helper")
 const { patchToArray, patchInline } = require("./patch.helper")
 const { preparePlaceholder } = require("./placeholder.helper")
 
-const prepareCondition = ({ alias, key, value, parent = null, junction }) => {
+const prepareCondition = ({ alias, key, value, parent = null, junction, encryption = null, ctx = null }) => {
     console.group(colors.magenta, 'prepare conditions invoked', colors.reset)
 
     console.log('alias', alias)
@@ -17,6 +17,38 @@ const prepareCondition = ({ alias, key, value, parent = null, junction }) => {
 
     switch (true) {
 
+        case key === 'decrypt': {
+            console.group(colors.bgMagenta, 'decrypt key is detected', colors.reset)
+            console.log('parent', parent)
+            console.log('key', key)
+            console.log('value', value)
+
+            const { value: v, condition, secret = null, iv = null, sha = 512 } = value
+
+            sql += 'AES_DECRYPT(??, '
+            values.push(v)
+
+            if (ctx?.config?.encryption?.mode === 'aes-256-cbc') {
+                sql += `SHA2(?, ${parseInt(sha) || 512}), ?)`
+                if (!iv) {
+                    console.error(colors.red, `Initialization Vector iv is required with ${ctx?.config?.encryption?.mode} mode`, colors.reset)
+                    throw new Error(`Initialization Vector iv is required with ${ctx?.config?.encryption?.mode} mode`)
+                }
+                values.push(secret, iv)
+
+            } else {
+                sql += `UNHEX(SHA2(?, ${parseInt(sha) || 512})))`
+                values.push(secret)
+            }
+            const resp = prepareCondition({ alias, key: 'UnSQLPlaceholder', value: condition, ctx })
+            console.log('resp inside decrypt block', resp)
+            sql += resp.sql
+            values.push(...resp.values)
+
+            console.groupEnd()
+            break
+        }
+
         case !Array.isArray(value) && typeof value === 'object': {
             console.group(colors.bgBlue, 'value is an object', colors.reset)
 
@@ -28,7 +60,7 @@ const prepareCondition = ({ alias, key, value, parent = null, junction }) => {
                 console.log('k', k)
                 console.log('v', v)
 
-                const localResp = prepareCondition({ alias, value: v, key: k, parent: key })
+                const localResp = prepareCondition({ alias, value: v, key: k, parent: key, ctx })
                 console.log('localResp', localResp)
                 values.push(...localResp.values)
                 console.groupEnd()
@@ -47,11 +79,13 @@ const prepareCondition = ({ alias, key, value, parent = null, junction }) => {
             console.log('key', key)
             console.log('value', value)
 
-            const nm = prepareName({ alias, value: parent })
-            const placeholder = preparePlaceholder(parent)
-
-            sql += placeholder + conditions[key]
-            patchToArray(values, !checkConstants(parent), nm)
+            if (parent != 'UnSQLPlaceholder') {
+                const nm = prepareName({ alias, value: parent })
+                const placeholder = preparePlaceholder(parent)
+                sql += placeholder
+                patchToArray(values, !checkConstants(parent), nm)
+            }
+            sql += conditions[key]
 
             const valueName = prepareName({ alias, value })
             const valuePlaceholder = preparePlaceholder(value)
@@ -67,12 +101,19 @@ const prepareCondition = ({ alias, key, value, parent = null, junction }) => {
         }
 
         case Array.isArray(value) && value?.length > 1: {
-            console.log('value is array of multiple items')
-            const name = prepareName({ alias, value: key })
-            const placeholder = preparePlaceholder(key)
+            console.group(colors.bgGreen, 'value is array of multiple items', colors.reset)
 
-            sql += placeholder + ' IN ('
-            patchToArray(values, !checkConstants(key), name)
+            console.log('parent', parent)
+            console.log('key', key)
+            console.log('value', value)
+
+            if (key != 'UnSQLPlaceholder') {
+                const name = prepareName({ alias, value: key })
+                const placeholder = preparePlaceholder(key)
+                sql += placeholder
+                patchToArray(values, !checkConstants(key), name)
+            }
+            sql += ' IN ('
 
             sql += value?.map(val => {
                 const nm = prepareName({ alias, value: val })
@@ -83,21 +124,28 @@ const prepareCondition = ({ alias, key, value, parent = null, junction }) => {
 
             sql += ')'
 
+            console.groupEnd()
             break
         }
 
         case typeof value === 'number':
         case typeof value === 'string':
         case Array.isArray(value) && value?.length === 1: {
-            console.group('value is', typeof value)
-            const name = prepareName({ alias, value: key })
-            const placeholder = preparePlaceholder(key)
+            console.group(colors.bgYellow, 'value is', typeof value, colors.reset)
+            console.log('parent', parent)
+            console.log('key', key)
+            console.log('value', value)
 
+            if (key != 'UnSQLPlaceholder') {
+                const name = prepareName({ alias, value: key })
+                const placeholder = preparePlaceholder(key)
+                sql += placeholder
+                patchToArray(values, !checkConstants(key), name)
+            }
             const valueName = prepareName({ alias, value })
             const valuePlaceholder = preparePlaceholder(value)
 
-            sql += placeholder + ' = ' + valuePlaceholder
-            patchToArray(values, !checkConstants(key), name)
+            sql += ' = ' + valuePlaceholder
             patchToArray(values, !checkConstants(value), valueName)
 
             console.groupEnd()

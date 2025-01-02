@@ -3,7 +3,16 @@ const { colors } = require("./console.helper")
 const { junctions } = require("./constants.helper")
 const { patchInline } = require("./patch.helper")
 
-const prepareWhere = ({ alias, where, parent = null, junction }) => {
+/**
+ * 
+ * @param {string|null} alias table alias name
+ * @param {Object|object|{}|null} where conditions object
+ * @param {string|null} parent parent key name
+ * @param {Object|object|class|UnSQL|null} ctx class context
+ * @returns 
+ */
+
+const prepareWhere = ({ alias, where, parent = null, junction, ctx = undefined }) => {
     console.group(colors.magenta, 'prepare where invoked', colors.reset)
 
     console.log('alias', alias)
@@ -46,7 +55,7 @@ const prepareWhere = ({ alias, where, parent = null, junction }) => {
                 console.log('key', key)
                 console.log('value', value)
 
-                const resp = prepareCondition({ alias, key, value })
+                const resp = prepareCondition({ alias, key, value, ctx })
                 console.log('resp from prepare condition', resp)
 
                 sql += resp.sql

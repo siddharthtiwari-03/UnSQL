@@ -5,7 +5,7 @@ const { prepareName } = require("./name.helper")
 const { patchToArray, patchInline } = require("./patch.helper")
 const { preparePlaceholder } = require("./placeholder.helper")
 
-const prepareWrapper = ({ alias, key, value }) => {
+const prepareWrapper = ({ alias, key, value, ctx = null }) => {
 
     console.group('wrapper invoked')
 

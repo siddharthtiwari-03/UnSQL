@@ -1,7 +1,7 @@
 const { prepareCondition } = require("./condition.helper")
 const { colors } = require("./console.helper")
 const { checkConstants, dateFunctions, stringFunctions, numericFunctions, advanceFunctions, junctions } = require("./constants.helper")
-const { prepareDateFunctions, prepareDate } = require("./date.helper")
+const { prepareDate } = require("./date.helper")
 const { prepareName } = require("./name.helper")
 const { prepareNumeric } = require("./numeric.helper")
 const { patchToArray, patchInline } = require("./patch.helper")
@@ -9,7 +9,16 @@ const { preparePlaceholder } = require("./placeholder.helper")
 const { prepareString } = require("./string.helper")
 const { prepareWrapper } = require("./wrap.helper")
 
-const prepareSelect = ({ alias, select }) => {
+/**
+ * @param {Object} selectObj
+ * 
+ * @param {string} selectObj.alias
+ * @param {Array} selectObj.select
+ * @param {import("../defs/types.def").encryption} selectObj.encryption
+ * @param {*} selectObj.ctx
+ * @returns 
+ */
+const prepareSelect = ({ alias, select, encryption = null, ctx = null }) => {
 
     // let sql = ''
 
@@ -32,9 +41,10 @@ const prepareSelect = ({ alias, select }) => {
 
             switch (true) {
 
+                // case key === 'dt':
                 case key in dateFunctions: {
                     console.log(colors.magenta, 'selectable key is in date function', colors.reset)
-                    const resp = prepareDate({ alias, key, value })
+                    const resp = prepareDate({ alias, key, value, encryption, ctx })
                     console.log('date resp', resp)
                     if (resp?.values?.length) values.push(...resp.values)
                     console.groupEnd() // selectable group ends here
@@ -45,7 +55,7 @@ const prepareSelect = ({ alias, select }) => {
                 case key === 'str':
                 case key in stringFunctions: {
                     console.log(colors.magenta, 'selectable key is in string function', colors.reset)
-                    const resp = prepareString({ alias, key, value })
+                    const resp = prepareString({ alias, key, value, encryption, ctx })
                     if (resp?.values?.length) values.push(...resp.values)
                     console.groupEnd() // selectable group ends here
                     console.groupEnd() // select loop group ends here
@@ -55,7 +65,7 @@ const prepareSelect = ({ alias, select }) => {
                 case key === 'num':
                 case key in numericFunctions: {
                     console.log(colors.magenta, 'selectable key is in numeric function', colors.reset)
-                    const resp = prepareNumeric({ alias, key, value })
+                    const resp = prepareNumeric({ alias, key, value, encryption, ctx })
                     console.log('resp', resp)
                     values.push(...resp.values)
                     console.groupEnd() // selectable group ends here
@@ -72,7 +82,7 @@ const prepareSelect = ({ alias, select }) => {
 
                 case key === 'json':
                 case key === 'array': {
-                    const resp = prepareWrapper({ alias, key, value })
+                    const resp = prepareWrapper({ alias, key, value, ctx })
                     values.push(...resp.values)
                     return resp.sql
                 }
@@ -83,7 +93,7 @@ const prepareSelect = ({ alias, select }) => {
 
                     let sql = '(SELECT '
 
-                    const selectResp = prepareSelect({ alias: a, select: subSelect })
+                    const selectResp = prepareSelect({ alias: a, select: subSelect, ctx })
                     sql += selectResp.sql
                     values.push(...selectResp.values)
 
@@ -147,7 +157,7 @@ const prepareSelect = ({ alias, select }) => {
 }
 
 
-const prepareWhere = ({ alias, where, parent = null, junction }) => {
+const prepareWhere = ({ alias, where, parent = null, junction, ctx = null }) => {
     console.group(colors.magenta, 'prepare where invoked', colors.reset)
 
     console.log('alias', alias)
@@ -186,11 +196,13 @@ const prepareWhere = ({ alias, where, parent = null, junction }) => {
             }
 
             default: {
-                console.log('default where clause invoked')
-                const resp = prepareCondition({ alias, key, value })
+                console.log(colors.bgRed, 'default where clause invoked', colors.reset)
+                console.log('key', key)
+                console.log('value', value)
+
+                const resp = prepareCondition({ alias, key, value, ctx })
                 console.log('resp from prepare condition', resp)
 
-                // return
                 sql += resp.sql
 
                 values.push(...resp.values)

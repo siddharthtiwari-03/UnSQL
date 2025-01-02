@@ -12,7 +12,7 @@ const prepareName = ({ alias, value }) => {
     }
 
     console.groupEnd()
-    return typeof value === 'number' || value.includes('.') ? value : (alias ? alias + '.' : '') + value
+    return typeof value === 'number' || typeof value === 'boolean' || value.includes('.') ? value : (alias ? alias + '.' : '') + value
 }
 
 const extractName = (value) => {

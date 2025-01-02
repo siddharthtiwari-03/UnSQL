@@ -1,14 +1,16 @@
 {
   "name": "unsql",
-  "version": "1.6.22",
+  "version": "1.6.23",
   "description": "UnSQL can be defined as a light weight schemaless ORM. It provides clean and yet extensive interface to interact with MySQL Databases without getting into the complexities. It provides dynamic query generation through easy to understand Javascript based methods and data types, while structuring the actual sql in the background for you.",
   "main": "legacy.js",
   "files": [
     "./helpers/*",
+    "./defs/*",
     "./unsql.js",
     "./legacy.js"
   ],
   "exports": {
+    "./legacy": "./legacy.js",
     ".": "./legacy.js",
     "./next": "./unsql.js",
     "./package.json": "./package.json"

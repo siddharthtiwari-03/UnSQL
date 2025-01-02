@@ -4,14 +4,14 @@ const { prepareName } = require("./name.helper")
 const { patchInline, patchToArray } = require("./patch.helper")
 const { preparePlaceholder } = require("./placeholder.helper")
 
-const prepareNumeric = ({ alias, key, value }) => {
+const prepareNumeric = ({ alias, key, value, encryption = null, ctx = null }) => {
 
     console.group(colors.green, 'prepare numeric invoked', colors.reset)
 
     let sql = ''
     const values = []
 
-    const { value: v, power, divideBy, multiplyBy, mod, decimals, round, cast, as } = value
+    const { value: v, power, divideBy, multiplyBy, mod, decimals, cast, as } = value
 
     const name = prepareName({ alias, value: v })
     const placeholder = preparePlaceholder(v)
@@ -50,7 +50,6 @@ const prepareNumeric = ({ alias, key, value }) => {
             sql += 'PI()'
             break
         }
-
 
         case key === 'least': {
 

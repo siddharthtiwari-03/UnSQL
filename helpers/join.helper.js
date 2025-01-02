@@ -5,14 +5,14 @@ const { patchInline, patchToArray } = require("./patch.helper")
 const { preparePlaceholder } = require("./placeholder.helper")
 const { prepareSelect } = require("./select.helper")
 
-const prepareJoin = ({ alias, join }) => {
+const prepareJoin = ({ alias, join, ctx = null }) => {
     console.group('prepare join invoked')
 
     const values = []
 
     const resp = join.map(j => {
         console.log('join object inside map loop', j)
-        const { table, alias: a, type, select = [], join: nestedJoin = [], where = {}, using = [], as } = j
+        const { table, alias: a, type, select = [], join: nestedJoin = [], where = {}, using = [], as = null } = j
         let sql = ''
 
         if (!table) {
@@ -50,8 +50,8 @@ const prepareJoin = ({ alias, join }) => {
 
             }
 
-            sql += ') ?? '
-            values.push(as)
+            sql += ') ' + patchInline(as, '?? ')
+            patchToArray(values, as, as)
             console.groupEnd()
         } else {
 
@@ -95,7 +95,7 @@ const prepareJoin = ({ alias, join }) => {
     return { sql: resp.join(' '), values }
 }
 
-const prepareWhere = ({ alias, where, parent = null, junction }) => {
+const prepareWhere = ({ alias, where, parent = null, junction, ctx = null }) => {
     console.group(colors.magenta, 'prepare where invoked', colors.reset)
 
     console.log('alias', alias)

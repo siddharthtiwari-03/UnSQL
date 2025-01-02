@@ -1,4 +1,4 @@
-const checkConstants = value => 'pi' === value || 'currentDate' === value || 'currentTime' === value || 'currentTimestamp' === value || 'localTime' === value || 'localTimestamp' === value
+const checkConstants = value => value.toString().includes('*') || 'pi' === value || 'now' === value || 'currentDate' === value || 'currentTime' === value || 'currentTimestamp' === value || 'localTime' === value || 'localTimestamp' === value
 
 const checkIntOrDate = value => parseInt(value) || Date.parse(value)
 
@@ -41,6 +41,7 @@ const joinTypes = {
 
 const dateFunctions = {
 
+    now: 'NOW',
     currentDate: 'CURDATE',
     currentTime: 'CURRENT_TIME',
     currentTimestamp: 'CURRENT_TIMESTAMP',
