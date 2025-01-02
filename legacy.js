@@ -18,8 +18,6 @@ class UnSQL {
         }
 
         if (where != null || whereOr != null) {
-            console.log('where', where)
-            console.log('whereOr', whereOr)
             sql += ' WHERE '
             sql += patchInline(where, ` (${where && where.map(condition => condition.join(' ')).join(' AND ')}) `)
             sql += patchInline(where && whereOr, ` ${junction || 'AND'} `)
