@@ -23,21 +23,11 @@ const dataTypes = {
 }
 
 const aggregateFunctions = {
+    sum: 'SUM',
     avg: 'AVG',
-    bitAnd: 'BIT_AND',
-    bitOr: 'BIT_OR',
-    bitXor: 'BIT_XOR',
     count: 'COUNT',
     max: 'MAX',
     min: 'MIN',
-    std: 'STD',
-    stdDev: 'STDDEV',
-    stdDevPop: 'STDDEV_POP',
-    stdDevSamp: 'STDDEV_SAMP',
-    sum: 'SUM',
-    varPop: 'VAR_POP',
-    varSamp: 'VAR_SAMP',
-    variance: 'VARIANCE',
 }
 
 module.exports = { checkConstants, dataTypes, constantFunctions, aggregateFunctions }

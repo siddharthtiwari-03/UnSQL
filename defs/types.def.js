@@ -82,6 +82,80 @@
  */
 
 /**
+ * count aggregate function
+ * @typedef {object} countAggregator
+ * 
+ * @prop {object} count used to count the values
+ * 
+ * @prop {string|number|object} count.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {string} count.as
+ */
+
+/**
+ * count aggregate function
+ * @typedef {object} countCompareAggregator
+ * 
+ * @prop {object} count used to count the values
+ * 
+ * @prop {string|number|object} count.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {object} count.compare accepts object with conditions to compare this aggregator method with
+ */
+
+/**
+ * min aggregate function
+ * @typedef {object} minAggregator
+ * 
+ * @prop {object} min used to min the values
+ * 
+ * @prop {string|number|object} min.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {boolean} [sum.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
+ * 
+ * @prop {string} min.as
+ */
+
+/**
+ * min aggregate function
+ * @typedef {object} minCompareAggregator
+ * 
+ * @prop {object} min used to min the values
+ * 
+ * @prop {string|number|object} min.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {boolean} [sum.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
+ * 
+ * @prop {object} min.compare accepts object with conditions to compare this aggregator method with
+ */
+
+/**
+ * max aggregate function
+ * @typedef {object} maxAggregator
+ * 
+ * @prop {object} max used to max the values
+ * 
+ * @prop {string|number|object} max.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {boolean} [sum.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
+ * 
+ * @prop {string} max.as
+ */
+
+/**
+ * max aggregate function
+ * @typedef {object} maxCompareAggregator
+ * 
+ * @prop {object} max used to max the values
+ * 
+ * @prop {string|number|object} max.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {boolean} [sum.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
+ * 
+ * @prop {object} max.compare accepts object with conditions to compare this aggregator method with
+ */
+
+/**
  * bitAnd aggregate function
  * @typedef {object} bitAndAggregator
  * 
@@ -147,247 +221,6 @@
  * @prop {object} bitXor.compare accepts object with conditions to compare this aggregator method with
  */
 
-/**
- * count aggregate function
- * @typedef {object} countAggregator
- * 
- * @prop {object} count used to count the values
- * 
- * @prop {string|number|object} count.value accepts a number / string (column name) / object wrapper / conditional object as its value
- * 
- * @prop {string} count.as
- */
-
-/**
- * count aggregate function
- * @typedef {object} countCompareAggregator
- * 
- * @prop {object} count used to count the values
- * 
- * @prop {string|number|object} count.value accepts a number / string (column name) / object wrapper / conditional object as its value
- * 
- * @prop {object} count.compare accepts object with conditions to compare this aggregator method with
- */
-
-/**
- * min aggregate function
- * @typedef {object} minAggregator
- * 
- * @prop {object} min used to min the values
- * 
- * @prop {string|number|object} min.value accepts a number / string (column name) / object wrapper / conditional object as its value
- * 
- * @prop {string} min.as
- */
-
-/**
- * min aggregate function
- * @typedef {object} minCompareAggregator
- * 
- * @prop {object} min used to min the values
- * 
- * @prop {string|number|object} min.value accepts a number / string (column name) / object wrapper / conditional object as its value
- * 
- * @prop {object} min.compare accepts object with conditions to compare this aggregator method with
- */
-
-/**
- * max aggregate function
- * @typedef {object} maxAggregator
- * 
- * @prop {object} max used to max the values
- * 
- * @prop {string|number|object} max.value accepts a number / string (column name) / object wrapper / conditional object as its value
- * 
- * @prop {string} max.as
- */
-
-/**
- * max aggregate function
- * @typedef {object} maxCompareAggregator
- * 
- * @prop {object} max used to max the values
- * 
- * @prop {string|number|object} max.value accepts a number / string (column name) / object wrapper / conditional object as its value
- * 
- * @prop {object} max.compare accepts object with conditions to compare this aggregator method with
- */
-
-/**
- * std aggregate function
- * @typedef {object} stdAggregator
- * 
- * @prop {object} std used to std the values
- * 
- * @prop {string|number|object} std.value accepts a number / string (column name) / object wrapper / conditional object as its value
- * 
- * @prop {string} std.as
- */
-
-/**
- * std aggregate function
- * @typedef {object} stdCompareAggregator
- * 
- * @prop {object} std used to std the values
- * 
- * @prop {string|number|object} std.value accepts a number / string (column name) / object wrapper / conditional object as its value
- * 
- * @prop {object} std.compare accepts object with conditions to compare this aggregator method with
- */
-
-/**
- * stdDev aggregate function
- * @typedef {object} stdDevAggregator
- * 
- * @prop {object} stdDev used to stdDev the values
- * 
- * @prop {string|number|object} stdDev.value accepts a number / string (column name) / object wrapper / conditional object as its value
- * 
- * @prop {string} stdDev.as
- */
-
-/**
- * stdDev aggregate function
- * @typedef {object} stdDevCompareAggregator
- * 
- * @prop {object} stdDev used to stdDev the values
- * 
- * @prop {string|number|object} stdDev.value accepts a number / string (column name) / object wrapper / conditional object as its value
- * 
- * @prop {object} stdDev.compare accepts object with conditions to compare this aggregator method with
- */
-
-/**
- * stdDevPop aggregate function
- * @typedef {object} stdDevPopAggregator
- * 
- * @prop {object} stdDevPop used to stdDevPop the values
- * 
- * @prop {string|number|object} stdDevPop.value accepts a number / string (column name) / object wrapper / conditional object as its value
- * 
- * @prop {string} stdDevPop.as
- */
-
-/**
- * stdDevPop aggregate function
- * @typedef {object} stdDevPopCompareAggregator
- * 
- * @prop {object} stdDevPop used to stdDevPop the values
- * 
- * @prop {string|number|object} stdDevPop.value accepts a number / string (column name) / object wrapper / conditional object as its value
- * 
- * @prop {object} stdDevPop.compare accepts object with conditions to compare this aggregator method with
- */
-
-/**
- * stdDevSamp aggregate function
- * @typedef {object} stdDevSampAggregator
- * 
- * @prop {object} stdDevSamp used to stdDevSamp the values
- * 
- * @prop {string|number|object} stdDevSamp.value accepts a number / string (column name) / object wrapper / conditional object as its value
- * 
- * @prop {string} stdDevSamp.as
- */
-
-/**
- * stdDevSamp aggregate function
- * @typedef {object} stdDevSampCompareAggregator
- * 
- * @prop {object} stdDevSamp used to stdDevSamp the values
- * 
- * @prop {string|number|object} stdDevSamp.value accepts a number / string (column name) / object wrapper / conditional object as its value
- * 
- * @prop {object} stdDevSamp.compare accepts object with conditions to compare this aggregator method with
- */
-
-/**
- * var aggregate function
- * @typedef {object} varAggregator
- * 
- * @prop {object} var used to var the values
- * 
- * @prop {string|number|object} var.value accepts a number / string (column name) / object wrapper / conditional object as its value
- * 
- * @prop {string} var.as
- */
-
-/**
- * var aggregate function
- * @typedef {object} varCompareAggregator
- * 
- * @prop {object} var used to var the values
- * 
- * @prop {string|number|object} var.value accepts a number / string (column name) / object wrapper / conditional object as its value
- * 
- * @prop {object} var.compare accepts object with conditions to compare this aggregator method with
- */
-
-/**
- * varDev aggregate function
- * @typedef {object} varDevAggregator
- * 
- * @prop {object} varDev used to varDev the values
- * 
- * @prop {string|number|object} varDev.value accepts a number / string (column name) / object wrapper / conditional object as its value
- * 
- * @prop {string} varDev.as
- */
-
-/**
- * varDev aggregate function
- * @typedef {object} varDevCompareAggregator
- * 
- * @prop {object} varDev used to varDev the values
- * 
- * @prop {string|number|object} varDev.value accepts a number / string (column name) / object wrapper / conditional object as its value
- * 
- * @prop {object} varDev.compare accepts object with conditions to compare this aggregator method with
- */
-
-/**
- * varDevPop aggregate function
- * @typedef {object} varDevPopAggregator
- * 
- * @prop {object} varDevPop used to varDevPop the values
- * 
- * @prop {string|number|object} varDevPop.value accepts a number / string (column name) / object wrapper / conditional object as its value
- * 
- * @prop {string} varDevPop.as
- */
-
-/**
- * varDevPop aggregate function
- * @typedef {object} varDevPopCompareAggregator
- * 
- * @prop {object} varDevPop used to varDevPop the values
- * 
- * @prop {string|number|object} varDevPop.value accepts a number / string (column name) / object wrapper / conditional object as its value
- * 
- * @prop {object} varDevPop.compare accepts object with conditions to compare this aggregator method with
- */
-
-/**
- * varDevSamp aggregate function
- * @typedef {object} varDevSampAggregator
- * 
- * @prop {object} varDevSamp used to varDevSamp the values
- * 
- * @prop {string|number|object} varDevSamp.value accepts a number / string (column name) / object wrapper / conditional object as its value
- * 
- * @prop {string} varDevSamp.as
- */
-
-/**
- * varDevSamp aggregate function
- * @typedef {object} varDevSampCompareAggregator
- * 
- * @prop {object} varDevSamp used to varDevSamp the values
- * 
- * @prop {string|number|object} varDevSamp.value accepts a number / string (column name) / object wrapper / conditional object as its value
- * 
- * @prop {object} varDevSamp.compare accepts object with conditions to compare this aggregator method with
- */
 
 // #######################################################################################################
 
@@ -656,7 +489,7 @@
 
 /**
  * Select object definition
- * @typedef {Array<Array<string>|boolean|number|string|stringWrapper|numericWrapper|dateWrapper|concatWrapper|jsonObjWrapper|jsonArrayWrapper|fromWrapper|sumAggregator|avgAggregator|minAggregator|maxAggregator|stdAggregator|stdDevAggregator|stdDevPopAggregator|stdDevSampAggregator|varAggregator|varDevAggregator|varDevPopAggregator|varDevSampAggregator|{[column:string]:string}} selectObj
+ * @typedef {Array<Array<string>|boolean|number|string|stringWrapper|numericWrapper|dateWrapper|concatWrapper|jsonObjWrapper|jsonArrayWrapper|fromWrapper|sumAggregator|avgAggregator|minAggregator|maxAggregator|{[column:string]:string}} selectObj
  * 
  * @description accepts different types of values inside parent array: a. column name as regular 'string' value, b. string value inside array ['string'] for string value that is not a column name, c. number and boolean directly and d. methodWrappers in object form like {str:...}, {num:...} etc
  * 

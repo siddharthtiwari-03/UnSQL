@@ -441,18 +441,105 @@ const result = await User.find({
 
 **debug** parameter controls the debug mode for each execution, and can be set to either `'query'` | `'error'` | `true` |`false`. `debug` parameter plays an important role in understanding the SQL query that is being generated and hence understanding the operation that will be performed in this execution. Debug mode can be controlled specifically for execution, avoiding unnecessary cluttered terminal. By default, `debug` mode is in disable mode hence if no value is set for this parameter, no debugging will be performed.
 
-|   Value   | Description |
-|-----------|-------------|
+| Value     | Description                                                                                                                                                                                                                                                                                                                          |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `'query'` | enables 'query' debug mode, in this mode only the dynamically generated SQL query if form of 'un-prepared statement', 'values' array to be inserted in the the 'un-prepared' statement and finally the 'prepared statement' after substituting all the 'values' from the 'values' array is displayed in the terminal as console logs |
-| `'error'` | enables 'error' debug mode, in this mode only the error object, only when error is encountered, (including error message, error code, full stacktrace etc) is displayed in the terminal as console logs |
-| `true`    | enables both debug modes i.e. `'query'` and `'error'`, and displays dynamically generated SQL query on each execution and also displays errors (if execution fails) in the terminal as console logs |
-| `false`   | disables query mode |
+| `'error'` | enables 'error' debug mode, in this mode only the error object, only when error is encountered, (including error message, error code, full stacktrace etc) is displayed in the terminal as console logs                                                                                                                              |
+| `true`    | enables both debug modes i.e. `'query'` and `'error'`, and displays dynamically generated SQL query on each execution and also displays errors (if execution fails) in the terminal as console logs                                                                                                                                  |
+| `false`   | disables query mode                                                                                                                                                                                                                                                                                                                  |
 
 > **Please note:**
 > 1. Few **'warnings'** like *'version configuration mismatch'* or *'invalid value'* or *'missing required field'* errors will still be logged in the console even if the debug mode is off to facilitate faster resolving of the issue.
 > 2. Irrespective of the debug mode is enabled or disabled, if the query fails, the error message / object will be available in the `'error'` parameter of the **'result'** object of the method along with the `'success'` acknowledgement keyword being set to `false`.
 
 ### What are wrapper methods in UnSQL?
+
+**UnSQL** provides various *built-in* methods to interact with data and perform specific tasks, each of these wrapper methods belong a certain *type*. All of the wrapper methods have object like interface (`key: value` pair) to interact with them, where `key` can be any one of the specially reserved keywords that represents its respective wrapper method. Below is the list of wrapper methods along with their respective keywords available inside **UnSQL**:
+
+| Keyword | Wrapper Type | Description                                                                                      |
+| ------- | ------------ | ------------------------------------------------------------------------------------------------ |
+| `str`   | string       | This method is used to perform string value related operations                                   |
+| `num`   | numeric      | This method is used to perform numeric value related operations                                  |
+| `date`  | date         | This method is used to perform date value related operations                                     |
+| `and`   | junction     | This method is used to perform junction override inside the `where` and (or) `having` parameters |
+| `or`    | junction     | This method is used to perform junction override inside the `where` and (or) `having` parameters |
+| `sum`   | aggregate    | This method is used to perform 'total' of values                                                 |
+| `avg`   | aggregate    | This method is used to perform 'average' of values                                               |
+| `count` | aggregate    | This method is used to perform 'count' operation on provided values                              |
+| `min`   | aggregate    | This method is used to determine 'lowest' value among the provided values                        |
+| `max`   | aggregate    | This method is used to determine 'highest' value among the provided values                       |
+
+> **Please note:** 
+> 1. *junction* type wrapper methods can only be used inside `where` and `having` parameters as they provide
+> 2. aggregate type wrapper methods can only be used inside `having` parameter for filtering the records and not with `where` parameter.
+> 
+
+All the aforementioned wrappers are explained below along with their interface:
+
+#### String wrapper
+
+**string wrapper** (keyword `str`) is used to perform string / text data related operations, it can be used inside `select`, `where`, `having` parameters as a `value`. Below is the interface for this wrapper method along with the default values for each of its properties:
+
+```javascript
+const result = await User.find({
+    select: [
+        { str: {
+                value: 'string_value_goes_here',
+                replace: {
+                    target: undefined,
+                    with: undefined
+                }, 
+                reverse: undefined,
+                textCase: undefined, 
+                padding: {
+                    left: {
+                        length: undefined,
+                        pattern: undefined
+                    },
+                    right: {
+                        length: undefined,
+                        pattern: undefined
+                    }
+                },
+                substr: {
+                    start: 0,
+                    length: undefined
+                },
+                trim: undefined,
+                cast: undefined,
+                decrypt: undefined,
+                as: undefined
+            }
+        }
+    ]
+})
+```
+
+Each of these properties of **string wrapper** method are explained below:
+
+**value** (mandatory) accepts column name, static string value and all the operations are performed on this value only
+
+**replace** (optional) accepts object as its value in `key: value` pair format, where `key` can be `target` | `with`, and `value` for both the keys can either be a column name or static string value
+- `target` is used to identify the string value that needs to be replaced,
+- `with` specifies the string value that will replace the `target` string
+
+**reverse** (optional) is used to change the order of characters in the string in `value` property. It accepts boolean `true` | `false` as its value
+
+**textCase** (optional) accepts `'upper'` | `'lower'` as its value. It is used to transform the case of the characters in the string value to the specified case
+
+**padding** (optional) accepts object in `key: value` pair format, where `key` can be either `'left'` | `'right'`. This `key` determines if the padding is to be added before ('left') or after ('right') the string in the `value` property. Each of these `key` again accepts object in `key: value` pair format as its value, having two properties viz. `length` and `pattern`. where `length` property determines the minimum no. of characters that needs to be maintained in the `value` string and `pattern` is used to fill the empty space (only if the `value` string has less characters than that set in the `length` property)
+
+**substr** (optional) is used to create sub-string from the string value in the `value` property. It accepts object in `key: value` pair format, with exactly two `keys` viz. `start` and `length`, both of these are mandatory. Each of them further accept a numeric value where `start` determines the starting index (of character) and `length` determines no. of characters to be present in the new sub-string
+
+**trim** (optional) is used to remove / trim 'whitespace' from the string in `value` property. It accepts `'left'` | `'right'` | `true` as value, where `'left'` removes the 'whitespace' from the beginning ('left' side) and `'right'` removes the whitespace form the end ('right' side) and `true` removes 'whitespace' from both ends
+
+**cast** (optional) is used to 'convert' or 'cast' string from `value` property to the specified *type* / *format*. It accepts either of the values `'char'`  | `'nchar'` | `'date'` | `'dateTime'` | `'signed'` | `'unsigned'` | `'decimal'` | `'binary'`
+
+**decrypt** (optional) is used to define configuration(s) that will be used to 'decrypt' string in `value` property. It has three properties: `secret`, `iv` and `sha` (See [encryption](#encryption) for details on each of them). When any of these properties is set, it will override the encryption configurations set inside **findObj** and `model` class.
+
+> **Please note:** `mode` of encryption can only be set inside the `encryption` configuration of either **findObj** or `model` class and not inside `decrypt`
+
+**as** (optional) is used to rename the column name or provide a local reference name to the `value` property
 
 ## Author
 
