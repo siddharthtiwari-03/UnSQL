@@ -1,243 +1,199 @@
+
 const { colors } = require("./console.helper")
-const { stringFunctions, checkConstants, dataTypes } = require("./constants.helper")
-const { prepareName, extractName } = require("./name.helper")
-const { patchInline, patchToArray } = require("./patch.helper")
-const { preparePlaceholder } = require("./placeholder.helper")
+const { checkConstants, dataTypes } = require("./constants.helper")
+const { prepareName } = require("./name.helper")
+const { prepPlaceholder } = require("./placeholder.helper")
 
-const prepareString = ({ alias, key, value, encryption = null, ctx = null }) => {
+/**
+ * performs various string based operations on the 'value' property
+ * @function prepString
+ * 
+ * @param {object} strObj
+ * 
+ * @param {string} [strObj.alias] (optional) alias reference for the table name
+ * 
+ * @param {{
+ * value: (string|string[]),
+ * replace?:{'target':string, 'with':string},
+ * reverse?: boolean,
+ * textCase?:('upper'|'lower'),
+ * padding?:{'left'?:{length:number, pattern:string}, 'right'?: {length:number, pattern:string}},
+ * substr?:{start:number, length:number},
+ * trim?: ('left'|'right'|boolean),
+ * cast?: ('char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary'),
+ * decrypt?:{
+ * secret?:string,
+ * iv?:string,
+ * sha?:(224|256|384|512)},
+ * as?: string
+ * }} strObj.val object that holds values for different properties
+ * 
+ * @param {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512)}} [strObj.encryption] (optional) inherits encryption config from its parent level
+ * 
+ * @param {*} [strObj.ctx]
+ * 
+ * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
+ */
+const prepString = ({ alias, val, encryption = undefined, ctx = undefined }) => {
 
-    console.group(colors.blue, 'prepare string method invoked', colors.reset)
+    console.group('prep string invoked')
 
-    console.log('key', key)
-    console.log('value', value)
+    const { value, replace, reverse, textCase, padding, substr, trim, cast, decrypt, as } = val
 
     let sql = ''
     const values = []
 
-    const { value: v, case: c, search, pattern = '', substr = [], pad = [], decimals, reverse, cropLeft, cropRight, trim, repeat, replace = [], decrypt = { secret: null, iv: null, sha: 512 }, cast, as } = value
+    // replace target content
+    if (replace) sql += 'REPLACE('
 
+    // reverse the output string
+    if (reverse) sql += 'REVERSE('
 
-    const [padDirection, padding, padStr] = pad
+    // change text case
+    if (textCase === 'lower') sql += 'LOWER('
+    else if (textCase === 'upper') sql += 'UPPER('
 
-    const [startIndex, endIndex, delimiter, offsetIndex] = substr
+    // apply padding
+    if (padding?.left) sql += 'LPAD('
+    if (padding?.right) sql += 'RPAD('
 
-    const [identifier, replaceWith] = replace
+    // substring
+    if (substr) sql += 'SUBSTR('
 
-    console.log('search', search)
+    // trim whitespace
+    if (trim === 'left') sql += 'LTRIM('
+    else if (trim === 'right') sql += 'RTRIM('
+    else if (trim === true) sql += 'TRIM('
 
-    const name = prepareName({ alias, value: v })
-    const placeholder = preparePlaceholder(v)
+    // apply type casting
+    if (cast || decrypt) sql += 'CAST('
 
-    // replace method start here
-    sql += patchInline(identifier && replaceWith, 'REPLACE(')
+    // patch decryption method if required
+    if (decrypt) sql += 'AES_DECRYPT('
 
-    // repeat method start here
-    sql += patchInline(parseInt(repeat), 'REPEAT(')
+    // prepare place holder
+    const placeholder = prepPlaceholder(value)
 
-    // upper / lower case start here
-    sql += patchInline(c === 'upper' || c === 'lower', stringFunctions[c] + '(')
+    // patch placeholder to the sql string
+    sql += placeholder
+    // patch value to values array (conditional)
+    if (!checkConstants(value)) {
+        const name = prepareName({ alias, value })
+        values.push(name)
+    }
 
-    // patch padding
-    sql += patchInline(padding && padDirection === 'left', 'LPAD(')
-    sql += patchInline(padding && padDirection === 'right', 'RPAD(')
+    // patch decryption extras if required
+    if (decrypt) {
 
-    // patch format for decimal values
-    sql += patchInline(decimals, 'FORMAT(')
-
-    // patch instr for search values
-    sql += patchInline(search, 'INSTR(')
-
-    // patch reverse values method
-    sql += patchInline(reverse, 'REVERSE(')
-
-    // patch crop from left method
-    sql += patchInline(parseInt(cropLeft), 'LEFT(')
-
-    // patch crop from right method
-    sql += patchInline(parseInt(cropRight), 'RIGHT(')
-
-    // patch substring method
-    sql += patchInline(substr.length, 'SUBSTRING(')
-
-    // trim start here
-    sql += patchInline(trim === 'left', 'LTRIM(')
-    sql += patchInline(trim === 'right', 'RTRIM(')
-    sql += patchInline(trim === true, 'TRIM(')
-
-    switch (true) {
-
-        case key === 'fieldInSet':
-        case key === 'field':
-        case key === 'concat': {
-            sql += stringFunctions[key] + '('
-            sql += patchInline(key === 'concat', '?, ')
-            patchToArray(values, pattern, pattern)
-            sql += v.map(val => {
-                const n = prepareName({ alias, value: val })
-                const p = preparePlaceholder(val)
-                patchToArray(values, !checkConstants(val), n)
-                return p
-            }).join(', ')
-
-            sql += ')'
-
-            break
+        if (!decrypt?.secret && encryption?.secret && ctx?.config?.encryption?.secret) {
+            console.error(colors.red, 'secret is required to decrypt', colors.reset)
+            throw new Error('Secret is required to decrypt!', { cause: 'Missing "secret" to decrypt inside date wrapper!' })
         }
 
-        default: {
-            console.log('default string condition')
-            sql += patchInline(key != 'str', stringFunctions[key] + '(')
+        if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && ctx?.config?.encryption?.mode?.includes('-cbc'))) {
+            sql += ', ?'
+        }
 
-            // apply casting
-            sql += patchInline(cast in dataTypes || decrypt?.secret, 'CAST(')
+        sql += ', UNHEX(SHA2(?, ?)))'
 
-            // decryption method start here
-            sql += patchInline(decrypt, 'AES_DECRYPT(')
+        values.push(decrypt?.secret || encryption?.secret || ctx?.config?.encryption?.secret)
 
-            // ##################################################
-
-            // patch main value with placeholder
-            sql += placeholder
-            patchToArray(values, !checkConstants(v), name)
-
-            // ##################################################
-
-            // handle decryption method block starts here
-            if (decrypt) {
-                // console.log('ctx', ctx)
-                console.log('encryption', encryption)
-
-                // handle if local query encryption mode is set
-                if (encryption?.mode) {
-
-                    sql += patchInline(encryption?.mode?.includes('-cbc'), ', ?')
-                    sql += ', UNHEX(SHA2(?, ?))'
-
-                    values.push(decrypt?.secret || encryption?.secret || ctx?.config?.encryption?.secret)
-
-                    // check if encryption mode requires iv or sha
-                    if (encryption?.mode?.includes('-cbc')) {
-                        values.push(decrypt?.iv || encryption?.iv || ctx?.config?.encryption?.iv)
-                    }
-
-                    values.push(decrypt?.sha || encryption?.sha || ctx?.config?.encryption?.sha || 512)
-
-                }
-                // handle if global encryption mode is set
-                else if (ctx?.config?.encryption?.mode) {
-
-                    sql += patchInline(ctx?.config?.encryption?.mode?.includes('-cbc'), ', ?')
-
-                    sql += ', UNHEX(SHA2(?, ?))'
-
-                    values.push(decrypt?.secret || encryption?.secret || ctx?.config?.encryption?.secret)
-
-                    // check if encryption mode requires iv or sha
-                    if (ctx?.config?.encryption?.mode?.includes('-cbc')) {
-                        values.push(decrypt?.iv || encryption?.iv || ctx?.config?.encryption?.iv)
-                    }
-
-                    values.push(decrypt?.sha || encryption?.sha || ctx?.config?.encryption?.sha || 512)
-
-                }
-
-                sql += ')'
-
+        if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && ctx?.config?.encryption?.mode?.includes('-cbc'))) {
+            if (!decrypt?.iv && !encryption?.iv && !ctx?.config?.encryption?.iv) {
+                console.error(colors.red, 'Initialization Vector (iv) is required to decrypt', colors.reset)
+                throw new Error('Initialization Vector (iv) is required to decrypt!', { cause: 'Missing "iv" to decrypt inside date wrapper!' })
             }
-            // handle decryption method block ends here
-
-            sql += patchInline(key != 'str', ')')
-
-            // casting end here
-            sql += patchInline(cast in dataTypes || decrypt?.secret, ' AS ' + (dataTypes[cast] || 'CHAR') + ')')
-
-            console.groupEnd()
-            break
+            values.push(decrypt?.iv || encryption?.iv || ctx?.config?.encryption?.iv)
         }
 
+        values.push(decrypt?.sha || encryption?.sha || ctx?.config?.encryption?.sha || 512)
+
+    }
+    // decrypt ends here
+
+    // type casting ends here
+    if (cast || decrypt) sql += ' AS ' + (dataTypes[cast] || 'CHAR') + ')'
+
+    // trim ends here
+    if (trim === 'left' || trim === 'right' || trim === true) sql += ')'
+
+    // substring extras
+    if (substr) {
+        // handle if substr length is missing
+        if (!substr?.length) {
+            console.error(colors.red, 'Sub-string length is missing!', colors.reset)
+            throw new Error('Sub-string length is missing!', { cause: "Missing 'length' property inside substr" })
+        }
+        // handle if substr start index is missing
+        if (!substr?.start) {
+            console.error(colors.red, 'Sub-string start index is missing!', colors.reset)
+            throw new Error('Sub-string start index is missing!', { cause: "Missing 'start' property inside substr" })
+        }
+
+        sql += ', ? ,?)'
+        values.push(substr?.start, substr?.length)
     }
 
-    // trim end here
-    sql += patchInline(trim === 'left' || trim === 'right' || trim == true, ')')
-
-    // patch substring method
-    if (substr.length) {
+    // apply right padding (extras)
+    if (padding?.right) {
         sql += ', ?, ?)'
-        values.push(startIndex || 1)
-        values.push(endIndex || 1)
+        // handle if padding length is missing
+        if (!padding?.right?.length) {
+            console.error(colors.red, 'Right padding length is missing!', colors.reset)
+            throw new Error('Right padding length is missing!', { cause: "Missing 'length' property inside padding right" })
+        }
+        // handle if padding pattern is missing
+        if (!padding?.right?.pattern) {
+            console.error(colors.red, 'Right padding pattern is missing!', colors.reset)
+            throw new Error('Right padding pattern is missing!', { cause: "Missing 'pattern' property inside padding right" })
+        }
+        values.push(padding?.right?.length, padding?.right?.pattern)
     }
 
-    // patch crop right ends here
-    if (parseInt(cropRight)) {
-        sql += ', ?)'
-        values.push(cropRight)
+    // apply left padding (extras)
+    if (padding?.left) {
+        sql += ', ?, ?)'
+        // handle if padding length is missing
+        if (!padding?.left?.length) {
+            console.error(colors.red, 'Left padding length is missing!', colors.reset)
+            throw new Error('Left padding length is missing!', { cause: "Missing 'length' property inside padding left" })
+        }
+        // handle if padding pattern is missing
+        if (!padding?.left?.pattern) {
+            console.error(colors.red, 'Left padding pattern is missing!', colors.reset)
+            throw new Error('Left padding pattern is missing!', { cause: "Missing 'pattern' property inside padding left" })
+        }
+        values.push(padding?.left?.length, padding?.left?.pattern)
     }
 
-    // patch crop left ends here
-    if (parseInt(cropLeft)) {
-        sql += ', ?)'
-        values.push(cropLeft)
+    // text case ends here
+    if (textCase === 'lower' || textCase === 'upper') sql += ')'
+
+    // reverse ends here
+    if (reverse) sql += ')'
+
+    // replace target content ends here
+    if (replace) {
+        // handle if padding length is missing
+        if (!replace?.target) {
+            console.error(colors.red, 'Replace target is missing!', colors.reset)
+            throw new Error('Replace target is missing!', { cause: "Missing 'target' property inside replace" })
+        }
+        // handle if padding pattern is missing
+        if (!padding?.right?.pattern) {
+            console.error(colors.red, 'Replace with string is missing!', colors.reset)
+            throw new Error('Replace with string is missing!', { cause: "Missing 'with' property inside replace" })
+        }
+        sql += ', ?, ?)'
+        values?.push(replace?.target, replace?.with)
     }
 
-    // reverse method end here
-    sql += patchInline(reverse, ')')
-
-    // patch search criteria
-    if (search) {
-        const sn = prepareName({ alias, value: search })
-        const sp = preparePlaceholder(search)
-        sql += ', ' + sp + ')'
-        patchToArray(values, !checkConstants(search), sn)
-    }
-
-    // format end here
-    if (typeof decimals === 'number' || decimals === 'floor' || decimals === 'ceil' || decimals === 'round') {
-        // patch decimal length for format method
-        sql += ', ?)'
-        values.push(decimals)
-    }
-
-    if (padding && (padDirection === 'left' || padDirection === 'right')) {
-        sql += ', ?)'
-        values.push(padding)
-    }
-
-    if (padStr && (padDirection === 'left' || padDirection === 'right')) {
-        sql += ', ?)'
-        values.push(padStr)
-    }
-
-    // upper / lower case end here
-    sql += patchInline(c === 'upper' || c === 'lower', ')')
-
-    // repeat method end here
-    if (parseInt(repeat)) {
-        sql += ', ?)'
-        values.push(repeat)
-    }
-
-    // replace end here
-    if (identifier && replaceWith) {
-        const identifierName = prepareName({ alias, value: identifier })
-        const identifierPlaceholder = preparePlaceholder(identifier)
-        const replaceName = prepareName({ alias, value: replaceWith })
-        const replacePlaceholder = preparePlaceholder(replaceWith)
-        sql += `, ${identifierPlaceholder}, ${replacePlaceholder}`
-        patchToArray(values, !checkConstants(identifier), identifierName)
-        patchToArray(values, !checkConstants(replaceWith), replaceName)
-        sql += ')'
-    }
-
-    // patch local name here
-    if (sql != '') {
-        sql += ' AS ?'
-        values.push(patchInline(as, as, extractName(v)))
-    }
+    sql += ' AS ?'
+    values.push(as || (value.includes('.') ? value.split('.')[1] : value))
 
     console.groupEnd()
-
     return { sql, values }
 
 }
 
-module.exports = { prepareString }
+module.exports = { prepString }

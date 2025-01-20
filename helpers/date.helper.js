@@ -1,247 +1,203 @@
 const { colors } = require("./console.helper")
-const { checkConstants, dateUnits, dateFunctions } = require("./constants.helper")
-const { prepareName } = require("./name.helper")
-const { patchInline, patchToArray } = require("./patch.helper")
-const { preparePlaceholder } = require("./placeholder.helper")
+const { checkConstants, dataTypes } = require("./constants.helper")
+const { prepName } = require("./name.helper")
+const { prepPlaceholder } = require("./placeholder.helper")
 
-const prepareDate = ({ alias, key, value, encryption = null, ctx = null }) => {
+const dateUnits = {
+    mi: 'MICROSECOND',
+    s: 'SECOND',
+    m: 'MINUTE',
+    h: 'HOUR',
+    d: 'DAY',
+    w: 'WEEK',
+    M: 'MONTH',
+    q: 'QUARTER',
+    y: 'YEAR',
+    smi: 'SECOND_MICROSECOND',
+    mmi: 'MINUTE_MICROSECOND',
+    ms: 'MINUTE_SECOND',
+    hmi: 'HOUR_MICROSECOND',
+    hs: 'HOUR_SECOND',
+    hm: 'HOUR_MINUTE',
+    dmi: 'DAY_MICROSECOND',
+    ds: 'DAY_SECOND',
+    dm: 'DAY_MINUTE',
+    dh: 'DAY_HOUR',
+    yM: 'YEAR_MONTH',
+}
 
-    console.group('prepare date invoked')
 
-    console.log('key', key)
-    console.log('value', value)
+/**
+ * @typedef {object} encryption
+ * 
+ * @prop {string} [mode] (optional) ('aes-128-ecb'|'aes-256-cbc'),
+ * @prop {string} [secret] (optional) string,
+ * @prop {string} [iv] (optional) string,
+ * @prop {string} [sha] (optional) (224|256|384|512)
+ */
 
+/**
+ * @typedef {object} dateVal
+ * 
+ * @prop  {string|string[]} value name of the column or date as a string
+ * @prop {number} [add] (optional) date / time to be added to the 'value' property
+ * @prop {number} [sub] (optional) date / time to be subtracted from the 'value' property
+ * @prop {string} [fromPattern] (optional) pattern to recognize and generate date from
+ * @prop {('char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary')} [cast] (optional) cast the decrypted 'value' property into
+ * @prop {encryption} [decrypt] (optional) decryption configuration for the 'value' property
+ */
+
+
+/**
+ * performs various date operation(s) on the value attribute
+ * @function prepDate
+ * @param {object} dateObj
+ * @param {string} [dateObj.alias] (optional) local reference for the table name
+ * @param {{
+ * value:(string|string[]), 
+ * add?:number, 
+ * sub?:number, 
+ * fromPattern?:string, 
+ * cast?:('char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary'), 
+ * decrypt?:{
+ * secret?:string, 
+ * iv?:string, 
+ * sha?:(224|256|384|512)}, 
+ * format?:string, 
+ * as?:string 
+ * }} dateObj.val object that holds values for different properties
+ * @param {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512)}} [dateObj.encryption] (optional) inherits encryption config from its parent level
+ * @param {*} [dateObj.ctx] (optional) inherits class context reference from its parent level
+ * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
+ */
+const prepDate = ({ alias, val, encryption = undefined, ctx = undefined }) => {
+
+    // deconstruct different props from the val object
+    const { value, add = 0, sub = 0, format = null, fromPattern = null, cast = null, decrypt = null, as = null } = val
+
+    const addInterval = (add && parseFloat(add)) || null
+    const subInterval = (sub && parseFloat(sub)) || null
+    const addUnit = (add && typeof add === 'string' && add?.match(/[a-z]+/ig)) || null
+    const subUnit = (sub && typeof sub === 'string' && sub?.match(/[a-z]+/ig)) || null
+
+    // init local sql string and values array
     let sql = ''
     const values = []
 
-    const { value: v, add, sub, pattern, offset, over, window, format, decrypt, as } = value
+    // format date
+    if (format) sql += 'DATE_FORMAT('
 
-    // const interval = patchInline(add, add?.match(/\d+/g)) || patchInline(sub, sub?.match(/\d+/g)) || null
-    const addInterval = patchInline(add, parseFloat(add)) || null
-    const subInterval = patchInline(sub, parseFloat(sub)) || null
-    const addUnit = patchInline(add, typeof add === 'string' && add?.match(/[a-z]+/ig)) || null
-    const subUnit = patchInline(sub, typeof sub === 'string' && sub?.match(/[a-z]+/ig)) || null
+    // subtract date / time
+    if (subInterval) sql += 'SUBDATE('
 
-    console.log('addInterval', addInterval)
-    console.log('subInterval', subInterval)
-    console.log('addUnit', addUnit)
-    console.log('subUnit', subUnit)
+    // add date / time
+    if (addInterval) sql += 'ADDDATE('
 
-    const name = prepareName({ alias, value: v })
-    console.log('name', name)
-    const placeholder = preparePlaceholder(v)
-    console.log('placeholder', placeholder)
+    // create date from string pattern
+    if (fromPattern) sql += 'STR_TO_DATE('
 
-    // wrap date to date_format function if 'format' provided
-    sql += patchInline(format && (key === 'time' || key === 'timeFormat'), 'TIME_FORMAT(')
-    sql += patchInline(format && (key != 'time' || key === 'dateFormat'), 'DATE_FORMAT(')
+    // apply type casting
+    if (cast || decrypt) sql += 'CAST('
 
-    // add / subtract date method start here
-    sql += patchInline(sub || (sub && key === 'subDate'), 'SUBDATE(')
-    sql += patchInline(add || (add && key === 'addDate'), 'ADDDATE(')
+    // patch decryption method if required
+    if (decrypt) sql += 'AES_DECRYPT('
 
-    // add / subtract time method start here
-    sql += patchInline(sub && key === 'subTime', 'SUBTIME(')
-    sql += patchInline(add && key === 'addTime', 'ADDTIME(')
+    // extract placeholder
+    const placeholder = prepPlaceholder(value)
 
-    switch (true) {
-
-        case checkConstants(key): {
-            console.log('key is date constant function')
-            sql += dateFunctions[key] + '()'
-            break
-        }
-
-        case key === 'strToDate': {
-            sql += dateFunctions[key] + '(' + placeholder + ', ?)'
-            values.push(name)
-            values.push(pattern)
-            break
-        }
-
-        case key === 'addDate':
-        case key === 'subDate':
-        case key === 'dateFormat':
-        case key === 'timeFormat': {
-            console.log('date time formatter detected', key)
-            sql += placeholder
-            patchToArray(values, !checkConstants(v), name)
-            break
-        }
-
-        case key === 'dateDiff':
-        case key === 'timeDiff': {
-            console.log('date / time difference')
-            if (Array.isArray(v)) {
-                const [startDate, endDate] = v
-
-                const startName = prepareName({ alias, value: startDate })
-                const endName = prepareName({ alias, value: endDate })
-
-                const startPlaceholder = preparePlaceholder(startDate)
-                const endPlaceholder = preparePlaceholder(endDate)
-
-                sql += dateFunctions[key] + '(' + startPlaceholder + ', ' + endPlaceholder + ')'
-
-                patchToArray(values, !checkConstants(startDate), startName)
-                patchToArray(values, !checkConstants(endDate), endName)
-
-            } else {
-                console.error(colors.red, key, 'expects value to be an array,', typeof key, 'type value provided, this method will be ignored', colors.reset)
-            }
-            break
-        }
-
-        case key === 'least': {
-            sql += 'LEAST('
-            sql += v.map(val => {
-                const n = prepareName({ alias, value: val })
-                const placeholder = preparePlaceholder(val)
-                patchToArray(values, !checkConstants(val), n)
-                return placeholder
-            })
-            sql += ')'
-            break
-        }
-
-        case key === 'lead':
-        case key === 'lag': {
-            console.log('lead / lag detected')
-
-            sql += dateFunctions[key] + '(' + placeholder + ')'
-            patchToArray(values, !checkConstants(v), name)
-
-            sql += ' OVER ('
-
-            if (typeof window === 'object') {
-
-                const { orderBy } = window
-
-                // sql
-
-            } else if (window) {
-                sql += ' ?? '
-                values.push(window)
-            }
-
-            sql += ')'
-
-            break
-        }
-
-        default: {
-            console.log('default date function')
-
-            sql += patchInline(key != 'date', dateFunctions[key] + '(')
-
-            // decryption method start here
-            sql += patchInline(decrypt, 'AES_DECRYPT(')
-
-            // ##################################################
-
-            sql += placeholder
-            patchToArray(values, !checkConstants(v), name)
-
-            // ##################################################
-
-            // handle decryption method block start here 
-            if (decrypt) {
-
-                // handle if local query encryption mode is set
-                if (encryption?.mode) {
-
-                    sql += patchInline(encryption?.mode?.includes('-cbc'), ', ?')
-                    sql += ', UNHEX(SHA2(?, ?))'
-
-                    values.push(decrypt?.secret || encryption?.secret || ctx?.config?.encryption?.secret)
-
-                    // check if encryption mode requires iv or sha
-                    if (encryption?.mode?.includes('-cbc')) {
-                        values.push(decrypt?.iv || encryption?.iv || ctx?.config?.encryption?.iv)
-                    }
-
-                    values.push(decrypt?.sha || encryption?.sha || ctx?.config?.encryption?.sha || 512)
-
-                }
-                // handle if global encryption mode is set
-                else if (ctx?.config?.encryption?.mode) {
-
-                    sql += patchInline(ctx?.config?.encryption?.mode?.includes('-cbc'), ', ?')
-
-                    sql += ', UNHEX(SHA2(?, ?))'
-
-                    values.push(decrypt?.secret || encryption?.secret || ctx?.config?.encryption?.secret)
-
-                    // check if encryption mode requires iv or sha
-                    if (ctx?.config?.encryption?.mode?.includes('-cbc')) {
-                        values.push(decrypt?.iv || encryption?.iv || ctx?.config?.encryption?.iv)
-                    }
-
-                    values.push(decrypt?.sha || encryption?.sha || ctx?.config?.encryption?.sha || 512)
-
-                }
-
-                sql += ')'
-
-            }
-            // handle decryption method block end here 
-
-
-            sql += patchInline(key != 'date', ')')
-
-
-            break
-        }
-
+    // patch placeholder to the sql string
+    sql += placeholder
+    // patch value to values array (conditional)
+    if (!checkConstants(value)) {
+        // prepare name
+        const name = prepName({ alias, value })
+        values.push(name)
     }
 
-    // patching if only addInterval is provided
+    // patch decryption extras if required
+    if (decrypt) {
+
+        if (!decrypt?.secret && encryption?.secret && ctx?.config?.encryption?.secret) {
+            console.error(colors.red, 'secret is required to decrypt', colors.reset)
+            throw new Error('Secret is required to decrypt!', { cause: 'Missing "secret" to decrypt inside date wrapper!' })
+        }
+
+        if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && ctx?.config?.encryption?.mode?.includes('-cbc'))) {
+            sql += ', ?'
+        }
+
+        sql += ', UNHEX(SHA2(?, ?)))'
+
+        values.push(decrypt?.secret || encryption?.secret || ctx?.config?.encryption?.secret)
+
+        if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && ctx?.config?.encryption?.mode?.includes('-cbc'))) {
+            if (!decrypt?.iv && !encryption?.iv && !ctx?.config?.encryption?.iv) {
+                console.error(colors.red, 'Initialization Vector (iv) is required to decrypt', colors.reset)
+                throw new Error('Initialization Vector (iv) is required to decrypt!', { cause: 'Missing "iv" to decrypt inside date wrapper!' })
+            }
+            values.push(decrypt?.iv || encryption?.iv || ctx?.config?.encryption?.iv)
+        }
+
+        values.push(decrypt?.sha || encryption?.sha || ctx?.config?.encryption?.sha || 512)
+
+    }
+    // decrypt ends here
+
+    // type casting ends here
+    if (cast || decrypt) sql += ' AS ' + (dataTypes[cast] || 'CHAR') + ')'
+
+    // patch string to date pattern
+    if (fromPattern) {
+        sql += ', ?)'
+        values.push(fromPattern)
+    }
+
+    // patching if addInterval is provided
     if (addInterval) {
 
         if (!addUnit) {
-            sql += ', ?'
-        } else {
-            sql += ', INTERVAL ? '
-            sql += dateUnits[addUnit]
+            sql += ', ?)'
+        }
+        else if (!dateUnits[addUnit]) {
+            console.error(colors.red, 'Invalid date / time unit provided', colors.reset)
+            throw new Error('Invalid date / time unit provided!', { cause: 'Unit value provided is invalid!' })
+        }
+        else {
+            sql += ', INTERVAL ? ' + dateUnits[addUnit] + ')'
         }
 
         values.push(addInterval)
 
     }
-    sql += patchInline(add || key === 'addDate', ')')
 
-    // patching if only subInterval is provided
+    // patching if subInterval is provided
     if (subInterval) {
 
-        if (!subUnit) {
-            sql += ', ?'
-        } else {
-            sql += ', INTERVAL ? '
-            sql += dateUnits[subUnit]
+        if (!subUnit) sql += ', ?)'
+
+        else if (!dateUnits[subUnit]) {
+            console.error(colors.red, 'Invalid date / time unit provided', colors.reset)
+            throw new Error('Invalid date / time unit provided!', { cause: 'Unit value provided is invalid!' })
         }
+
+        else sql += ', INTERVAL ? ' + dateUnits[subUnit] + ')'
 
         values.push(subInterval)
 
     }
-    // add / subtract date / time method start here
-    sql += patchInline(sub || key === 'subDate', ')')
 
-    // patch format
     if (format) {
         sql += ', ?)'
         values.push(format)
     }
 
-    // patch local name here
-    if (sql != '') {
-        sql += ' AS ?'
-        values.push(patchInline(as, as, patchInline(v.includes('.'), v.split('.')[1], v)))
-    }
+    // if (as) {
+    sql += ' AS ?'
+    values.push(as || (value.includes('.') ? value.split('.')[1] : value))
+    // }
 
-    console.groupEnd()
-
+    // return result object
     return { sql, values }
-
 }
 
-module.exports = { prepareDate }
+module.exports = { prepDate }

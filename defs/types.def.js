@@ -16,18 +16,6 @@
  * @prop {224|256|384|512} [encryption.sha] encryption SHA2 bite size, default 512
  */
 
-/**
- * encrypt type definition
- * @typedef {{string, encryption}} encrypt
- * 
- */
-
-/**
- * encrypt object definition
- * @typedef {Object} encryptObject
- * 
- * @prop {encrypt} encrypt
- */
 
 /**
  * using object definition
@@ -39,6 +27,366 @@
 /**
  * group by object definition
  * @typedef {Array<string>} groupByObject
+ */
+
+/**
+ * sum aggregate function
+ * @typedef {object} sumAggregator
+ * 
+ * @prop {object} sum used to sum the values
+ * 
+ * @prop {string|number|object} sum.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {boolean} [sum.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
+ * 
+ * @prop {string} sum.as
+ */
+
+/**
+ * sum aggregate function
+ * @typedef {object} sumCompareAggregator
+ * 
+ * @prop {object} sum used to sum the values
+ * 
+ * @prop {string|number|object} sum.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {boolean} [sum.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
+ * 
+ * @prop {object} sum.compare accepts object with conditions to compare this aggregator method with
+ */
+
+/**
+ * avg aggregate function
+ * @typedef {object} avgAggregator
+ * 
+ * @prop {object} avg used to avg the values
+ * 
+ * @prop {string|number|object} avg.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {boolean} [sum.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
+ * 
+ * @prop {string} avg.as
+ */
+
+/**
+ * average aggregate function
+ * @typedef {object} avgCompareAggregator
+ * 
+ * @prop {object} avg used to average the values
+ * 
+ * @prop {string|number|object} avg.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {boolean} [sum.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
+ * 
+ * @prop {object} avg.compare accepts object with conditions to compare this aggregator method with
+ */
+
+/**
+ * bitAnd aggregate function
+ * @typedef {object} bitAndAggregator
+ * 
+ * @prop {object} bitAnd used to bitAnd the values
+ * 
+ * @prop {string|number|object} bitAnd.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {string} bitAnd.as
+ */
+
+/**
+ * bitAnd aggregate function
+ * @typedef {object} bitAndCompareAggregator
+ * 
+ * @prop {object} bitAnd used to bitAnd the values
+ * 
+ * @prop {string|number|object} bitAnd.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {object} bitAnd.compare accepts object with conditions to compare this aggregator method with
+ */
+
+/**
+ * bitOr aggregate function
+ * @typedef {object} bitOrAggregator
+ * 
+ * @prop {object} bitOr used to bitOr the values
+ * 
+ * @prop {string|number|object} bitOr.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {string} bitOr.as
+ */
+
+/**
+ * bitOr aggregate function
+ * @typedef {object} bitOrCompareAggregator
+ * 
+ * @prop {object} bitOr used to bitOr the values
+ * 
+ * @prop {string|number|object} bitOr.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {object} bitOr.compare accepts object with conditions to compare this aggregator method with
+ */
+
+/**
+ * bitXor aggregate function
+ * @typedef {object} bitXorAggregator
+ * 
+ * @prop {object} bitXor used to bitXor the values
+ * 
+ * @prop {string|number|object} bitXor.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {string} bitXor.as
+ */
+
+/**
+ * bitXor aggregate function
+ * @typedef {object} bitXorCompareAggregator
+ * 
+ * @prop {object} bitXor used to bitXor the values
+ * 
+ * @prop {string|number|object} bitXor.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {object} bitXor.compare accepts object with conditions to compare this aggregator method with
+ */
+
+/**
+ * count aggregate function
+ * @typedef {object} countAggregator
+ * 
+ * @prop {object} count used to count the values
+ * 
+ * @prop {string|number|object} count.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {string} count.as
+ */
+
+/**
+ * count aggregate function
+ * @typedef {object} countCompareAggregator
+ * 
+ * @prop {object} count used to count the values
+ * 
+ * @prop {string|number|object} count.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {object} count.compare accepts object with conditions to compare this aggregator method with
+ */
+
+/**
+ * min aggregate function
+ * @typedef {object} minAggregator
+ * 
+ * @prop {object} min used to min the values
+ * 
+ * @prop {string|number|object} min.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {string} min.as
+ */
+
+/**
+ * min aggregate function
+ * @typedef {object} minCompareAggregator
+ * 
+ * @prop {object} min used to min the values
+ * 
+ * @prop {string|number|object} min.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {object} min.compare accepts object with conditions to compare this aggregator method with
+ */
+
+/**
+ * max aggregate function
+ * @typedef {object} maxAggregator
+ * 
+ * @prop {object} max used to max the values
+ * 
+ * @prop {string|number|object} max.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {string} max.as
+ */
+
+/**
+ * max aggregate function
+ * @typedef {object} maxCompareAggregator
+ * 
+ * @prop {object} max used to max the values
+ * 
+ * @prop {string|number|object} max.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {object} max.compare accepts object with conditions to compare this aggregator method with
+ */
+
+/**
+ * std aggregate function
+ * @typedef {object} stdAggregator
+ * 
+ * @prop {object} std used to std the values
+ * 
+ * @prop {string|number|object} std.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {string} std.as
+ */
+
+/**
+ * std aggregate function
+ * @typedef {object} stdCompareAggregator
+ * 
+ * @prop {object} std used to std the values
+ * 
+ * @prop {string|number|object} std.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {object} std.compare accepts object with conditions to compare this aggregator method with
+ */
+
+/**
+ * stdDev aggregate function
+ * @typedef {object} stdDevAggregator
+ * 
+ * @prop {object} stdDev used to stdDev the values
+ * 
+ * @prop {string|number|object} stdDev.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {string} stdDev.as
+ */
+
+/**
+ * stdDev aggregate function
+ * @typedef {object} stdDevCompareAggregator
+ * 
+ * @prop {object} stdDev used to stdDev the values
+ * 
+ * @prop {string|number|object} stdDev.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {object} stdDev.compare accepts object with conditions to compare this aggregator method with
+ */
+
+/**
+ * stdDevPop aggregate function
+ * @typedef {object} stdDevPopAggregator
+ * 
+ * @prop {object} stdDevPop used to stdDevPop the values
+ * 
+ * @prop {string|number|object} stdDevPop.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {string} stdDevPop.as
+ */
+
+/**
+ * stdDevPop aggregate function
+ * @typedef {object} stdDevPopCompareAggregator
+ * 
+ * @prop {object} stdDevPop used to stdDevPop the values
+ * 
+ * @prop {string|number|object} stdDevPop.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {object} stdDevPop.compare accepts object with conditions to compare this aggregator method with
+ */
+
+/**
+ * stdDevSamp aggregate function
+ * @typedef {object} stdDevSampAggregator
+ * 
+ * @prop {object} stdDevSamp used to stdDevSamp the values
+ * 
+ * @prop {string|number|object} stdDevSamp.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {string} stdDevSamp.as
+ */
+
+/**
+ * stdDevSamp aggregate function
+ * @typedef {object} stdDevSampCompareAggregator
+ * 
+ * @prop {object} stdDevSamp used to stdDevSamp the values
+ * 
+ * @prop {string|number|object} stdDevSamp.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {object} stdDevSamp.compare accepts object with conditions to compare this aggregator method with
+ */
+
+/**
+ * var aggregate function
+ * @typedef {object} varAggregator
+ * 
+ * @prop {object} var used to var the values
+ * 
+ * @prop {string|number|object} var.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {string} var.as
+ */
+
+/**
+ * var aggregate function
+ * @typedef {object} varCompareAggregator
+ * 
+ * @prop {object} var used to var the values
+ * 
+ * @prop {string|number|object} var.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {object} var.compare accepts object with conditions to compare this aggregator method with
+ */
+
+/**
+ * varDev aggregate function
+ * @typedef {object} varDevAggregator
+ * 
+ * @prop {object} varDev used to varDev the values
+ * 
+ * @prop {string|number|object} varDev.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {string} varDev.as
+ */
+
+/**
+ * varDev aggregate function
+ * @typedef {object} varDevCompareAggregator
+ * 
+ * @prop {object} varDev used to varDev the values
+ * 
+ * @prop {string|number|object} varDev.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {object} varDev.compare accepts object with conditions to compare this aggregator method with
+ */
+
+/**
+ * varDevPop aggregate function
+ * @typedef {object} varDevPopAggregator
+ * 
+ * @prop {object} varDevPop used to varDevPop the values
+ * 
+ * @prop {string|number|object} varDevPop.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {string} varDevPop.as
+ */
+
+/**
+ * varDevPop aggregate function
+ * @typedef {object} varDevPopCompareAggregator
+ * 
+ * @prop {object} varDevPop used to varDevPop the values
+ * 
+ * @prop {string|number|object} varDevPop.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {object} varDevPop.compare accepts object with conditions to compare this aggregator method with
+ */
+
+/**
+ * varDevSamp aggregate function
+ * @typedef {object} varDevSampAggregator
+ * 
+ * @prop {object} varDevSamp used to varDevSamp the values
+ * 
+ * @prop {string|number|object} varDevSamp.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {string} varDevSamp.as
+ */
+
+/**
+ * varDevSamp aggregate function
+ * @typedef {object} varDevSampCompareAggregator
+ * 
+ * @prop {object} varDevSamp used to varDevSamp the values
+ * 
+ * @prop {string|number|object} varDevSamp.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {object} varDevSamp.compare accepts object with conditions to compare this aggregator method with
  */
 
 // #######################################################################################################
@@ -66,13 +414,27 @@
  * 
  * string method
  * @prop {Object} str
+ * 
  * @prop {string|Array<string>} str.value accepts column name / string value (in array) to perform string methods on
- * @prop {{secret?:string, sha?:(224|256|384|512), iv?:string}} [str.decrypt] (optional) property to configure decryption configurations (local) for this 'value' property
- * @prop {'char'|'binary'|'signed'|'unsigned'} [str.cast] (optional) enables casting of 'value' property into any of the valid types
- * @prop {'upper'|'lower'} [str.case] (optional) transforms text to 'upper' or 'lower' case
+ * 
+ * @prop {{'target':{target:string, with:string}}} [str.replace] (optional) replaces 'target' content 'with' string pattern provided
+ * 
+ * @prop {boolean} [str.reverse] (optional) reverses the order of characters in output string
+ * 
+ * @prop {'upper'|'lower'} [str.textCase] (optional) transforms text to 'upper' or 'lower' case
+ * 
  * @prop {string|string[]|number} [str.search] (optional) searches for a string / number in the 'value' property, if found returns the starting index value else returns 0
- * @prop {Array<number>} [str.substr] (optional) creates a sub-string using the values of start index and length
+ * 
+ * @prop {{'left'?:{length:number, pattern:string}, 'right'?:{length:number, pattern:string}}} [str.padding] (optional) applies 'left' and (or) 'right' padding to the 'value' property, 'length' determines the padding amount and 'pattern' is used to fill the additionally required places (if length of 'value' property is smaller that 'length' property) else ignored
+ * 
+ * @prop {{start:number, length:number}} [str.substr] (optional) creates a sub-string using the values of start index and length
+ * 
+ * @prop {'char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary'} [str.cast] (optional) enables casting of 'value' property into any of the valid types
+ * 
+ * @prop {{secret?:string, sha?:(224|256|384|512), iv?:string}} [str.decrypt] (optional) property to configure decryption configurations (local) for this 'value' property
+ * 
  * @prop {string} [str.as] (optional) rename the value returned by this wrapper method by rename / tagging with local name using 'as' property
+ * 
  */
 
 /**
@@ -81,14 +443,23 @@
  * 
  * concat method
  * @prop {Object} concat concatenation of values in the 'value' property, value from 'pattern' property is used to connect them
+ * 
  * @prop {Array<string|number|Array<string>>} concat.value accepts column name / string value (in array) to perform string methods on
+ * 
  * @prop {string} concat.pattern (optional) used to concat 'value' property
+ * 
  * @prop {{secret?:string, sha?:(224|256|384|512), iv?:string}} [concat.decrypt] (optional) property to configure decryption configurations (local) for this 'value' property
- * @prop {'char'|'binary'|'signed'|'unsigned'} [concat.cast] (optional) enables casting of 'value' property into any of the valid types
- * @prop {'upper'|'lower'} [concat.case] (optional) transforms text to 'upper' or 'lower' case
+ * 
+ * @prop {'char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary'} [concat.cast] (optional) enables casting of 'value' property into any of the valid types
+ * 
+ * @prop {'upper'|'lower'} [concat.textCase] (optional) transforms text to 'upper' or 'lower' case
+ * 
  * @prop {Array<number>} [concat.substr] (optional) creates a sub-string using the values of start index and length
+ * 
  * @prop {string|string[]|number} [concat.search] (optional) searches for a string / number in the 'value' property, if found returns the starting index value else returns 0
+ * 
  * @prop {string} [concat.as] (optional) rename the value returned by this wrapper method by rename / tagging with local name using 'as' property
+ * 
  */
 
 /**
@@ -97,15 +468,29 @@
  * 
  * number method
  * @prop {Object} num
+ * 
  * @prop {number|string} num.value accepts column name / number value (in array) to perform number methods on
+ * 
  * @prop {{secret?:string, sha?:(224|256|384|512), iv?:string}} [num.decrypt] (optional) property to configure decryption configurations (local) for this 'value' property
+ * 
  * @prop {'round'|'floor'|'ceil'|number} [num.decimals] (optional) used to limit the decimal values to certain decimal places or round-up using any of the 'ceil', 'floor' or 'round' criteria values
+ * 
+ * @prop {number} [num.sub] (optional) applies subtraction to 'value' property, follows the rule of BODMAS principle for application
+ * 
+ * @prop {number} [num.add] (optional) applies addition to 'value' property, follows the rule of BODMAS principle for application
+ * 
  * @prop {number} [num.power] (optional) applies numeric power to 'value' property, follows the rule of BODMAS principle for application
+ * 
  * @prop {number} [num.divideBy] (optional) divides the 'value' property by this number, follows the rule of BODMAS principle for application
- * @prop {number} [num.multiply] (optional) multiplies the 'value' property by this number, follows the rule of BODMAS principle for application
+ * 
+ * @prop {number} [num.multiplyBy] (optional) multiplies the 'value' property by this number, follows the rule of BODMAS principle for application
+ * 
  * @prop {number} [num.mod] (optional) provides remainder after dividing the 'value' property by this number, follows the rule of BODMAS principle for application
- * @prop {'char'|'binary'|'signed'|'unsigned'} [num.cast] (optional) enables casting of 'value' property into any of the valid types
+ * 
+ * @prop {'char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary'} [num.cast] (optional) enables casting of 'value' property into any of the valid types
+ * 
  * @prop {string} [num.as] (optional) rename the value returned by this wrapper method by rename / tagging with local name using 'as' property
+ * 
  */
 
 /**
@@ -114,14 +499,122 @@
  * 
  * date method
  * @prop {Object} date
+ * 
  * @prop {string|Array<string>} date.value accepts column name / string value (in array) to perform string methods on
+ * 
  * @prop {{secret?:string, sha?:(224|256|384|512), iv?:string}} [date.decrypt] (optional) property to configure decryption configurations (local) for this 'value' property
+ * 
  * @prop {number|string} [date.add] (optional) adds no. of second(s) / minute(s) / hour(s) / day(s) / month(s) / year(s) to the 'value' property
+ * 
  * @prop {number|string} [date.sub] (optional) subtracts no. of second(s) / minute(s) / hour(s) / day(s) / month(s) / year(s) to the 'value' property
- * @prop {'char'|'binary'|'signed'|'unsigned'} [date.cast] (optional) enables casting of 'value' property into any of the valid types
- * @prop {{}} [date.decrypt] (optional) format the date into a specific pattern
+ * 
+ * @prop {'char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary'} [date.cast] (optional) enables casting of 'value' property into any of the valid types
+ * 
+ * @prop {string} [date.fromPattern] (optional) format the date into a specific pattern
+ * 
  * @prop {string} [date.format] (optional) format the date into a specific pattern
+ * 
  * @prop {string} [date.as] (optional) rename the value returned by this wrapper method by rename / tagging with local name using 'as' property
+ * 
+ */
+
+/**
+ * json object wrapper
+ * @typedef {object} jsonObjWrapper
+ * 
+ * json wrapper
+ * @prop {object} json
+ * 
+ * @prop {object} json.value accepts object as key value map
+ * 
+ * @prop {object} [json.table] (optional) reference of the table on which this sub-query is dependent
+ * 
+ * @prop {object} [json.alias] (optional) local reference name of the table, only needed if table name is also provided in 'from' property
+ * 
+ * @prop {{[key:string]:*}} [json.where]  (optional) allows to filter records using various conditions
+ * 
+ * @prop {object} [json.as] (optional) rename the value returned by this wrapper method by rename / tagging with local name using 'as' property
+ * 
+ */
+
+/**
+ * json array wrapper
+ * @typedef {object} jsonArrayWrapper
+ * 
+ * array wrapper
+ * @prop {object} array
+ * 
+ * @prop {object} array.value accepts array of values
+ * 
+ * @prop {object} [array.table] (optional) reference of the table on which this sub-query is dependent
+ * 
+ * @prop {object} [array.alias] (optional) local reference name of the table, only needed if table name is also provided in 'from' property
+ * 
+ * @prop {{[key:string]:*}} [array.where]  (optional) allows to filter records using various conditions
+ * 
+ * @prop {object} [array.as] (optional) rename the value returned by this wrapper method by rename / tagging with local name using 'as' property
+ * 
+ */
+
+/**
+ * join object used to associate child table(s) with parent table
+ * @typedef {object} joinObj
+ * 
+ * @prop {selectObj} [joinObj.select] (optional) select limited columns from the table
+ * 
+ * @prop {'left'|'right'|'inner'|'outer'} [joinObj.type] (optional) type of table association
+ * 
+ * @prop {string} joinObj.table reference to the child table
+ * 
+ * @prop {string} [joinObj.alias] (optional) local reference name of the table
+ * 
+ * @prop {Array<joinObj>} [joinObj.join] (optional) array of nested join object
+ * 
+ * @prop {{[key:string]:*}} [joinObj.where] (optional) allows to filter records in the associated child table using various conditions
+ * 
+ * @prop {('and'|'or')} [joinObj.junction] (optional) clause used to connect multiple where conditions, default value is 'and'
+ * 
+ * @prop {Array<string>} [joinObj.groupBy] (optional) accepts array of column name(s) that allow to group child records based on single (or list of) column(s)
+ * 
+ * @prop {import("./defs/types.def").havingObj} [joinObj.having] (optional) allows to perform comparison on the group of records, accepts array of aggregate method wrappers viz. {sum:...}, {avg:...}, {min:...}, {max:...} etc
+ * 
+ * @prop {{[column:string]:('asc'|'desc')}} [joinObj.orderBy] (optional) allows to order result based on single (or list of) column(s)
+ * 
+ * @prop {Array} joinObj.using array of common column  / object of key value pair 
+ * 
+ * @prop {string} [joinObj.as] (optional) reference the joining condition for future usage
+ * 
+ */
+
+/**
+ * from sub query wrapper
+ * @typedef {object} fromWrapper
+ * 
+ * @prop {object} from
+ * 
+ * @prop {selectObj} from.select defines the column to be fetched from the referred table
+ * 
+ * @prop {string} from.table reference to the child table
+ * 
+ * @prop {string} [from.alias] (optional) local reference name of the table
+ * 
+ * @prop {Array<joinObj>} [from.join] (optional) array of nested join object
+ * 
+ * @prop {{[key:string]:*}} [from.where] (optional) allows to filter records in the associated child table using various conditions
+ * 
+ * @prop {('and'|'or')} [from.junction] (optional) clause used to connect multiple where conditions
+ * 
+ * @param {Array<string>} [from.groupBy] (optional) allows to group result based on single (or list of) column(s)
+ * 
+ * @param {import("./defs/types.def").havingObj} [from.having] (optional) allows to perform comparison on the group of records, accepts array of aggregate method wrappers viz. {sum:...}, {avg:...}, {min:...}, {max:...} etc
+ * 
+ * @param {{[column:string]:('asc'|'desc')}} [from.orderBy] (optional) allows to order result based on single (or list of) column(s)
+ * 
+ * @param {number} [from.limit] (optional) limits the number of records to be fetched from the database table
+ * 
+ * @param {number} [from.offset] (optional) determines the starting index for records to be fetched from the database table
+ * 
+ * @prop {string} [from.as] (optional) reference the joining condition for future usage
  */
 
 // #######################################################################################################
@@ -146,101 +639,39 @@
  * @typedef {Object} config
  * 
  * @prop {string} config.table name of the table in the database
+ * 
  * @prop {object} [config.connection] MySQL connection object
+ * 
  * @prop {object} [config.pool] MySQL connection pool object
+ * 
  * @prop {boolean} [config.map] (optional) map enables to consider this model to be considered while migration, default 'true'
+ * 
  * @prop {boolean} config.safeMode (optional) safe mode helps avoiding accidental delete of all method without 'where' property, default 'true'
+ * 
  * @prop {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512)}} [config.encryption] (optional) used to define encryption / decryption parameters
+ * 
  * 
  */
 
 
 /**
  * Select object definition
- * @typedef {Array<Array<string>|boolean|number|string|stringWrapper|numericWrapper|dateWrapper|concatWrapper} selectObject
+ * @typedef {Array<Array<string>|boolean|number|string|stringWrapper|numericWrapper|dateWrapper|concatWrapper|jsonObjWrapper|jsonArrayWrapper|fromWrapper|sumAggregator|avgAggregator|minAggregator|maxAggregator|stdAggregator|stdDevAggregator|stdDevPopAggregator|stdDevSampAggregator|varAggregator|varDevAggregator|varDevPopAggregator|varDevSampAggregator|{[column:string]:string}} selectObj
  * 
  * @description accepts different types of values inside parent array: a. column name as regular 'string' value, b. string value inside array ['string'] for string value that is not a column name, c. number and boolean directly and d. methodWrappers in object form like {str:...}, {num:...} etc
  * 
  */
 
 /**
- * Join query object
- * @typedef {Object} joinObject specifies properties required to join another table as child with parent table
- * 
- * @prop {string} joinObject.table name of the child table in the database to join with parent model class
- * @prop {string} [joinObject.alias] (optional) local alias name given to the table name
- * @prop {selectObject} [joinObject.select] (optional) accepts different types of values inside parent array: a. column name as regular 'string' value, b. string value inside array ['string'] for string value that is not a column name, c. number and boolean directly and d. methodWrappers in object form like {str:...}, {num:...} etc
- * @prop {Array<string|object>} joinObject.using array of column names / objects with key value where key is the column name from the parent table and value is the column name from the child table
- * @prop {object} [joinObject.where] (optional) allows to filter records using various conditions
- * @prop {string} [joinObject.as] (optional) used to assign a local name to the join object (Only in case of 'select' or 'where' properties are used inside this join object) to be used in 'select' or 'where' property of the parent
- * 
- * 
+ * having object definition
+ * @typedef {Array<sumCompareAggregator|avgCompareAggregator>} havingObj
  */
-
 
 // #######################################################################################################
 
 //                                      COMPOSITE TYPE DEF END HERE
 
 // #######################################################################################################
-
-
-
-
-
-// #######################################################################################################
-
-//                                      METHOD PARAMS TYPE DEF END HERE
-
-// #######################################################################################################
-
-
-/**
- * find query object definition
- * @typedef {Object} findObject
- * 
- * @prop {string} [findObject.alias] (optional) local alias name for the database table
- * @prop {selectObject} [findObject.select] (optional) accepts different types of values inside parent array: a. column name as regular 'string' value, b. string value inside array ['string'] for string value that is not a column name, c. number and boolean directly and d. methodWrappers in object form like {str:...}, {num:...} etc
- * @prop {'and'|'or'} [findObject.junction] (optional) defines default behavior that is used to join different 'child properties' inside 'where' property, default value is 'and'
- * @prop {Array<joinObject>} [findObject.join] (optional) allows to join child tables to this model class
- * @prop {object} [findObject.where] (optional) allows to filter records using various conditions
- * @prop {Array<string>} [findObject.groupBy] (optional) allows to group result based on single (or list of) column(s)
- * @prop {number} [findObject.limit] (optional) limits the number of records to be fetched from the database table
- * @prop {number} [findObject.offset] (optional) determines the starting index for records to be fetched from the database table
- * @prop {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512)}} [findObject.encryption] (optional) enables various debug mode
- * @prop {boolean|'query'|'error'} [findObject.debug] (optional) enables various debug mode
- * 
- */
-
-/**
- * save query object definition
- * @typedef {Object} saveObject
- * 
- * @prop {Array<Object>|Object} saveObject.data object / array of objects to be inserted into the database table
- * @prop {Object} [saveObject.where] (optional) used to filter records to be updated
- * @prop {Object} [saveObject.upsert] (optional) object data to be updated in case of 'duplicate key entry' found in the database
- * @prop {{[column:string]:{secret?:string, iv?:string, sha?:(224|256|384|512)} }} [saveObject.encrypt] (optional) define encryption overrides for column(s)
- * @prop {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512) }} [saveObject.encryption] (optional) enables various debug mode
- * @prop {boolean|'query'|'error'} [saveObject.debug] (optional) enables various debug mode
- * 
- */
-
-/**
- * delete query object definition
- * @typedef {Object} deleteObject
- * 
- * @prop {Object} [deleteObject.where] (optional) used to filter records to be deleted
- * @prop {boolean|'query'|'error'} [deleteObject.debug] (optional) enables various debug mode
- * 
- */
-
-// #######################################################################################################
-
-//                                      METHOD PARAMS TYPE DEF END HERE
-
-// #######################################################################################################
-
-
 
 
 exports.unused = {}

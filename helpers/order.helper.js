@@ -1,31 +1,26 @@
-const { orderDirections, checkConstants } = require("./constants.helper")
+const { checkConstants } = require("./constants.helper")
 const { prepareName } = require("./name.helper")
-const { patchToArray } = require("./patch.helper")
-const { preparePlaceholder } = require("./placeholder.helper")
 
-const prepareOrders = ({ alias, orderBy }) => {
 
-    console.group('prepare orders invoked')
+const orderDirections = {
+    asc: 'ASC',
+    desc: 'DESC'
+}
 
-    console.log('orderBy')
-    console.dir(orderBy)
+const prepOrders = ({ alias, orderBy }) => {
+
+    console.log('prepare orders invoked')
 
     const values = []
 
-    const orders = orderBy.map(order => {
-        const [[col, dir]] = Object.entries(order)
-        console.log('col', col)
-        console.log('dir', dir)
+    const sql = Object.entries(orderBy).map(([col, dir]) => {
         const name = prepareName({ alias, value: col })
         const sql = ' ?? ' + orderDirections[dir]
-        patchToArray(values, !checkConstants(col), name)
+        if (!checkConstants(col)) values.push(name)
         return sql
-    })
+    }).join(', ')
 
-    console.log('prepare order ends successfully!')
-    console.groupEnd()
-
-    return { sql: orders.join(', '), values }
+    return { sql, values }
 }
 
-module.exports = { prepareOrders }
+module.exports = { prepOrders }

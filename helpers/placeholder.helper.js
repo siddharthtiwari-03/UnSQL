@@ -1,27 +1,22 @@
-const { checkConstants, checkIntOrDate, dateFunctions, numericFunctions } = require("./constants.helper")
+const { checkConstants, constantFunctions } = require("./constants.helper")
 
-const preparePlaceholder = value => {
-    console.group('placeholder invoked')
-    console.log('value to replace', value)
-
+/**
+ * prepares placeholder depending upon the 'value' parameter
+ * @param {string|boolean|number|Date} value string / number / boolean / array of string to generate a placeholder for
+ * @returns {('?'|'??'|string)} placeholder or a constant function name
+ */
+const prepPlaceholder = value => {
     if (value.toString().includes('*')) {
-        console.log('* in placeholder')
         return value
-        console.groupEnd()
     }
     if (checkConstants(value)) {
-        console.groupEnd()
-        return (dateFunctions[value] || numericFunctions[value]) + '()'
+        return constantFunctions[value] + '()'
     }
-    else if (checkIntOrDate(value) || Array.isArray(value) || parseInt(value) || parseFloat(value) || typeof value === 'boolean') {
-        console.groupEnd()
+    else if (Date.parse(value) || parseInt(value) || parseFloat(value) || typeof value === 'boolean' || value?.toString()?.startsWith('#')) {
         return '?'
     }
-
-
-    console.groupEnd()
 
     return '??'
 }
 
-module.exports = { preparePlaceholder }
+module.exports = { prepPlaceholder }

@@ -1,17 +1,14 @@
 // @ts-check
 const { colors, handleError, handleQueryDebug } = require("./helpers/console.helper")
-const { prepareJoin } = require("./helpers/join.helper")
-const { prepareOrders } = require("./helpers/order.helper")
-const { patchInline, patchToArray } = require("./helpers/patch.helper")
-const { prepareSelect } = require("./helpers/select.helper")
-const { prepareWhere } = require("./helpers/where.helper")
+const { prepOrders } = require("./helpers/order.helper")
+const { prepSelect, prepWhere, prepJoin } = require("./helpers/main.helper")
 // @ts-ignore
-const { findObject, saveObject, saveObject2, deleteObject, config } = require('./defs/types.def')
+const { config } = require('./defs/types.def')
 
 
 /**
  * UnSQL is JavaScript based library to interact with structured databases (MySQL). It provides clean and easy interface for interaction for faster and smooth developers' experience.
- * @class UnSQL
+ * @class
  * @alias UnSQL
  * @classdesc All model classes shall extend using UnSQL base class to access advanced functionalities
  * @namespace UnSQL
@@ -24,6 +21,7 @@ class UnSQL {
     /**
      * config is a static property object, used to declare configurations relating to a model class
      * @type {config} (required) accepts configurations related to model class as its properties
+     * 
      * @static
      * @public
      * @memberof UnSQL
@@ -49,16 +47,47 @@ class UnSQL {
      * @description find method is used to fetch records from the database table
      * 
      * @static
-     * @param {findObject} findObject takes in various parameters that governs different query conditions and values
+     * 
+     * @param {object} findParam takes in various parameters that governs different query conditions and values
+     * 
+     * @param {string} [findParam.alias] (optional) local alias name for the database table
+     * 
+     * @param {import("./defs/types.def").selectObj} [findParam.select] (optional) accepts different types of values inside parent array: a. column name as regular 'string' value, b. string value inside array ['string'] for string value that is not a column name, c. number and boolean directly and d. methodWrappers in object form like {str:...}, {num:...}, {date:...} etc
+     * 
+     * @param {Array<import("./defs/types.def").joinObj>} [findParam.join] (optional) enables association of child tables to this model class (parent table)
+     * 
+     * @param {{[key:string]:*}} [findParam.where] (optional) allows to filter records using various conditions
+     * 
+     * @param {'and'|'or'} [findParam.junction] (optional) defines default behavior that is used to join different 'child properties' inside 'where' property, default value is 'and'
+     * 
+     * @param {Array<string>} [findParam.groupBy] (optional) allows to group result based on single (or list of) column(s)
+     * 
+     * @param {import("./defs/types.def").havingObj} [findParam.having] (optional) allows to perform comparison on the group of records, accepts array of aggregate method wrappers viz. {sum:...}, {avg:...}, {min:...}, {max:...} etc
+     * 
+     * @param {{[column:string]:('asc'|'desc')}} [findParam.orderBy] (optional) allows to order result based on single (or list of) column(s)
+     * 
+     * @param {number} [findParam.limit] (optional) limits the number of records to be fetched from the database table
+     * 
+     * @param {number} [findParam.offset] (optional) determines the starting index for records to be fetched from the database table
+     * 
+     * @param {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512)}} [findParam.encryption] (optional) defines query level encryption configurations
+     * 
+     * @param {'query'|'error'|boolean} [findParam.debug] (optional) enables different debug modes
+     * 
      * @returns {Promise<{success:boolean, error?:object, result?:object}>} returns Promise that always resolves with two parameters: success and either error or result depending on the condition if query ran successfully or failed
+     * 
      * @memberof UnSQL
      */
-    // @ts-ignore
-    static async find({ alias = null, select = [], join = [], where = {}, junction = 'and', windows = [], groupBy = [], having = null, orderBy = [], limit = null, offset = null, encryption = {}, debug = false } = {}) {
+    static async find({ alias = undefined, select = ['*'], join = [], where = {}, junction = 'and', groupBy = [], having = [], orderBy = {}, limit = undefined, offset = undefined, encryption = {}, debug = false } = {}) {
+
+        if (!this.config && ('TABLE_NAME' in this) && ('POOL' in this)) {
+            console.warn(colors.yellow, 'UnSQL has detected you are using v1.x model class configuration with v2.x If you wish to continue with v1.x kindly switch the unsql import to "unsql/legacy"', colors.reset)
+            return { success: false, error: 'UnSQL has detected you are using v1.x model class configuration with v2.x If you wish to continue with v1.x kindly switch the unsql import to "unsql/legacy"' }
+        }
 
         // handle if connection object is missing
         if (!this?.config?.pool && !this?.config?.connection) {
-            console.log(colors.red, 'Please provide mysql connection or connection pool inside config (static property) of', this.name, 'model class', colors.reset)
+            console.error(colors.red, 'Please provide mysql connection or connection pool inside config (static property) of', this.name, 'model class', colors.reset)
             return { success: false, error: 'Please provide mysql connection or connection pool inside config (static property) of ' + this.name + ' model class' }
         }
 
@@ -80,97 +109,99 @@ class UnSQL {
         }
 
         sql += 'SELECT '
-        // let sql = 'SELECT '
-
-
-        // try {
-        // console.log('inside if block')
-        
-        const selectResp = prepareSelect({ alias, select, encryption, ctx: this })
-        // console.log('selectResp', selectResp)
-        sql += patchInline(selectResp.sql, selectResp.sql)
-        patchToArray(values, selectResp.values.length > 0, selectResp.values)
-
-
-        sql += ' FROM ?? '
-        values.push(this.config.table)
-        sql += patchInline(alias, '?? ')
-        patchToArray(values, alias, alias)
-
-        if (join.length) {
-            // @ts-ignore
-            const joinResp = prepareJoin({ alias, join, ctx: this })
-            // console.log('joinResp', joinResp)
-            sql += joinResp.sql
-            values.push(...joinResp?.values)
-        }
-
-        if (Object.keys(where).length) {
-            sql += 'WHERE '
-            // @ts-ignore
-            const whereResp = prepareWhere({ alias, where, junction, ctx: this })
-            // console.log('where resp', whereResp)
-            sql += whereResp.sql
-            values.push(...whereResp?.values)
-        }
-
-        if (groupBy.length) {
-            sql += 'GROUP BY '
-            sql += groupBy.map(gb => {
-                values.push(gb.includes('.') ? gb : ((alias && (alias + '.')) + gb))
-                return '??'
-            }).join(', ')
-        }
-
-        if (orderBy.length) {
-            sql += ' ORDER BY '
-            const orderResp = prepareOrders({ alias, orderBy })
-            sql += orderResp.sql
-            values.push(...orderResp.values)
-        }
-
-        if (typeof limit === 'number') {
-            sql += ' LIMIT ? '
-            values.push(limit)
-        }
-
-        if (typeof offset === 'number') {
-            sql += ' OFFSET ? '
-            values.push(offset)
-        }
-
-        const conn = await (this?.config?.pool?.getConnection() || this?.config?.connection)
 
 
         try {
-            await conn.beginTransaction()
 
-            const prepared = conn.format(sql, values)
+            const selectResp = prepSelect({ alias, select, encryption, ctx: this })
+            sql += selectResp.sql
+            values.push(...selectResp.values)
 
-            handleQueryDebug(debug, sql, values, prepared)
 
-            const [rows] = await conn.query(prepared)
+            sql += ' FROM ?? '
+            values.push(this.config.table)
+            if (alias) {
+                sql += '??'
+                values.push(alias)
+            }
 
-            await conn.commit()
-            if (debug === true) console.log(colors.green, 'Find query executed successfully!', colors.reset)
-            if (debug === true) console.log('\n')
-            return { success: true, result: (encryption?.mode || this?.config?.encryption?.mode ? rows[1] : rows) }
+            if (join.length) {
+                const joinResp = prepJoin({ alias, join, ctx: this })
+                // console.log('joinResp', joinResp)
+                sql += joinResp.sql
+                values.push(...joinResp?.values)
+            }
+
+            if (Object.keys(where).length) {
+                sql += ' WHERE '
+                const whereResp = prepWhere({ alias, where, junction, encryption, ctx: this })
+                console.log('where resp', whereResp)
+                sql += whereResp.sql
+                values.push(...whereResp?.values)
+            }
+
+            if (groupBy.length) {
+                sql += ' GROUP BY '
+                sql += groupBy.map(gb => {
+                    values.push(gb.includes('.') ? gb : ((alias && (alias + '.')) + gb))
+                    return '??'
+                }).join(', ')
+            }
+
+            if (having.length) {
+                sql += ' HAVING '
+                const havingResp = prepWhere({ alias, where: having, junction, encryption, ctx: this })
+                sql += havingResp.sql
+                values.push(...havingResp.values)
+            }
+
+            if (Object.keys(orderBy).length) {
+                sql += ' ORDER BY '
+                const orderResp = prepOrders({ alias, orderBy })
+                sql += orderResp.sql
+                values.push(...orderResp.values)
+            }
+
+            if (typeof limit === 'number') {
+                sql += ' LIMIT ? '
+                values.push(limit)
+            }
+
+            if (typeof offset === 'number') {
+                sql += ' OFFSET ? '
+                values.push(offset)
+            }
+
+            const conn = await (this?.config?.pool?.getConnection() || this?.config?.connection)
+
+
+            try {
+                await conn.beginTransaction()
+
+                const prepared = conn.format(sql, values)
+
+                handleQueryDebug(debug, sql, values, prepared)
+
+                const [rows] = await conn.query(prepared)
+
+                await conn.commit()
+                if (debug === true) console.log(colors.green, 'Find query executed successfully!', colors.reset)
+                if (debug === true) console.log('\n')
+                return { success: true, result: (encryption?.mode || this?.config?.encryption?.mode ? rows[1] : rows) }
+
+            } catch (error) {
+                handleError(debug, error)
+                if (conn) await conn.rollback()
+                return { success: false, error }
+            } finally {
+                if (this?.config?.pool) {
+                    await conn.release()
+                }
+            }
 
         } catch (error) {
-            handleError(debug, error)
-            if (conn) await conn.rollback()
-            return { success: false, error }
-        } finally {
-            if (this?.config?.pool) {
-                await conn.release()
-                // console.log('connection released to pool')
-            }
+            return { success: false, error: error.sqlMessage || error.message || error }
         }
-
-        // } catch (error) {
-        //     // console.error('error caught by global try catch', error)
-        //     return { success: false, error: error.sqlMessage || error.message || error }
-        // }
     }
 
 
@@ -179,12 +210,31 @@ class UnSQL {
      * @description save method used in insert / update / upsert record(s) in the database table
      * 
      * @static
-     * @param {saveObject} saveObject
+     * 
+     * @param {object} saveParam save query object definition
+     * 
+     * @param {object|Array} saveParam.data object / array of objects to be inserted into the database table
+     * 
+     * @param {{[key:string]:*}} [saveParam.where] (optional) used to filter records to be updated
+     * 
+     * @param {object} [saveParam.upsert] (optional) object data to be updated in case of 'duplicate key entry' found in the database
+     * 
+     * @param {{[column:string]:{secret?:string, iv?:string, sha?:(224|256|384|512)} }} [saveParam.encrypt] (optional) define encryption overrides for column(s)
+     * 
+     * @param {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512) }} [saveParam.encryption] (optional) defines query level encryption configurations
+     * 
+     * @param {boolean|'query'|'error'} [saveParam.debug] (optional) enables various debug mode
+     * 
      * @returns {Promise<{success:boolean, error?:object, result?:object}>} returns Promise that always resolves with two parameters: success and either error or result depending on the condition if query ran successfully or failed
+     * 
      * @memberof UnSQL
      */
-    // @ts-ignore
     static async save({ data = [], where = {}, upsert = {}, encrypt = {}, encryption = {}, debug = false }) {
+
+        if (!this.config && ('TABLE_NAME' in this) && ('POOL' in this)) {
+            console.warn(colors.yellow, 'UnSQL has detected you are using v1.x model class configuration with v2.x If you wish to continue with v1.x kindly switch the unsql import to "unsql/legacy"', colors.reset)
+            return { success: false, error: 'UnSQL has detected you are using v1.x model class configuration with v2.x If you wish to continue with v1.x kindly switch the unsql import to "unsql/legacy"' }
+        }
 
         const whereLength = Object.keys(where).length || 0
 
@@ -222,7 +272,7 @@ class UnSQL {
             values.push(this?.config?.encryption?.mode)
         }
 
-        sql += patchInline(whereLength, 'UPDATE ?? ', 'INSERT INTO ?? ')
+        sql += (whereLength ? 'UPDATE ?? ' : 'INSERT INTO ?? ')
 
         values.push(this.config.table)
 
@@ -255,7 +305,6 @@ class UnSQL {
 
                 const insertValues = []
 
-
                 sql += ' VALUES '
 
                 // loop over each json object for values
@@ -264,7 +313,6 @@ class UnSQL {
 
                     const rows = []
                     for (let j = 0; j < insertColumns.length; j++) {
-                        // rows.push(patchInline(encrypt.columns.includes(insertColumns[j]) && !!data[i][insertColumns[j]], 'AES_ENCRYPT(') + '?' + patchInline(encrypt.columns.includes(insertColumns[j]) && !!data[i][insertColumns[j]], `, UNHEX(SHA2(?, ${this.config.encryption.sha})))`))
 
                         let rowSql = ''
 
@@ -279,38 +327,54 @@ class UnSQL {
                         rowSql += 'AES_ENCRYPT(?'
                         values.push(data[i][insertColumns[j]] || null)
 
+                        // testing
+                        if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && this?.config?.encryption?.mode?.includes('-cbc'))) {
+                            rowSql += ', ?'
+                        }
+
+                        rowSql += ', UNHEX(SHA2(?, ?))'
+
+                        values.push(encrypt[insertColumns[j]]?.secret || encryption?.secret || this?.config?.encryption?.secret)
+
+                        if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && this?.config?.encryption?.mode?.includes('-cbc'))) {
+                            values.push(encrypt[insertColumns[j]]?.iv || encryption?.iv || this?.config?.encryption?.iv)
+                        }
+
+                        values.push(encrypt[insertColumns[j]]?.sha || encryption?.sha || this?.config?.encryption?.sha || 512)
+                        // testing
+
                         // handle if local query encryption mode is set
-                        if (encryption?.mode && (encrypt[insertColumns[j]]?.secret || encryption?.secret || this?.config?.encryption?.secret)) {
+                        // if (encryption?.mode && (encrypt[insertColumns[j]]?.secret || encryption?.secret || this?.config?.encryption?.secret)) {
 
-                            rowSql += patchInline(encryption?.mode?.includes('-cbc'), ', ?')
-                            rowSql += ', UNHEX(SHA2(?, ?))'
+                        //     if (encryption?.mode?.includes('-cbc')) rowSql += ', ?'
+                        //     rowSql += ', UNHEX(SHA2(?, ?))'
 
-                            values.push(encrypt[insertColumns[j]]?.secret || encryption?.secret || this?.config?.encryption?.secret)
+                        //     values.push(encrypt[insertColumns[j]]?.secret || encryption?.secret || this?.config?.encryption?.secret)
 
-                            // check if encryption mode requires iv or sha
-                            if (encryption?.mode?.includes('-cbc')) {
-                                values.push(encrypt[insertColumns[j]]?.iv || encryption?.iv || this?.config?.encryption?.iv)
-                            }
-                            values.push(encrypt[insertColumns[j]]?.sha || encryption?.sha || this?.config?.encryption?.sha || 512)
+                        //     // check if encryption mode requires iv or sha
+                        //     if (encryption?.mode?.includes('-cbc')) {
+                        //         values.push(encrypt[insertColumns[j]]?.iv || encryption?.iv || this?.config?.encryption?.iv)
+                        //     }
+                        //     values.push(encrypt[insertColumns[j]]?.sha || encryption?.sha || this?.config?.encryption?.sha || 512)
 
-                        }
-                        // handle if global encryption mode is set
-                        else if (this?.config?.encryption?.mode && (encrypt[insertColumns[j]]?.secret || encryption?.secret || this?.config?.encryption?.secret)) {
+                        // }
+                        // // handle if global encryption mode is set
+                        // else if (this?.config?.encryption?.mode && (encrypt[insertColumns[j]]?.secret || encryption?.secret || this?.config?.encryption?.secret)) {
 
-                            rowSql += patchInline(this?.config?.encryption?.mode?.includes('-cbc'), ', ?')
+                        //     if (this?.config?.encryption?.mode?.includes('-cbc')) rowSql += ', ?'
 
-                            rowSql += ', UNHEX(SHA2(?, ?))'
+                        //     rowSql += ', UNHEX(SHA2(?, ?))'
 
-                            values.push(encrypt[insertColumns[j]]?.secret || encryption?.secret || this?.config?.encryption?.secret)
+                        //     values.push(encrypt[insertColumns[j]]?.secret || encryption?.secret || this?.config?.encryption?.secret)
 
-                            // check if encryption mode requires iv or sha
-                            if (this?.config?.encryption?.mode?.includes('-cbc')) {
-                                values.push(encrypt[insertColumns[j]]?.iv || encryption?.iv || this?.config?.encryption?.iv)
-                            }
+                        //     // check if encryption mode requires iv or sha
+                        //     if (this?.config?.encryption?.mode?.includes('-cbc')) {
+                        //         values.push(encrypt[insertColumns[j]]?.iv || encryption?.iv || this?.config?.encryption?.iv)
+                        //     }
 
-                            values.push(encrypt[insertColumns[j]]?.sha || encryption?.sha || this?.config?.encryption?.sha || 512)
+                        //     values.push(encrypt[insertColumns[j]]?.sha || encryption?.sha || this?.config?.encryption?.sha || 512)
 
-                        }
+                        // }
 
                         rowSql += ')'
 
@@ -346,7 +410,7 @@ class UnSQL {
                         // handle if local query encryption mode is set
                         if (encryption?.mode && (encrypt[col]?.secret || encryption?.secret || this?.config?.encryption?.secret)) {
 
-                            rowSql += patchInline(encryption?.mode?.includes('-cbc'), ', ?')
+                            if (encryption?.mode?.includes('-cbc')) rowSql += ', ?'
 
                             rowSql += ', UNHEX(SHA2(?, ?))'
 
@@ -363,7 +427,7 @@ class UnSQL {
                         // handle if global encryption mode is set
                         else if (this?.config?.encryption?.mode && (encrypt[col]?.secret || encryption?.secret || this?.config?.encryption?.secret)) {
 
-                            rowSql += patchInline(this?.config?.encryption?.mode?.includes('-cbc'), ', ?')
+                            if (this?.config?.encryption?.mode?.includes('-cbc')) rowSql += ', ?'
 
                             rowSql += ', UNHEX(SHA2(?, ?))'
 
@@ -400,7 +464,7 @@ class UnSQL {
         if (whereLength) {
             sql += 'WHERE '
             // @ts-ignore
-            const whereResp = prepareWhere({ where, ctx: this })
+            const whereResp = prepWhere({ where, ctx: this })
             sql += whereResp.sql
             values.push(...whereResp.values)
         }
@@ -437,12 +501,30 @@ class UnSQL {
     /**
      * @method delete
      * @description delete method is used to remove record(s) from the database table
-     * @param {deleteObject} deleteObject
+     * 
+     * @static
+     * 
+     * @param {object} deleteParam delete query object definition
+     * 
+     * @param {string} [deleteParam.alias] (optional) local alias name for the database table
+     * 
+     * @param {{[key:string]:*}} [deleteParam.where] (optional) used to filter records to be updated
+     * 
+     * @param {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512) }} [deleteParam.encryption] (optional) defines query level encryption configurations
+     * 
+     * @param {boolean|'query'|'error'} [deleteParam.debug] (optional) enables various debug mode
+     * 
      * @returns {Promise<{success:boolean, error?:object, result?:object}>} returns Promise that always resolves with two parameters: success and either error or result depending on the condition if query ran successfully or failed
+     * 
+     * @memberof UnSQL
      */
-    static async delete({ where = {}, debug = false } = {}) {
+    static async delete({ alias = undefined, where = {}, debug = false, encryption = undefined } = {}) {
 
-        console.log('this inside delete method', this)
+        if (!this.config && ('TABLE_NAME' in this) && ('POOL' in this)) {
+            console.warn(colors.yellow, 'UnSQL has detected you are using v1.x model class configuration with v2.x If you wish to continue with v1.x kindly switch the unsql import to "unsql/legacy"', colors.reset)
+            return { success: false, error: 'UnSQL has detected you are using v1.x model class configuration with v2.x If you wish to continue with v1.x kindly switch the unsql import to "unsql/legacy"' }
+        }
+
         switch (true) {
 
             // handle if connection object is missing
@@ -465,22 +547,28 @@ class UnSQL {
             }
         }
 
-        let sql = 'DELETE FROM ??'
         const values = []
+
+        let sql = 'DELETE FROM ??'
         values.push(this.config.table)
+
+        if (alias) {
+            sql += ' ??'
+            values.push(alias)
+        }
+
 
         if (Object.keys(where).length) {
             sql += ' WHERE '
-            // @ts-ignore
-            const whereResp = prepareWhere({ where, ctx: this })
+
+            const whereResp = prepWhere({ alias, where, encryption, ctx: this })
             sql += whereResp.sql
             values.push(...whereResp.values)
         }
 
         const conn = await (this?.config?.pool?.getConnection() || this?.config?.connection)
-        // @ts-ignore
-        return
-        // @ts-ignore
+
+
         try {
             await conn.beginTransaction()
 

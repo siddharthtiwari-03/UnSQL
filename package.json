@@ -3,11 +3,16 @@
   "version": "1.6.26",
   "description": "UnSQL can be defined as a light weight schemaless ORM. It provides clean and yet extensive interface to interact with MySQL Databases without getting into the complexities. It provides dynamic query generation through easy to understand Javascript based methods and data types, while structuring the actual sql in the background for you.",
   "main": "legacy.js",
+  "author": "Siddharth Tiwari <dev.unsql@gmail.com>",
+  "contributors": [
+    "Siddharth Tiwari <dev.unsql@gmail.com>"
+  ],
   "files": [
-    "./helpers/*",
-    "./defs/*",
-    "./unsql.js",
-    "./legacy.js"
+    "LICENSE",
+    "helpers/",
+    "defs/",
+    "unsql.js",
+    "legacy.js"
   ],
   "exports": {
     "./legacy": "./legacy.js",
@@ -25,7 +30,6 @@
     "database",
     "mysql"
   ],
-  "author": "Siddharth Tiwari <siddharthtiwari0308@gmail.com>",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/siddharthtiwari-03/UnSQL/issues"

@@ -1,137 +1,179 @@
 const { colors } = require("./console.helper")
-const { checkConstants, dataTypes, numericFunctions } = require("./constants.helper")
-const { prepareName } = require("./name.helper")
-const { patchInline, patchToArray } = require("./patch.helper")
-const { preparePlaceholder } = require("./placeholder.helper")
+const { checkConstants, dataTypes } = require("./constants.helper")
+const { prepName } = require("./name.helper")
+const { prepPlaceholder } = require("./placeholder.helper")
 
-const prepareNumeric = ({ alias, key, value, encryption = null, ctx = null }) => {
+/**
+ * performs numeric operations on the 'value' property
+ * @function prepNumeric
+ * 
+ * @param {object} numObj
+ * 
+ * @param {string} [numObj.alias] (optional) alias reference for the table name
+ * 
+ * @param {{
+ * value: string|number,
+ * decimals?: (number|'floor'|'ceil'|'round'),
+ * mod?: number|string,
+ * sub?: number|string,
+ * add?: number|string,
+ * multiplyBy?: number|string,
+ * divideBy?: number|string,
+ * power?: number|string,
+ * cast?: ('char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary'),
+ * decrypt?:{
+ * secret?: string,
+ * iv?: string,
+ * sha?: (224|256|384|512)}
+ * as?:string
+ * }} numObj.val
+ * 
+ * @param {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512)}} [numObj.encryption] (optional) inherits encryption config from its parent level
+ * 
+ * @param {*} [numObj.ctx]
+ * 
+ * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
+ */
+const prepNumeric = ({ alias, val, encryption, ctx }) => {
 
-    console.group(colors.green, 'prepare numeric invoked', colors.reset)
-
-    let sql = ''
+    console.group('prep numeric invoked')
     const values = []
+    let sql = ''
 
-    const { value: v, power, divideBy, multiplyBy, mod, decimals, cast, as } = value
+    const { value, decimals, mod, sub, add, multiplyBy, divideBy, power, cast, decrypt, as } = val
 
-    const name = prepareName({ alias, value: v })
-    const placeholder = preparePlaceholder(v)
+    if (decimals === 'ceil') sql += 'CEIL('
+    else if (decimals === 'floor') sql += 'FLOOR('
+    else if (decimals === 'round') sql += 'ROUND('
+    else if (typeof decimals === 'number') sql += 'FORMAT('
 
+    // apply subtraction bracket
+    if (sub) sql += '('
 
-    // apply casting
-    sql += patchInline(cast in dataTypes, 'CAST(')
+    // apply addition bracket
+    if (add) sql += '('
 
-    // apply format method to limit to decimal values
-    sql += patchInline(parseInt(decimals) > -1, 'FORMAT(')
+    // apply multiplier bracket
+    if (multiplyBy) sql += '('
 
-    // apply ceil method to round to next greater value
-    sql += patchInline(decimals === 'ceil', 'CEIL(')
+    // apply modulus bracket
+    if (mod) sql += '('
 
-    // apply floor method to round to previous smaller value
-    sql += patchInline(decimals === 'floor', 'FLOOR(')
+    // apply division
+    if (divideBy) sql += '('
 
-    // apply round method to round to previous smaller value
-    sql += patchInline(decimals === 'round', 'ROUND(')
+    // apply power of
+    if (power) sql += 'POWER('
 
-    // apply bracket for multiplication
-    sql += patchInline(multiplyBy, '(')
+    // apply type casting
+    if (cast || decrypt) sql += 'CAST('
 
-    // apply bracket for modulus
-    sql += patchInline(mod, '(')
+    // patch decryption method if required
+    if (decrypt) sql += 'AES_DECRYPT('
 
-    // apply bracket for division
-    sql += patchInline(divideBy, '(')
+    // patch placeholder to the sql string
+    const placeholder = prepPlaceholder(value)
+    sql += placeholder
+    // patch value to values array (conditional)
+    if (!checkConstants(value)) {
+        const name = prepName({ alias, value })
+        values.push(name)
+    }
 
-    // apply bracket for power of
-    sql += patchInline(power, 'POWER(')
+    // patch decryption extras if required
+    if (decrypt) {
 
-    switch (true) {
-
-        case key === 'pi': {
-            sql += 'PI()'
-            break
+        if (!decrypt?.secret && encryption?.secret && ctx?.config?.encryption?.secret) {
+            console.error(colors.red, 'secret is required to decrypt', colors.reset)
+            throw new Error('Secret is required to decrypt!', { cause: 'Missing "secret" to decrypt inside date wrapper!' })
         }
 
-        case key === 'least': {
+        if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && ctx?.config?.encryption?.mode?.includes('-cbc'))) {
+            sql += ', ?'
+        }
 
-            if (!Array.isArray(v)) {
-                console.error(colors.red, 'Method "Least" accepts value parameter to be an array,', typeof v, 'value provided, this method will be ignored', colors.reset)
-                break
+        sql += ', UNHEX(SHA2(?, ?)))'
+
+        values.push(decrypt?.secret || encryption?.secret || ctx?.config?.encryption?.secret)
+
+        if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && ctx?.config?.encryption?.mode?.includes('-cbc'))) {
+            if (!decrypt?.iv && !encryption?.iv && !ctx?.config?.encryption?.iv) {
+                console.error(colors.red, 'Initialization Vector (iv) is required to decrypt', colors.reset)
+                throw new Error('Initialization Vector (iv) is required to decrypt!', { cause: 'Missing "iv" to decrypt inside date wrapper!' })
             }
-
-            sql += 'LEAST('
-            sql += v.map(val => {
-                const n = prepareName({ alias, value: val })
-                const placeholder = preparePlaceholder(val)
-                patchToArray(values, !checkConstants(val), n)
-                return placeholder
-            })
-            sql += ')'
-            break
+            values.push(decrypt?.iv || encryption?.iv || ctx?.config?.encryption?.iv)
         }
 
-        default: {
-            console.log('default condition')
-
-            sql += patchInline(key != 'num', numericFunctions[key] + '(')
-
-            sql += placeholder
-            patchToArray(values, !checkConstants(v), name)
-
-            sql += patchInline(key != 'num', ')')
-            break
-        }
+        values.push(decrypt?.sha || encryption?.sha || ctx?.config?.encryption?.sha || 512)
 
     }
+    // decrypt ends here
 
-    // sql += patchInline(round === true || round === 'floor' || round === 'ceil', ')')
+    // type casting ends here
+    if (cast || decrypt) sql += ' AS ' + (dataTypes[cast] || 'CHAR') + ')'
 
+    // apply power (extras)
     if (power) {
-        const powerName = prepareName({ alias, value: power })
-        const powerPlaceholder = preparePlaceholder(power)
-        sql += `, ${powerPlaceholder})`
-        patchToArray(values, !checkConstants(power), powerName)
+        const powPlaceholder = prepPlaceholder(power)
+        const powName = prepName({ alias, value: power })
+        sql += ', ' + powPlaceholder + ')'
+        if (!checkConstants(power)) values.push(powName)
     }
 
+    // apply division (extras)
     if (divideBy) {
-        const divisorName = prepareName({ alias, value: divideBy })
-        const divisorPlaceholder = preparePlaceholder(divideBy)
+        const divisorPlaceholder = prepPlaceholder(divideBy)
+        const divisorName = prepName({ alias, value: divideBy })
         sql += ' / ' + divisorPlaceholder + ')'
-        patchToArray(values, !checkConstants(divideBy), divisorName)
+        if (!checkConstants(divideBy)) values.push(divisorName)
     }
 
+    // apply modulus (extras)
     if (mod) {
-        const moduloName = prepareName({ alias, value: mod })
-        const moduloPlaceholder = preparePlaceholder(mod)
-        sql += ' MOD ' + moduloPlaceholder + ')'
-        patchToArray(values, !checkConstants(mod), moduloName)
+        const modPlaceholder = prepPlaceholder(mod)
+        const modName = prepName({ alias, value: mod })
+        sql += ' MOD ' + modPlaceholder + ')'
+        if (!checkConstants(mod)) values.push(modName)
     }
 
+    // apply multiplier (extras)
     if (multiplyBy) {
-        const multiplierName = prepareName({ alias, value: multiplyBy })
-        const multiplierPlaceholder = preparePlaceholder(multiplyBy)
+        const multiplierPlaceholder = prepPlaceholder(multiplyBy)
+        const multiplierName = prepName({ alias, value: multiplyBy })
         sql += ' * ' + multiplierPlaceholder + ')'
-        patchToArray(values, !checkConstants(multiplyBy), multiplierName)
+        if (!checkConstants(multiplyBy)) values.push(multiplierName)
     }
 
+    // apply addition (extras)
+    if (add) {
+        const addPlaceholder = prepPlaceholder(add)
+        const addName = prepName({ alias, value: add })
+        sql += ' + ' + addPlaceholder + ')'
+        if (!checkConstants(add)) values.push(addName)
+    }
+
+    // apply subtraction (extras)
+    if (sub) {
+        const subPlaceholder = prepPlaceholder(sub)
+        const subName = prepName({ alias, value: sub })
+        sql += ' - ' + subPlaceholder + ')'
+        if (!checkConstants(sub)) values.push(subName)
+    }
+
+    // apply decimal format (extras)
     if (decimals) {
-        // format end here
-        // patch decimal length for format method
-        sql += patchInline(parseInt(decimals) > -1, ', ?)')
-        patchToArray(values, parseInt(decimals) > -1, decimals)
-        sql += patchInline(decimals === 'round' || decimals === 'ceil' || decimals === 'floor', ')')
+        if (typeof decimals === 'number') {
+            sql += ', ?'
+            values.push(decimals)
+        }
+        sql += ')'
     }
 
-    // casting end here
-    sql += patchInline(cast in dataTypes, ' AS ' + dataTypes[cast] + ')')
+    sql += ' AS ?'
+    values.push(as || (value.includes('.') ? value.split('.')[1] : value))
 
-    // patch local name here
-    sql += patchInline(sql != '', ' AS ?')
-    patchToArray(values, sql != '', patchInline(as, as, patchInline(v?.toString()?.includes('.'), v?.toString()?.split('.')[1], v)))
-
-    console.group(colors.green, 'prepare numeric ends', colors.reset)
     console.groupEnd()
-
     return { sql, values }
 }
 
-module.exports = { prepareNumeric }
+module.exports = { prepNumeric }
