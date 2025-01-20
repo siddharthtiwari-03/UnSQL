@@ -4,7 +4,7 @@ UnSQL is an open source library, written in JavaScript, that provides class base
 
 ## Breaking Changes
 
-Beyond the version v2+ backward compatibility has been dropped, from the default import, in favour of security. For projects still running on version v1.x we recommend switching to the existing import/require with legacy flag `unsql/legacy`
+Beyond the version v2+ backward compatibility has been dropped, from the default import, in favour of security and features. For projects still running on version v1.x we recommend switching all the import/require of `'unsql'` in your existing `model` classes to legacy flag `unsql/legacy`
 
 ## What's New?
 
@@ -422,7 +422,7 @@ const found = await User.find({ offset: 10 })
 
 #### encryption
 
-**encryption** parameter accepts value in `key: value` pair where each pair represents the configurations related to encryption / decryption of the column(s). These local level configuration(s) override global level encryption configuration(s) set in the `config` property of the `model` class. These configuration(s) only effect the local level execution and does not impact any other execution and can vary for each execution call as desired. It can hold any one of the four configurations (or all):
+**encryption** parameter accepts value in `key: value` pair where each pair represents the configurations related to encryption / decryption of the column(s). These local level configuration(s) will override global level encryption configuration(s) set in the `config` property of the `model` class. These configuration(s) only effect the local level execution and does not impact any other execution(s) or invocation(s) and can vary for each execution call as desired. It can hold any one of the four configurations (or all):
 
 ```javascript
 const result = await User.find({ 
@@ -439,7 +439,18 @@ const result = await User.find({
 
 #### debug
 
-**debug** parameter controls the debug mode for each execution, and can be set to either 'query'
+**debug** parameter controls the debug mode for each execution, and can be set to either `'query'` | `'error'` | `true` |`false`. `debug` parameter plays an important role in understanding the SQL query that is being generated and hence understanding the operation that will be performed in this execution. Debug mode can be controlled specifically for execution, avoiding unnecessary cluttered terminal. By default, `debug` mode is in disable mode hence if no value is set for this parameter, no debugging will be performed.
+
+|   Value   | Description |
+|-----------|-------------|
+| `'query'` | enables 'query' debug mode, in this mode only the dynamically generated SQL query if form of 'un-prepared statement', 'values' array to be inserted in the the 'un-prepared' statement and finally the 'prepared statement' after substituting all the 'values' from the 'values' array is displayed in the terminal as console logs |
+| `'error'` | enables 'error' debug mode, in this mode only the error object, only when error is encountered, (including error message, error code, full stacktrace etc) is displayed in the terminal as console logs |
+| `true`    | enables both debug modes i.e. `'query'` and `'error'`, and displays dynamically generated SQL query on each execution and also displays errors (if execution fails) in the terminal as console logs |
+| `false`   | disables query mode |
+
+> **Please note:**
+> 1. Few **'warnings'** like *'version configuration mismatch'* or *'invalid value'* or *'missing required field'* errors will still be logged in the console even if the debug mode is off to facilitate faster resolving of the issue.
+> 2. Irrespective of the debug mode is enabled or disabled, if the query fails, the error message / object will be available in the `'error'` parameter of the **'result'** object of the method along with the `'success'` acknowledgement keyword being set to `false`.
 
 ### What are wrapper methods in UnSQL?
 
