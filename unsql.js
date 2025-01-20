@@ -213,9 +213,17 @@ class UnSQL {
      * 
      * @param {object} saveParam save query object definition
      * 
+     * @param {string} [saveParam.alias] (optional) local alias name for the database table
+     * 
      * @param {object|Array} saveParam.data object / array of objects to be inserted into the database table
      * 
      * @param {{[key:string]:*}} [saveParam.where] (optional) used to filter records to be updated
+     * 
+     * @param {'and'|'or'} [saveParam.junction] (optional) defines default behavior that is used to join different 'child properties' inside 'where' property, default value is 'and'
+     * 
+     * @param {Array<string>} [saveParam.groupBy] (optional) allows to group result based on single (or list of) column(s)
+     * 
+     * @param {import("./defs/types.def").havingObj} [saveParam.having] (optional) allows to perform comparison on the group of records, accepts array of aggregate method wrappers viz. {sum:...}, {avg:...}, {min:...}, {max:...} etc
      * 
      * @param {object} [saveParam.upsert] (optional) object data to be updated in case of 'duplicate key entry' found in the database
      * 
@@ -229,14 +237,17 @@ class UnSQL {
      * 
      * @memberof UnSQL
      */
-    static async save({ data = [], where = {}, upsert = {}, encrypt = {}, encryption = {}, debug = false }) {
+    static async save({ alias = undefined, data = [], where = {}, junction = 'and', groupBy = [], having = [], upsert = {}, encrypt = {}, encryption = {}, debug = false }) {
 
         if (!this.config && ('TABLE_NAME' in this) && ('POOL' in this)) {
             console.warn(colors.yellow, 'UnSQL has detected you are using v1.x model class configuration with v2.x If you wish to continue with v1.x kindly switch the unsql import to "unsql/legacy"', colors.reset)
             return { success: false, error: 'UnSQL has detected you are using v1.x model class configuration with v2.x If you wish to continue with v1.x kindly switch the unsql import to "unsql/legacy"' }
         }
 
-        const whereLength = Object.keys(where).length || 0
+        if (Array.isArray(data) && (Object.keys(where).length || having.length || groupBy.length)) {
+            console.warn(colors.yellow, 'Invalid combination to update multiple records', colors.reset)
+            return { success: false, error: 'Invalid combination to update multiple records, only single object inside "data" property can be passed while updating records, array of objects detected' }
+        }
 
         switch (true) {
 
@@ -252,12 +263,6 @@ class UnSQL {
                 return { success: false, error: 'Please provide database table name inside config (static property) of ' + this.name + ' model class' }
             }
 
-            // handle if data is array and where clause is also provided
-            // @ts-ignore
-            case (Array.isArray(data) && whereLength): {
-                console.error(colors.red, 'Data argument accepts single json object as value with where clause, array was provided', colors.reset)
-                return { success: false, error: 'Data argument accepts single json object as value with where clause, array was provided' }
-            }
         }
 
         const values = []
@@ -272,9 +277,14 @@ class UnSQL {
             values.push(this?.config?.encryption?.mode)
         }
 
-        sql += (whereLength ? 'UPDATE ?? ' : 'INSERT INTO ?? ')
+        sql += (Object.keys(where).length ? 'UPDATE ?? ' : 'INSERT INTO ?? ')
 
         values.push(this.config.table)
+
+        if (alias) {
+            sql += '?? '
+            values.push(alias)
+        }
 
         switch (true) {
 
@@ -407,40 +417,54 @@ class UnSQL {
                         rowSql += 'AES_ENCRYPT(?'
                         values.push(val)
 
-                        // handle if local query encryption mode is set
-                        if (encryption?.mode && (encrypt[col]?.secret || encryption?.secret || this?.config?.encryption?.secret)) {
-
-                            if (encryption?.mode?.includes('-cbc')) rowSql += ', ?'
-
-                            rowSql += ', UNHEX(SHA2(?, ?))'
-
-                            values.push(encrypt[col]?.secret || encryption?.secret || this?.config?.encryption?.secret)
-
-                            // check if encryption mode requires iv or sha
-                            if (encryption?.mode?.includes('-cbc')) {
-                                values.push(encrypt[col]?.iv || encryption?.iv || this?.config?.encryption?.iv)
-                            }
-
-                            values.push(encrypt[col]?.sha || encryption?.sha || this?.config?.encryption?.sha || 512)
-
+                        if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && this?.config?.encryption?.mode?.includes('-cbc'))) {
+                            rowSql += ', ?'
                         }
-                        // handle if global encryption mode is set
-                        else if (this?.config?.encryption?.mode && (encrypt[col]?.secret || encryption?.secret || this?.config?.encryption?.secret)) {
 
-                            if (this?.config?.encryption?.mode?.includes('-cbc')) rowSql += ', ?'
+                        rowSql += ', UNHEX(SHA2(?, ?)))'
 
-                            rowSql += ', UNHEX(SHA2(?, ?))'
+                        values.push(encrypt[col]?.secret || encryption?.secret || this?.config?.encryption?.secret)
 
-                            values.push(encrypt[col]?.secret || encryption?.secret || this?.config?.encryption?.secret)
-
-                            // check if encryption mode requires iv or sha
-                            if (this?.config?.encryption?.mode?.includes('-cbc')) {
-                                values.push(encrypt[col]?.iv || encryption?.iv || this?.config?.encryption?.iv)
-                            }
-
-                            values.push(encrypt[col]?.sha || encryption?.sha || this?.config?.encryption?.sha || 512)
-
+                        if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && this?.config?.encryption?.mode?.includes('-cbc'))) {
+                            values.push(encrypt[col]?.iv || encryption?.iv || this?.config?.encryption?.iv)
                         }
+
+                        values.push(encrypt[col]?.sha || encryption?.sha || this?.config?.encryption?.sha || 512)
+
+                        // // handle if local query encryption mode is set
+                        // if (encryption?.mode && (encrypt[col]?.secret || encryption?.secret || this?.config?.encryption?.secret)) {
+
+                        //     if (encryption?.mode?.includes('-cbc')) rowSql += ', ?'
+
+                        //     rowSql += ', UNHEX(SHA2(?, ?))'
+
+                        //     values.push(encrypt[col]?.secret || encryption?.secret || this?.config?.encryption?.secret)
+
+                        //     // check if encryption mode requires iv or sha
+                        //     if (encryption?.mode?.includes('-cbc')) {
+                        //         values.push(encrypt[col]?.iv || encryption?.iv || this?.config?.encryption?.iv)
+                        //     }
+
+                        //     values.push(encrypt[col]?.sha || encryption?.sha || this?.config?.encryption?.sha || 512)
+
+                        // }
+                        // // handle if global encryption mode is set
+                        // else if (this?.config?.encryption?.mode && (encrypt[col]?.secret || encryption?.secret || this?.config?.encryption?.secret)) {
+
+                        //     if (this?.config?.encryption?.mode?.includes('-cbc')) rowSql += ', ?'
+
+                        //     rowSql += ', UNHEX(SHA2(?, ?))'
+
+                        //     values.push(encrypt[col]?.secret || encryption?.secret || this?.config?.encryption?.secret)
+
+                        //     // check if encryption mode requires iv or sha
+                        //     if (this?.config?.encryption?.mode?.includes('-cbc')) {
+                        //         values.push(encrypt[col]?.iv || encryption?.iv || this?.config?.encryption?.iv)
+                        //     }
+
+                        //     values.push(encrypt[col]?.sha || encryption?.sha || this?.config?.encryption?.sha || 512)
+
+                        // }
 
                         rowSql += ')'
 
@@ -452,6 +476,30 @@ class UnSQL {
                     return rowSql
                 }).join(', ')
                 values.push(data)
+
+                if (Object.keys(where).length) {
+                    sql += 'WHERE '
+                    const whereResp = prepWhere({ alias, where, junction, encryption, ctx: this })
+                    sql += whereResp.sql
+                    values.push(...whereResp.values)
+                }
+
+                if (groupBy.length) {
+                    sql += ' GROUP BY '
+                    sql += groupBy.map(gb => {
+                        values.push(gb.includes('.') ? gb : ((alias && (alias + '.')) + gb))
+                        return '??'
+                    }).join(', ')
+                }
+
+                if (having.length) {
+                    sql += ' HAVING '
+                    const havingResp = prepWhere({ alias, where: having, junction, encryption, ctx: this })
+                    sql += havingResp.sql
+                    values.push(...havingResp.values)
+                }
+
+
                 break
             }
 
@@ -461,15 +509,6 @@ class UnSQL {
 
         }
 
-        if (whereLength) {
-            sql += 'WHERE '
-            // @ts-ignore
-            const whereResp = prepWhere({ where, ctx: this })
-            sql += whereResp.sql
-            values.push(...whereResp.values)
-        }
-
-        sql += ';'
         const conn = await (this?.config?.pool?.getConnection() || this?.config?.connection)
 
         try {

@@ -188,7 +188,7 @@ Each of the properties / parameters of findObj are explained below:
 
 #### alias
 
-**alias** is a very important parameter throughout UnSQL, it accepts string as value that is used as a local reference to the parent table name. It is context sensitive, meaning, it always refers to the immediate parent table (Here it refers to the parent model class). It automatically gets associated (unless explicitly mentioned) to all the column names in the context. This parameter plays an important role when dealing with sub-queries (via. json / array / find wrapper methods in 'select' parameter or while using 'join' association or sub-query in 'where' clause).
+**alias** is a very important parameter throughout UnSQL, it accepts string as value that is used as a local reference to the parent table name. It is context sensitive, meaning, it always refers to the immediate parent table (Here it refers to the parent model class). It automatically gets associated (unless explicitly mentioned) to all the column names in the context. This parameter plays an important role when dealing with sub-queries (via. `json` / `array` / `from` wrapper methods in `select` property or while using `join` association or sub-query in `where` property).
 
 ```javascript
 const found = await User.find({ alias: 't1' })
@@ -228,7 +228,7 @@ const found = await User.find(findObj)
 const findObj = {
     join: [
         {
-            select: undefined,
+            select: ['*'],
             table: 'name_of_the_associating_table',
             type: undefined,
             alias: undefined,
@@ -451,6 +451,43 @@ const result = await User.find({
 > **Please note:**
 > 1. Few **'warnings'** like *'version configuration mismatch'* or *'invalid value'* or *'missing required field'* errors will still be logged in the console even if the debug mode is off to facilitate faster resolving of the issue.
 > 2. Irrespective of the debug mode is enabled or disabled, if the query fails, the error message / object will be available in the `'error'` parameter of the **'result'** object of the method along with the `'success'` acknowledgement keyword being set to `false`.
+
+### How to save / insert / update data into database using UnSQL?
+
+`save` is a static, asynchronous method. It dynamically generates valid SQL query, that 'insert' or 'update' data into the database table. `save` method takes in an object as its parameter with various properties as mentioned below:
+
+```javascript
+const result = await User.save({
+    alias: undefined,
+    data,
+    where: {},
+    groupBy: [],
+    having: [],
+    upsert: {},
+    encrypt: {},
+    encryption: undefined,
+    debug: false
+})
+```
+Below are the explanations for each of these properties:
+
+**alias** (optional) same as in `find` method (See [alias](#alias) for details) 
+
+**data** (mandatory) is the actual data that needs to be 'inserted' or 'updated' into the database table. It accepts single object in `key: value` format or an array of such objects (for inserting multiple records at once)
+
+**where** (optional) is used to 'update' the data inside the database table by filtering the record based on the condition(s) in this property (See [where](#where) for more details)
+
+**groupBy** (optional) same as explained above (See [groupBy](#groupby) for details)
+
+**having** (optional) similar to `where` property `having` also helps in 'updating' the record in the database (See [having](#having) for more details)
+
+**upsert** (optional) is an important property if the functionality to combine the 'update' on duplicate key found with 'insert' into the database table is needed. It accepts single object (without the *conflicting* `primary key`) as its value. This object is invoked if and only if the `data` being inserted has a `primary key` that already exists inside the database, in such a case, the object provided as `upsert` will be used to 'update' the existing data fields
+
+**encrypt** (optional) is a very important property, as it holds information regarding the `columns` that needs to be encrypted and stored in the database. It accepts object in `key: value` format where each `key` represents the `column name` and further accepts an object with three as key(s) `secret`, `iv` and `sha`
+
+**encryption** (optional) holds local level configurations such as `mode`, `secret`, `iv` and `sha` that can be used for encrypting columns from the `data` property, that are specified inside the `encrypt` property (See [encryption](#encryption) for more details)
+
+**debug** (optional) enables various 'debug' modes (See [debug](#debug) for more details)
 
 ### What are wrapper methods in UnSQL?
 
