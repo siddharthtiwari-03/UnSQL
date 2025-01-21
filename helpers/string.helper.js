@@ -1,7 +1,7 @@
 
 const { colors } = require("./console.helper")
 const { checkConstants, dataTypes } = require("./constants.helper")
-const { prepareName } = require("./name.helper")
+const { prepName } = require("./name.helper")
 const { prepPlaceholder } = require("./placeholder.helper")
 
 /**
@@ -78,7 +78,7 @@ const prepString = ({ alias, val, encryption = undefined, ctx = undefined }) => 
     sql += placeholder
     // patch value to values array (conditional)
     if (!checkConstants(value)) {
-        const name = prepareName({ alias, value })
+        const name = prepName({ alias, value })
         values.push(name)
     }
 

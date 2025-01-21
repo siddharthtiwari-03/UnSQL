@@ -62,7 +62,7 @@ class UnSQL {
      * 
      * @param {Array<string>} [findParam.groupBy] (optional) allows to group result based on single (or list of) column(s)
      * 
-     * @param {import("./defs/types.def").havingObj} [findParam.having] (optional) allows to perform comparison on the group of records, accepts array of aggregate method wrappers viz. {sum:...}, {avg:...}, {min:...}, {max:...} etc
+     * @param {import("./defs/types.def").havingObj} [findParam.having] (optional) allows to perform comparison on the group of records, accepts nested conditions as object along with aggregate method wrappers viz. {sum:...}, {avg:...}, {min:...}, {max:...} etc
      * 
      * @param {{[column:string]:('asc'|'desc')}} [findParam.orderBy] (optional) allows to order result based on single (or list of) column(s)
      * 
@@ -78,7 +78,7 @@ class UnSQL {
      * 
      * @memberof UnSQL
      */
-    static async find({ alias = undefined, select = ['*'], join = [], where = {}, junction = 'and', groupBy = [], having = [], orderBy = {}, limit = undefined, offset = undefined, encryption = {}, debug = false } = {}) {
+    static async find({ alias = undefined, select = ['*'], join = [], where = {}, junction = 'and', groupBy = [], having = {}, orderBy = {}, limit = undefined, offset = undefined, encryption = {}, debug = false } = {}) {
 
         if (!this.config && ('TABLE_NAME' in this) && ('POOL' in this)) {
             console.warn(colors.yellow, 'UnSQL has detected you are using v1.x model class configuration with v2.x If you wish to continue with v1.x kindly switch the unsql import to "unsql/legacy"', colors.reset)
@@ -109,7 +109,6 @@ class UnSQL {
         }
 
         sql += 'SELECT '
-
 
         try {
 
@@ -148,7 +147,7 @@ class UnSQL {
                 }).join(', ')
             }
 
-            if (having.length) {
+            if (Object.keys(having).length) {
                 sql += ' HAVING '
                 const havingResp = prepWhere({ alias, where: having, junction, encryption, ctx: this })
                 sql += havingResp.sql
@@ -223,7 +222,7 @@ class UnSQL {
      * 
      * @param {Array<string>} [saveParam.groupBy] (optional) allows to group result based on single (or list of) column(s)
      * 
-     * @param {import("./defs/types.def").havingObj} [saveParam.having] (optional) allows to perform comparison on the group of records, accepts array of aggregate method wrappers viz. {sum:...}, {avg:...}, {min:...}, {max:...} etc
+     * @param {import("./defs/types.def").havingObj} [saveParam.having] (optional) allows to perform comparison on the group of records, accepts nested conditions as object along with aggregate method wrappers viz. {sum:...}, {avg:...}, {min:...}, {max:...} etc
      * 
      * @param {object} [saveParam.upsert] (optional) object data to be updated in case of 'duplicate key entry' found in the database
      * 
@@ -237,14 +236,14 @@ class UnSQL {
      * 
      * @memberof UnSQL
      */
-    static async save({ alias = undefined, data = [], where = {}, junction = 'and', groupBy = [], having = [], upsert = {}, encrypt = {}, encryption = {}, debug = false }) {
+    static async save({ alias = undefined, data = [], where = {}, junction = 'and', groupBy = [], having = {}, upsert = {}, encrypt = {}, encryption = {}, debug = false }) {
 
         if (!this.config && ('TABLE_NAME' in this) && ('POOL' in this)) {
             console.warn(colors.yellow, 'UnSQL has detected you are using v1.x model class configuration with v2.x If you wish to continue with v1.x kindly switch the unsql import to "unsql/legacy"', colors.reset)
             return { success: false, error: 'UnSQL has detected you are using v1.x model class configuration with v2.x If you wish to continue with v1.x kindly switch the unsql import to "unsql/legacy"' }
         }
 
-        if (Array.isArray(data) && (Object.keys(where).length || having.length || groupBy.length)) {
+        if (Array.isArray(data) && (Object.keys(where).length || Object.keys(having).length || groupBy.length)) {
             console.warn(colors.yellow, 'Invalid combination to update multiple records', colors.reset)
             return { success: false, error: 'Invalid combination to update multiple records, only single object inside "data" property can be passed while updating records, array of objects detected' }
         }
@@ -492,13 +491,12 @@ class UnSQL {
                     }).join(', ')
                 }
 
-                if (having.length) {
+                if (Object.keys(having).length) {
                     sql += ' HAVING '
                     const havingResp = prepWhere({ alias, where: having, junction, encryption, ctx: this })
                     sql += havingResp.sql
                     values.push(...havingResp.values)
                 }
-
 
                 break
             }
@@ -549,6 +547,12 @@ class UnSQL {
      * 
      * @param {{[key:string]:*}} [deleteParam.where] (optional) used to filter records to be updated
      * 
+     * @param {'and'|'or'} [deleteParam.junction] (optional) defines default behavior that is used to join different 'child properties' inside 'where' property, default value is 'and'
+     * 
+     * @param {Array<string>} [deleteParam.groupBy] (optional) allows to group result based on single (or list of) column(s)
+     * 
+     * @param {import("./defs/types.def").havingObj} [deleteParam.having] (optional) allows to perform comparison on the group of records, accepts nested conditions as object along with aggregate method wrappers viz. {sum:...}, {avg:...}, {min:...}, {max:...} etc
+     * 
      * @param {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512) }} [deleteParam.encryption] (optional) defines query level encryption configurations
      * 
      * @param {boolean|'query'|'error'} [deleteParam.debug] (optional) enables various debug mode
@@ -557,7 +561,7 @@ class UnSQL {
      * 
      * @memberof UnSQL
      */
-    static async delete({ alias = undefined, where = {}, debug = false, encryption = undefined } = {}) {
+    static async delete({ alias = undefined, where = {}, junction = 'and', groupBy = [], having = {}, debug = false, encryption = undefined } = {}) {
 
         if (!this.config && ('TABLE_NAME' in this) && ('POOL' in this)) {
             console.warn(colors.yellow, 'UnSQL has detected you are using v1.x model class configuration with v2.x If you wish to continue with v1.x kindly switch the unsql import to "unsql/legacy"', colors.reset)
@@ -596,13 +600,26 @@ class UnSQL {
             values.push(alias)
         }
 
-
         if (Object.keys(where).length) {
             sql += ' WHERE '
-
-            const whereResp = prepWhere({ alias, where, encryption, ctx: this })
+            const whereResp = prepWhere({ alias, where, junction, encryption, ctx: this })
             sql += whereResp.sql
             values.push(...whereResp.values)
+        }
+
+        if (groupBy.length) {
+            sql += ' GROUP BY '
+            sql += groupBy.map(gb => {
+                values.push(gb.includes('.') ? gb : ((alias && (alias + '.')) + gb))
+                return '??'
+            }).join(', ')
+        }
+
+        if (Object.keys(having).length) {
+            sql += ' HAVING '
+            const havingResp = prepWhere({ alias, where: having, junction, encryption, ctx: this })
+            sql += havingResp.sql
+            values.push(...havingResp.values)
         }
 
         const conn = await (this?.config?.pool?.getConnection() || this?.config?.connection)

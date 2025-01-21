@@ -9,7 +9,7 @@ const prepPlaceholder = value => {
     if (value.toString().includes('*')) {
         return value
     }
-    if (checkConstants(value)) {
+    else if (checkConstants(value)) {
         return constantFunctions[value] + '()'
     }
     else if (Date.parse(value) || parseInt(value) || parseFloat(value) || typeof value === 'boolean' || value?.toString()?.startsWith('#')) {

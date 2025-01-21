@@ -63,7 +63,7 @@
  * 
  * @prop {string|number|object} avg.value accepts a number / string (column name) / object wrapper / conditional object as its value
  * 
- * @prop {boolean} [sum.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
+ * @prop {boolean} [avg.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
  * 
  * @prop {string} avg.as
  */
@@ -76,7 +76,7 @@
  * 
  * @prop {string|number|object} avg.value accepts a number / string (column name) / object wrapper / conditional object as its value
  * 
- * @prop {boolean} [sum.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
+ * @prop {boolean} [avg.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
  * 
  * @prop {object} avg.compare accepts object with conditions to compare this aggregator method with
  */
@@ -497,7 +497,7 @@
 
 /**
  * having object definition
- * @typedef {Array<sumCompareAggregator|avgCompareAggregator>} havingObj
+ * @typedef {sumCompareAggregator|avgCompareAggregator|{and: Array}|{or: Array}|{[key:string]:*}} havingObj
  */
 
 // #######################################################################################################
