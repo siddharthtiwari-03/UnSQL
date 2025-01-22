@@ -318,7 +318,7 @@ class UnSQL {
 
                 // loop over each json object for values
                 for (let i = 0; i < data.length; i++) {
-
+                    console.log(colors.green, 'preparing insert statement for record no.:', colors.reset, i + 1)
 
                     const rows = []
                     for (let j = 0; j < insertColumns.length; j++) {
@@ -326,17 +326,16 @@ class UnSQL {
                         let rowSql = ''
 
                         if (!data[i][insertColumns[j]] || data[i][insertColumns[j]] === 'null' || !encrypt[insertColumns[j]]) {
-                            console.log(colors.bgGreen + `inside if block of save2 ${data[i][insertColumns[j]]} value` + colors.reset)
+                            // console.log(colors.bgGreen + `inside if block of save2 ${data[i][insertColumns[j]]} value` + colors.reset)
                             rowSql += '?'
                             values.push(data[i][insertColumns[j]] || null)
                             rows.push(rowSql)
                             continue
                         }
-                        console.log(colors.bgRed + `outside if block ${data[i][insertColumns[j]]} value` + colors.reset)
+                        // console.log(colors.bgRed + `outside if block ${data[i][insertColumns[j]]} value` + colors.reset)
                         rowSql += 'AES_ENCRYPT(?'
                         values.push(data[i][insertColumns[j]] || null)
 
-                        // testing
                         if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && this?.config?.encryption?.mode?.includes('-cbc'))) {
                             rowSql += ', ?'
                         }
@@ -350,40 +349,6 @@ class UnSQL {
                         }
 
                         values.push(encrypt[insertColumns[j]]?.sha || encryption?.sha || this?.config?.encryption?.sha || 512)
-                        // testing
-
-                        // handle if local query encryption mode is set
-                        // if (encryption?.mode && (encrypt[insertColumns[j]]?.secret || encryption?.secret || this?.config?.encryption?.secret)) {
-
-                        //     if (encryption?.mode?.includes('-cbc')) rowSql += ', ?'
-                        //     rowSql += ', UNHEX(SHA2(?, ?))'
-
-                        //     values.push(encrypt[insertColumns[j]]?.secret || encryption?.secret || this?.config?.encryption?.secret)
-
-                        //     // check if encryption mode requires iv or sha
-                        //     if (encryption?.mode?.includes('-cbc')) {
-                        //         values.push(encrypt[insertColumns[j]]?.iv || encryption?.iv || this?.config?.encryption?.iv)
-                        //     }
-                        //     values.push(encrypt[insertColumns[j]]?.sha || encryption?.sha || this?.config?.encryption?.sha || 512)
-
-                        // }
-                        // // handle if global encryption mode is set
-                        // else if (this?.config?.encryption?.mode && (encrypt[insertColumns[j]]?.secret || encryption?.secret || this?.config?.encryption?.secret)) {
-
-                        //     if (this?.config?.encryption?.mode?.includes('-cbc')) rowSql += ', ?'
-
-                        //     rowSql += ', UNHEX(SHA2(?, ?))'
-
-                        //     values.push(encrypt[insertColumns[j]]?.secret || encryption?.secret || this?.config?.encryption?.secret)
-
-                        //     // check if encryption mode requires iv or sha
-                        //     if (this?.config?.encryption?.mode?.includes('-cbc')) {
-                        //         values.push(encrypt[insertColumns[j]]?.iv || encryption?.iv || this?.config?.encryption?.iv)
-                        //     }
-
-                        //     values.push(encrypt[insertColumns[j]]?.sha || encryption?.sha || this?.config?.encryption?.sha || 512)
-
-                        // }
 
                         rowSql += ')'
 
