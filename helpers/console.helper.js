@@ -34,7 +34,7 @@ const colors = {
 
 
 const handleQueryDebug = (debug, sql, values, prepared) => {
-    if (debug === true || debug == 'query') {
+    if (debug === true || debug === 'benchmark-query' || debug == 'query') {
         console.log('\n')
         console.log(colors.blue, '******************************************************************', colors.reset)
         console.log(colors.cyan, '                       UnSQL Debug Query Begins', colors.reset)
@@ -57,7 +57,7 @@ const handleQueryDebug = (debug, sql, values, prepared) => {
 
 
 const handleError = (debug, error) => {
-    if (debug === true || debug == 'error') {
+    if (debug === true || debug === 'benchmark-error' || debug == 'error') {
         console.log('\n')
         console.log(colors.red, '******************************************************************', colors.reset)
         console.log(colors.yellow, '                       UnSQL Debug Error Starts', colors.reset)

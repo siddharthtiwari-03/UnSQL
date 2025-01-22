@@ -69,7 +69,7 @@ class UnSQL {
      * 
      * @param {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512)}} [findParam.encryption] (optional) defines query level encryption configurations
      * 
-     * @param {'query'|'error'|'benchmark'|'benchmark-query'|boolean} [findParam.debug] (optional) enables different debug modes
+     * @param {'query'|'error'|'benchmark'|'benchmark-query'|'benchmark-error'|boolean} [findParam.debug] (optional) enables different debug modes
      * 
      * @returns {Promise<{success:boolean, error?:object, result?:object}>} returns Promise that always resolves with two parameters: success and either error or result depending on the condition if query ran successfully or failed
      * 
@@ -172,7 +172,7 @@ class UnSQL {
 
             try {
                 await conn.beginTransaction()
-                if (debug === 'benchmark' || debug === 'benchmark-query' || debug === true) console.time(colors.green + `UnSQL fetched records in` + colors.reset)
+                if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.time(colors.green + `UnSQL fetched records in` + colors.reset)
 
                 const prepared = conn.format(sql, values)
 
@@ -182,7 +182,7 @@ class UnSQL {
 
                 await conn.commit()
                 if (debug === true) console.log(colors.green, 'Find query executed successfully!', colors.reset)
-                if (debug === 'benchmark' || debug === 'benchmark-query' || debug === true) console.timeEnd(colors.green + `UnSQL fetched records in` + colors.reset)
+                if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.timeEnd(colors.green + `UnSQL fetched records in` + colors.reset)
                 if (debug === true) console.log('\n')
                 return { success: true, result: (encryption?.mode || this?.config?.encryption?.mode ? rows[1] : rows) }
 
@@ -228,7 +228,7 @@ class UnSQL {
      * 
      * @param {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512) }} [saveParam.encryption] (optional) defines query level encryption configurations
      * 
-     * @param {boolean|'query'|'benchmark'|'benchmark-query'|'error'} [saveParam.debug] (optional) enables various debug mode
+     * @param {'query'|'error'|'benchmark'|'benchmark-query'|'benchmark-error'|boolean} [saveParam.debug] (optional) enables various debug mode
      * 
      * @returns {Promise<{success:boolean, error?:object, result?:object}>} returns Promise that always resolves with two parameters: success and either error or result depending on the condition if query ran successfully or failed
      * 
@@ -473,7 +473,7 @@ class UnSQL {
 
         try {
             await conn.beginTransaction()
-            if (debug === 'benchmark' || debug === 'benchmark-query' || debug === true) console.time(colors.green + `UnSQL ${Object.keys(where).length || Object.keys(having).length ? 'updated' : 'inserted'} ${data.length} records in` + colors.reset)
+            if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.time(colors.green + `UnSQL ${Object.keys(where).length || Object.keys(having).length ? 'updated' : 'inserted'} ${data.length} records in` + colors.reset)
             const prepared = conn.format(sql, values)
 
             handleQueryDebug(debug, sql, values, prepared)
@@ -481,7 +481,7 @@ class UnSQL {
             const [result, row, err] = await conn.query(sql, values)
 
             await conn.commit()
-            if (debug === 'benchmark' || debug === 'benchmark-query' || debug === true) console.timeEnd(colors.green + `UnSQL ${Object.keys(where).length || Object.keys(having).length ? 'updated' : 'inserted'} ${data.length} records in` + colors.reset)
+            if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.timeEnd(colors.green + `UnSQL ${Object.keys(where).length || Object.keys(having).length ? 'updated' : 'inserted'} ${data.length} records in` + colors.reset)
             return { success: true, ...(encryption?.mode || this?.config?.encryption?.mode ? result[1] : result) }
 
         } catch (error) {
@@ -518,7 +518,7 @@ class UnSQL {
      * 
      * @param {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512) }} [deleteParam.encryption] (optional) defines query level encryption configurations
      * 
-     * @param {boolean|'query'|'benchmark'|'benchmark-query'|'error'} [deleteParam.debug] (optional) enables various debug mode
+     * @param {'query'|'error'|'benchmark'|'benchmark-query'|'benchmark-error'|boolean} [deleteParam.debug] (optional) enables various debug mode
      * 
      * @returns {Promise<{success:boolean, error?:object, result?:object}>} returns Promise that always resolves with two parameters: success and either error or result depending on the condition if query ran successfully or failed
      * 
@@ -590,7 +590,7 @@ class UnSQL {
 
         try {
             await conn.beginTransaction()
-            if (debug === 'benchmark' || debug === 'benchmark-query' || debug === true) console.time(colors.green + `UnSQL removed records in` + colors.reset)
+            if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.time(colors.green + `UnSQL removed records in` + colors.reset)
 
             const prepared = conn.format(sql, values)
 
@@ -601,7 +601,7 @@ class UnSQL {
             console.log('result', result)
 
             await conn.commit()
-            if (debug === 'benchmark' || debug === 'benchmark-query' || debug === true) console.timeEnd(colors.green + `UnSQL removed records in` + colors.reset)
+            if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.timeEnd(colors.green + `UnSQL removed records in` + colors.reset)
             return { success: true, ...result }
 
         } catch (error) {
