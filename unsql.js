@@ -2,9 +2,6 @@
 const { colors, handleError, handleQueryDebug } = require("./helpers/console.helper")
 const { prepOrders } = require("./helpers/order.helper")
 const { prepSelect, prepWhere, prepJoin } = require("./helpers/main.helper")
-// @ts-ignore
-const { config } = require('./defs/types.def')
-
 
 /**
  * UnSQL is JavaScript based library to interact with structured databases (MySQL). It provides clean and easy interface for interaction for faster and smooth developers' experience.
@@ -20,7 +17,7 @@ class UnSQL {
 
     /**
      * config is a static property object, used to declare configurations relating to a model class
-     * @type {config} (required) accepts configurations related to model class as its properties
+     * @type {import("./defs/types.def").config} (required) accepts configurations related to model class as its properties
      * 
      * @static
      * @public
@@ -289,7 +286,7 @@ class UnSQL {
 
             // handle if data is array of json object(s)
             case Array.isArray(data): {
-
+                console.info(colors.cyan, (data.length > 1000 ? 'Large dataset detected, p' : 'P') + 'lease wait while UnSQL prepares query for each record, this might take few seconds...', colors.reset)
                 const insertColumns = []
 
                 // loop over each json object for columns
@@ -318,7 +315,7 @@ class UnSQL {
 
                 // loop over each json object for values
                 for (let i = 0; i < data.length; i++) {
-                    console.log(colors.cyan, 'preparing query for record:', colors.reset, i + 1)
+                    // console.log(colors.cyan, 'preparing query for record:', colors.reset, i + 1)
 
                     const rows = []
                     for (let j = 0; j < insertColumns.length; j++) {
@@ -362,6 +359,7 @@ class UnSQL {
 
                 // loop for values ended
                 values.push(...insertValues)
+                console.info(colors.cyan, `Query generated, inserting records`, colors.reset)
                 break
             }
 
@@ -474,7 +472,7 @@ class UnSQL {
 
         try {
             await conn.beginTransaction()
-
+            console.time(colors.green + `UnSQL ${Object.keys(where).length || Object.keys(having).length ? 'updated' : 'inserted'} ${data.length} records in` + colors.reset)
             const prepared = conn.format(sql, values)
 
             handleQueryDebug(debug, sql, values, prepared)
@@ -482,6 +480,7 @@ class UnSQL {
             const [result, row, err] = await conn.query(sql, values)
 
             await conn.commit()
+            console.timeEnd(colors.green + `UnSQL ${Object.keys(where).length || Object.keys(having).length ? 'updated' : 'inserted'} ${data.length} records in` + colors.reset)
             return { success: true, ...(encryption?.mode || this?.config?.encryption?.mode ? result[1] : result) }
 
         } catch (error) {
