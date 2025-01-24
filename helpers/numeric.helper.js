@@ -40,7 +40,7 @@ const prepNumeric = ({ alias, val, encryption, ctx }) => {
     const values = []
     let sql = ''
 
-    const { value, decimals, mod, sub, add, multiplyBy, divideBy, power, cast, decrypt, as } = val
+    const { value, decimals=null, mod=null, sub=0, add=0, multiplyBy=null, divideBy=null, power=null, cast=null, decrypt=null, as=null } = val
 
     if (decimals === 'ceil') sql += 'CEIL('
     else if (decimals === 'floor') sql += 'FLOOR('

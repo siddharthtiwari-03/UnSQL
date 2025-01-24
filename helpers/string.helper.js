@@ -38,7 +38,7 @@ const prepString = ({ alias, val, encryption = undefined, ctx = undefined }) => 
 
     console.group('prep string invoked')
 
-    const { value, replace, reverse, textCase, padding, substr, trim, cast, decrypt, as } = val
+    const { value, replace = null, reverse = false, textCase = null, padding = { }, substr = null, trim = false, cast = null, decrypt = null, as = null } = val
 
     let sql = ''
     const values = []

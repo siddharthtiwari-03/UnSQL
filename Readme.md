@@ -4,7 +4,7 @@ UnSQL is an open source library, written in JavaScript, that provides class base
 
 ## Breaking Changes
 
-Beyond the version v2+ backward compatibility has been dropped, from the default import, in favour of security and features. For projects still running on version v1.x we recommend switching all the import/require of `'unsql'` in your existing `model` classes to legacy flag `unsql/legacy`
+Beyond the version v2+ backward compatibility has been dropped, from the default import, in favour of security, features and overall interface. For projects still running on version v1.x it is recommend to switch all the `import` / `require` of `'unsql'` in your existing `model` classes to legacy flag `'unsql/legacy'`
 
 ## What's New?
 
@@ -28,7 +28,7 @@ With the release of v2.0 UnSQL has been completely re-written with a even better
 - Graceful error handling and transaction rollbacks
 - Returns result as JSON object
 - Try-Catch block not required
-- JSDoc type compatibile for type checking and code suggestion
+- JSDoc type compatible for type checking and code suggestion
 - Three built-in debug modes
 - Built-in AES encryption and decryption methods to support multiple modes (ECB / CBC)
 
@@ -80,7 +80,7 @@ Below is the example for a model class using both CommonJS and ES6 module. Here,
 const UnSQL = require('unsql')
 
 // get connection pool from your mysql provider service
-const pool = require('path_to_your_mysql_service')
+const pool = require('path/to/your/mysql/service')
 
 /**
  * @class User
@@ -108,7 +108,7 @@ module.exports = { User }
 import UnSQL from 'unsql'
 
 // get connection pool from your mysql provider service
-import pool from 'path_to_your_mysql_service'
+import pool from 'path/to/your/mysql/service'
 
 /**
  * @class User
@@ -533,18 +533,21 @@ Below are the explanations for each of these properties:
 
 **UnSQL** provides various *built-in* methods to interact with data and perform specific tasks, each of these wrapper methods belong a certain *type*. All of the wrapper methods have object like interface (`key: value` pair) to interact with them, where `key` can be any one of the specially reserved keywords that represents its respective wrapper method. Below is the list of wrapper methods along with their respective keywords available inside **UnSQL**:
 
-| Keyword | Wrapper Type | Description                                                                                      |
-| ------- | ------------ | ------------------------------------------------------------------------------------------------ |
-| `str`   | string       | This method is used to perform string value related operations                                   |
-| `num`   | numeric      | This method is used to perform numeric value related operations                                  |
-| `date`  | date         | This method is used to perform date value related operations                                     |
-| `and`   | junction     | This method is used to perform junction override inside the `where` and (or) `having` parameters |
-| `or`    | junction     | This method is used to perform junction override inside the `where` and (or) `having` parameters |
-| `sum`   | aggregate    | This method is used to perform 'total' of values                                                 |
-| `avg`   | aggregate    | This method is used to perform 'average' of values                                               |
-| `count` | aggregate    | This method is used to perform 'count' operation on provided values                              |
-| `min`   | aggregate    | This method is used to determine 'lowest' value among the provided values                        |
-| `max`   | aggregate    | This method is used to determine 'highest' value among the provided values                       |
+| Keyword | Wrapper Type | Description                                                                                   |
+| ------- | ------------ | --------------------------------------------------------------------------------------------- |
+| `str`   | string       | used to perform string value related operations                                               |
+| `num`   | numeric      | used to perform numeric value related operations                                              |
+| `date`  | date         | used to perform date value related operations                                                 |
+| `and`   | junction     | used to perform junction override inside the `where` and (or) `having` parameters             |
+| `or`    | junction     | used to perform junction override inside the `where` and (or) `having` parameters             |
+| `sum`   | aggregate    | used to perform 'total' of values                                                             |
+| `avg`   | aggregate    | used to perform 'average' of values                                                           |
+| `count` | aggregate    | used to perform 'count' operation on provided values                                          |
+| `min`   | aggregate    | used to determine 'lowest' value among the provided values                                    |
+| `max`   | aggregate    | used to determine 'highest' value among the provided values                                   |
+| `json`  | sub-query    | used to patch a sub-query, to create a json object at the position it is invoked              |
+| `array` | sub-query    | used to patch a sub-query, to create a json array at the position it is invoked               |
+| `from`  | sub-query    | used to patch a sub-query, to fetch a column from another table at the position it is invoked |
 
 > **Please note:** 
 > 1. *junction* type wrapper methods can only be used inside `where` and `having` parameters as they provide
@@ -555,7 +558,7 @@ All the aforementioned wrappers are explained below along with their interface:
 
 #### String wrapper
 
-**string wrapper** (keyword `str`) is used to perform string / text data related operations, it can be used inside `select`, `where`, `having` parameters as a `value`. Below is the interface for this wrapper method along with the default values for each of its properties:
+**String wrapper** (keyword `str`) is used to perform string / text data related operations, it can be used / nested inside `select`, `where`, `having` parameters as a `value`. Below is the interface for this wrapper method along with the default values for each of its properties:
 
 ```javascript
 const result = await User.find({
@@ -563,29 +566,29 @@ const result = await User.find({
         { str: {
                 value: 'string_value_goes_here',
                 replace: {
-                    target: undefined,
-                    with: undefined
+                    target: null,
+                    with: null
                 }, 
-                reverse: undefined,
-                textCase: undefined, 
+                reverse: false,
+                textCase: null, 
                 padding: {
                     left: {
-                        length: undefined,
-                        pattern: undefined
+                        length: null,
+                        pattern: null
                     },
                     right: {
-                        length: undefined,
-                        pattern: undefined
+                        length: null,
+                        pattern: null
                     }
                 },
                 substr: {
                     start: 0,
-                    length: undefined
+                    length: null
                 },
-                trim: undefined,
-                cast: undefined,
-                decrypt: undefined,
-                as: undefined
+                trim: false,
+                cast: null,
+                decrypt: null,
+                as: null
             }
         }
     ]
@@ -594,7 +597,7 @@ const result = await User.find({
 
 Each of these properties of **string wrapper** method are explained below:
 
-**value** (mandatory) accepts column name, static string value and all the operations are performed on this value only
+**value** (mandatory) accepts column name or static string value. All the operations are performed on this value only
 
 **replace** (optional) accepts object as its value in `key: value` pair format, where `key` can be `target` | `with`, and `value` for both the keys can either be a column name or static string value
 - `target` is used to identify the string value that needs to be replaced,
@@ -617,6 +620,395 @@ Each of these properties of **string wrapper** method are explained below:
 > **Please note:** `mode` of encryption can only be set inside the `encryption` configuration of either **findObj** or `model` class and not inside `decrypt`
 
 **as** (optional) is used to rename the column name or provide a local reference name to the `value` property
+
+#### Numeric wrapper
+
+**Numeric wrapper** (keyword `num`) is used to perform mathematical operations on the numeric data, it can be used / nested inside `select`, `where`, `having` clause as a `value`. All the operations are executed sequentially, in order that follows **BODMAS** rule. Below is the interface for this wrapper method along with the default values for each of its properties:
+
+```javascript
+const result = await User.find({
+    select: [
+        { num: {
+            value: 'column containing number' || number,
+            decimal: null,
+            mod: null,
+            sub: 0,
+            add: 0,
+            multiplyBy: null,
+            divideBy: null,
+            power: null,
+            cast: null,
+            decrypt: null,
+            as: null
+            } 
+        }
+    ]
+})
+```
+
+Each of these properties of **numeric wrapper** method are explained below:
+
+**value** (mandatory) accepts column name or numeric value. All the operations are performed on this value only
+
+**decimal** (optional) accepts `'floor'` | `'ceil'` | `'round'` | number as value. It determines the behavior of decimal values or limits the no. of decimal values
+
+**mod** (optional) accepts column name or numeric value. Performs 'modulus' operation of this value on `value` property
+
+**sub** (optional) accepts column name or numeric value. Performs 'subtraction' of this value from `value` property
+
+**add** (optional) accepts column name or numeric value. Performs 'addition' of this value to `value` property
+
+**multiplyBy** (optional) accepts column name or numeric value. Performs 'multiplication' of `value` property by this value
+
+**divideBy** (optional) accepts column name or numeric value. Performs 'division' of `value` property by this value
+
+**power** (optional) accepts column name or numeric value. Applies this value as 'power' of `value` property
+
+**cast** (optional) used to 'convert' or 'cast' string from `value` property to the specified *type* / *format*. It accepts either of the values `'char'`  | `'nchar'` | `'date'` | `'dateTime'` | `'signed'` | `'unsigned'` | `'decimal'` | `'binary'`
+
+**decrypt** (optional) is used to define configuration(s) that will be used to 'decrypt' string in `value` property. It has three properties: `secret`, `iv` and `sha` (See [encryption](#encryption) for details on each of them). When any of these properties is set, it will override the encryption configurations set inside **findObj** and `model` class.
+
+> **Please note:** `mode` of encryption can only be set inside the `encryption` configuration of either **findObj** or `model` class and not inside `decrypt`
+
+**as** (optional) is used to rename the column name or provide a local reference name to the `value` property
+
+#### Date wrapper
+
+**Date wrapper** (keyword `date`) is used to perform date related operations on `value` property, it can be used nested inside `select`, `where`, `having` clause as a `value`. Below is the interface for this wrapper method along with the default values for each of its properties:
+
+```javascript
+const result = await User.find({
+    select: [
+        { date: {
+            value: 'column containing date' || date,
+            add: 0,
+            sub: 0,
+            fromPattern: null,
+            cast: null,
+            decrypt: null,
+            format: null,
+            as: null
+            } 
+        }
+    ]
+})
+```
+
+Each of these properties of **date wrapper** method are explained below:
+
+**value** (mandatory) accepts column name or date value. All the operations are performed on this value only
+
+**add** (optional) accepts number (representing 'days') or alpha numeric value (number with `date` | `time` unit). Performs 'addition' of this value to `value` property
+
+**sub** (optional) accepts number (representing 'days') or alpha numeric value (number with `date` | `time` unit). Performs 'subtraction' of this value from `value` property
+
+**fromPattern** (optional) accepts combination of `date` | `time` units arranged in a string pattern (see [date time units](#date-time-units)), used to identify `date` | `time` element(s) in `value` property, this pattern is then used to create `'date'` | `'time'` | `'datetime'`
+
+**cast** (optional) used to 'convert' or 'cast' string from `value` property to the specified *type* / *format*. It accepts either of the values `'char'`  | `'nchar'` | `'date'` | `'dateTime'` | `'signed'` | `'unsigned'` | `'decimal'` | `'binary'`
+
+**decrypt** (optional) is used to define configuration(s) that will be used to 'decrypt' string in `value` property. It has three properties: `secret`, `iv` and `sha` (See [encryption](#encryption) for details on each of them). When any of these properties is set, it will override the encryption configurations set inside **findObj** and `model` class.
+
+> **Please note:** `mode` of encryption can only be set inside the `encryption` configuration of either **findObj** or `model` class and not inside `decrypt`
+
+**format** (optional) is used to 'format' `date` in `value` property to match the specified pattern
+
+**as** (optional) is used to rename the column name or provide a local reference name to the `value` property
+
+#### And / Or wrapper
+
+**and* wrapper** (keyword `and`) | **or wrapper** (keyword `or`) both are similar in interface as both accepts array of objects. The only difference in the two is that **and** wrapper joins each immediate child condition using 'and' clause (junction) whereas, **or** wrapper joins each immediate child condition using 'or' clause (junction). Both can be used / nested inside `where` and `having` properties only and not (directly) in `select` property
+
+```javascript
+const result = await User.find({
+    where: { 
+        and: [
+            { userId: 55 },
+            { department: 'sales' }
+        ],
+        or: [
+            { userStatus: 0 },
+            { userStatus: 2 },
+        ]
+     }
+})
+```
+
+> **Explanation:**
+> In the above sample, `'userId'`, `'department'` and `'userStatus'` represents columns in `user` table. Here, 'conditions' to check `'userId'` and `'department'` (inside `and` array) will be using **'and'** clause whereas, the two 'conditions' to check `'userStatus'` (inside `or` array) will be connected using **'or'** clause
+> **Please note:** 
+> 1. `and` | `or` wrappers directly cannot be used inside `select` property however, they can be used in-directly withing `json` | `array` | `from` wrappers
+> 2. Since, `junction` is not provided hence conditions inside `and` and `or` clause will be using the default value `'and'` to connect with each other
+> 3. `and` and `or` clause can also be nested in any fashion as desired
+
+#### Sum wrapper
+
+**Sum wrapper** (keyword `sum`) is used to calculate 'sum' of a set (group) of records. This is and aggregate method hence it will be applied not to single but group of records. It can be used / nested only inside `select` and `having` parameters, and not with `where` clause as a `value`. Below is the interface for this wrapper method along with the default values for each of its properties:
+
+```javascript
+const result = await User.find({
+    select: [
+        { sum: {
+            value: 'salary'
+            as: 'totalSalary'
+            }
+        }
+    ],
+    groupBy: ['department'],
+    having: {
+        sum: { 
+            value: 'salary',
+            compare: {
+                gt: 5000
+            }
+         }
+    }
+})
+```
+
+> **Explanation:**
+> In the above sample, `'salary'` and `'department'` represents columns in `user` table. Here, inside `select` property, we are calculating sum of salaries, since we have used `groupBy` to group records using `'department'`, sum of salaries from each `'department'` will be calculated are returned with the local reference name `'totalSalary'`, then we are filtering to fetch all records only when 'totalSalary' is greater than 5000
+> **Please note:** 
+> 1. `compare` property is available when `sum` is used inside `having` and not available when it is being used inside `select` clause
+> 2. `as` property is available when this wrapper is used inside `select` and not available when it is being used inside `having` clause
+> 3. `value` can either accept either a column name or number value or an object (simple or nested) as its value
+
+#### Average wrapper
+
+**Average wrapper** (keyword `avg`) is used to calculate 'average' of a set (group) of records. This is and aggregate method hence it will be applied not to single but group of records. It can be used / nested only inside `select` and `having` parameters, and not with `where` clause as a `value`. Below is the interface for this wrapper method along with the default values for each of its properties:
+
+```javascript
+const result = await User.find({
+    select: [
+        { avg: {
+            value: 'salary'
+            as: 'averageSalary'
+            }
+        }
+    ],
+    groupBy: ['department'],
+    having: {
+        avg: { 
+            value: 'salary',
+            compare: {
+                gt: 5000
+            }
+         }
+    }
+})
+```
+
+> **Explanation:**
+> In the above sample, `'salary'` and `'department'` represents columns in `user` table. Here, inside `select` property, we are calculating average of salaries, since we have used `groupBy` to group records using `'department'`, average of salaries from each `'department'` will be calculated are returned with the local reference name `'averageSalary'`, then we are filtering to fetch all records only when 'averageSalary' is greater than 5000
+> **Please note:** 
+> 1. `compare` property is available when this wrapper is used inside `having` and not available when it is being used inside `select` clause
+> 2. `as` property is available when this wrapper is used inside `select` and not available when it is being used inside `having` clause
+> 3. `value` can either accept either a column name or number value or an object (simple or nested) as its value
+
+#### Minimum wrapper
+
+**Minimum wrapper** (keyword `min`) is used to calculate 'minimum' among a set (group) of records. This is and aggregate method hence it will be applied not to single but group of records. It can be used / nested only inside `select` and `having` parameters, and not with `where` clause as a `value`. Below is the interface for this wrapper method along with the default values for each of its properties:
+
+```javascript
+const result = await User.find({
+    select: [
+        { min: {
+            value: 'salary'
+            as: 'minSalary'
+            }
+        }
+    ],
+    groupBy: ['department'],
+    having: {
+        min: { 
+            value: 'salary',
+            compare: {
+                gt: 5000
+            }
+         }
+    }
+})
+```
+
+> **Explanation:**
+> In the above sample, `'salary'` and `'department'` represents columns in `user` table. Here, inside `select` property, we are calculating minimum of salaries, since we have used `groupBy` to group records using `'department'`, minimum salaries from each `'department'` will be calculated are returned with the local reference name `'minSalary'`, then we are filtering to fetch all records only when 'minSalary' is greater than 5000
+> **Please note:** 
+> 1. `compare` property is available when this wrapper is used inside `having` and not available when it is being used inside `select` clause
+> 2. `as` property is available when this wrapper is used inside `select` and not available when it is being used inside `having` clause
+> 3. `value` can either accept either a column name or number value or an object (simple or nested) as its value
+
+#### Maximum wrapper
+
+**Maximum wrapper** (keyword `max`) is used to calculate 'maximum' among a set (group) of records. This is and aggregate method hence it will be applied not to single but group of records. It can be used / nested only inside `select` and `having` parameters, and not with `where` clause as a `value`. Below is the interface for this wrapper method along with the default values for each of its properties:
+
+```javascript
+const result = await User.find({
+    select: [
+        { max: {
+            value: 'salary'
+            as: 'maxSalary'
+            }
+        }
+    ],
+    groupBy: ['department'],
+    having: {
+        max: { 
+            value: 'salary',
+            compare: {
+                gt: 5000
+            }
+         }
+    }
+})
+```
+
+> **Explanation:**
+> In the above sample, `'salary'` and `'department'` represents columns in `user` table. Here, inside `select` property, we are calculating maximum of salaries, since we have used `groupBy` to group records using `'department'`, maximum salaries from each `'department'` will be calculated are returned with the local reference name `'maxSalary'`, then we are filtering to fetch all records only when 'maxSalary' is greater than 5000
+> **Please note:** 
+> 1. `compare` property is available when this wrapper is used inside `having` and not available when it is being used inside `select` clause
+> 2. `as` property is available when this wrapper is used inside `select` and not available when it is being used inside `having` clause
+> 3. `value` can either accept either a column name or number value or an object (simple or nested) as its value
+
+#### Json wrapper
+
+**Json wrapper** (keyword `json`) is used to create 'json object' either directly or from another table (via. 'sub-query') by providing in `key: value` pair(s) to `value` property. It can be used / nested only inside `select` and `where` parameters as a `value`. Here `key` is always a static string and `value` can be anything from static string to a number or even a nested object. Below is the interface for this wrapper method along with the default values for each of its properties:
+
+```javascript
+const result = await User.find({
+    alias: 'u',
+    select: [
+        {
+            json: {
+                value: {},
+                table: null,
+                alias: null,
+                where: {}
+                as: 'json'
+            }
+        }
+    ]
+})
+```
+
+Each of the properties is explained below:
+
+**value** accepts an object `key: value` pair(s) as value. `key` being a static string, `value` can be either static string or a column or number or nested object
+
+**table** (optional) reference to the child table from which the columns needs to be fetched
+
+**alias** (optional) provides local reference to the child table, see [alias](#alias) for details
+
+**where** (optional) used to filter records, see [where](#where) for details
+
+**as** (optional) is used to rename the json object name, if not provided defaults to 'json'
+
+
+> **Please note:** 
+> 1. Using alias is always a good practice but, if the column names inside the two referenced tables are not ambiguous then alias can be excluded
+> 2. `as` property is available when this wrapper is used inside `having` and not available when it is being used inside `select` clause
+> 3. `value` can either accept either a column name or number value or an object (simple or nested) as its value
+
+#### Array wrapper
+
+**Array wrapper** (keyword `array`) is used to create 'json array' of values (string, number, json object) either directly or from another table (via. 'sub-query') by providing in. It can be used / nested only inside `select` clause as a `value`. This wrapper method is almost similar to `json` wrapper, only difference is that `json` is useful if only 1 object is required however, `array` wrapper is helpful when there are multiple child records that are required to be patched in a one-to-many relation. Below is the interface for this wrapper method along with the default values for each of its properties:
+
+```javascript
+const result = await User.find({
+    alias: 'u',
+    select: [
+        {
+            array: {
+                value: [] || {},
+                table: null,
+                alias:
+                where: {}
+                as: 'array'
+            }
+        }
+    ]
+})
+```
+
+Each of the properties is explained below:
+
+**value** accepts an array of values or an object in `key: value` pair format as value. `key` being a static string, `value` can be either static string or a column or number or nested object
+
+**table** (optional) reference to the child table from which the columns needs to be fetched
+
+**alias** (optional) provides local reference to the child table, see [alias](#alias) for details
+
+**where** (optional) used to filter records, see [where](#where) for details
+
+**as** (optional) is used to rename the json array name, if not provided defaults to 'array'
+
+
+> **Please note:** 
+> 1. Using alias is always a good practice but, if the column names inside the two referenced tables are not ambiguous then alias can be excluded
+
+#### From wrapper
+
+**From wrapper** (keyword `from`) is used to run 'sub-query' to fetch 'single' field from any specific record from another `table`. It can be used / nested only inside `select`, `where` and `having` clause as a `value`. This method is helpful to fetch 1 record in a one-to-one relation. Below is the interface for this wrapper method along with the default values for each of its properties:
+
+```javascript
+const result = await User.find({
+    alias: 'u',
+    select: [
+        {
+            from: {
+                select: ['*'],
+                table: 'table_name',
+                where: null, 
+                groupBy = [], 
+                having = [], 
+                orderBy = {}, 
+                limit = null, 
+                offset = null,
+                as: null
+            }
+        }
+    ]
+})
+```
+
+Each of the properties is explained below:
+
+**value** accepts an array of values or an object in `key: value` pair format as value. `key` being a static string, `value` can be either static string or a column or number or nested object
+
+**table** reference to the child table from which the columns needs to be fetched
+
+**alias** (optional) provides local reference to the child table, see [alias](#alias) for details
+
+**where** (optional) used to filter records, see [where](#where) for details
+
+**groupBy** (optional) used to group records, see [groupBy](#groupby) for details
+
+**having** (optional) used to filter records with aggregate wrapper methods support, see [having](#having) for details
+
+**orderBy** (optional) used to re-order records, see [orderBy](#orderby) for details
+
+**limit** (optional) used to limit no. of records, see [limit](#limit) for details
+
+**offset** (optional) used to change the starting index for the records to be fetched from, see [offset](#offset) for details
+
+**as** (optional) is used to rename the json array name, if not provided defaults to 'array'
+
+> **Please note:** This wrapper method is very important as it similar to actual `find` method inside `UnSQL`
+
+### What are comparators in UnSQL?
+
+**comparators** as the name suggests are used to compare two values. They have a 2 layer nested object (`key: value` pair format) like interface where the 'parent' key is compared with the child `value` based on the child `key` (comparator). UnSQL provides various types of comparators for different conditions as mentioned below:
+
+| key            | expression       | description                                                                                                                            |
+| -------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `eq`           | `=`              | compares if two values are equal                                                                                                       |
+| `notEq`        | `!=` or `<>`     | compares if two values are not equal                                                                                                   |
+| `in`           | `IN`             | checks if `parent` is available in a set of values (child `value`)                                                                     |
+| `notIn`        | `NOT IN`         | opposite of `in` checks if `parent` does not exists inside a set of values (child `value`)                                             |
+| `like`         | `LIKE '%?%'`     | performs a fuzzy equals to check if `parent` value characters exists (in same order) inside the child `value` at any position          |
+| `notLike`      | `NOT LIKE '%?%'` | performs a fuzzy equals to check if `parent` value characters does not exists (in same order) inside the child `value` at any position |
+| `startLike`    | `LIKE '?%'`      | performs a fuzzy equals to check if `parent` value characters exists (in same order) at the beginning of the child `value`             |
+| `notStartLike` | `NOT LIKE '?%'`  | performs a fuzzy equals to check if `parent` value characters does not exists (in same order) at the beginning of the child `value`    |
+| `endLike`      | `LIKE '%?'`      | performs a fuzzy equals to check if `parent` value characters exists (in same order) at the end of the child `value`                   |
+| `notEndLike`   | `NOT LIKE '%?'`  | performs a fuzzy equals to check if `parent` value characters does not exists (in same order) at the end of the child `value`          |
 
 ## Author
 
