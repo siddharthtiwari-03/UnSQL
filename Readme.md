@@ -1000,7 +1000,7 @@ Each of the properties is explained below:
 | key            | expression       | description                                                                                                                            |
 | -------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | `eq`           | `=`              | compares if two values are equal                                                                                                       |
-| `notEq`        | `!=` or `<>`     | compares if two values are not equal                                                                                                   |
+| `notEq`        | `!=`             | compares if two values are not equal                                                                                                   |
 | `in`           | `IN`             | checks if `parent` is available in a set of values (child `value`)                                                                     |
 | `notIn`        | `NOT IN`         | opposite of `in` checks if `parent` does not exists inside a set of values (child `value`)                                             |
 | `like`         | `LIKE '%?%'`     | performs a fuzzy equals to check if `parent` value characters exists (in same order) inside the child `value` at any position          |

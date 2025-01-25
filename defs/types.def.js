@@ -156,71 +156,57 @@
  */
 
 /**
- * bitAnd aggregate function
- * @typedef {object} bitAndAggregator
+ * and wrapper
+ * @typedef {object} andWrapper
  * 
- * @prop {object} bitAnd used to bitAnd the values
- * 
- * @prop {string|number|object} bitAnd.value accepts a number / string (column name) / object wrapper / conditional object as its value
- * 
- * @prop {string} bitAnd.as
+ * @prop {Array} and
  */
 
 /**
- * bitAnd aggregate function
- * @typedef {object} bitAndCompareAggregator
+ * or wrapper
+ * @typedef {object} orWrapper
  * 
- * @prop {object} bitAnd used to bitAnd the values
- * 
- * @prop {string|number|object} bitAnd.value accepts a number / string (column name) / object wrapper / conditional object as its value
- * 
- * @prop {object} bitAnd.compare accepts object with conditions to compare this aggregator method with
+ * @prop {Array} or
  */
 
 /**
- * bitOr aggregate function
- * @typedef {object} bitOrAggregator
+ * prepares conditional statement
+ * @typedef {object} whenThenCondition
  * 
- * @prop {object} bitOr used to bitOr the values
+ * @prop {boolean|string|number|sumCompareAggregator|avgCompareAggregator|countCompareAggregator|minCompareAggregator|maxCompareAggregator|andWrapper|orWrapper|{[key:string]:*}} whenThenCondition.when condition that needs to be checked
  * 
- * @prop {string|number|object} bitOr.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * @prop {string|number} whenThenCondition.then value that will be returned when condition is found true in the 'when' statement
+ */
+
+// * @prop {Array<{when:object,then:(string|number|object)}>} case.conditions
+
+/**
+ * switch case wrapper
+ * @typedef {object} switchWrapper
  * 
- * @prop {string} bitOr.as
+ * @prop {object} case
+ * 
+ * @prop {Array<whenThenCondition>} case.conditions array of conditions (object) containing 'when' and 'then' keys
+ * 
+ * @prop {string|number|object} case.else default value if none of the conditions are matched
+ * 
+ * @prop {string} case.as provides local reference name to the result of this switch case wrapper method
  */
 
 /**
- * bitOr aggregate function
- * @typedef {object} bitOrCompareAggregator
+ * if else condition wrapper
+ * @typedef {object} ifWrapper
  * 
- * @prop {object} bitOr used to bitOr the values
+ * @prop {object} if
  * 
- * @prop {string|number|object} bitOr.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * @prop {boolean|string|object} if.condition check this condition if it is true or false
  * 
- * @prop {object} bitOr.compare accepts object with conditions to compare this aggregator method with
+ * @prop {string|number|boolean|*} if.trueValue return this value if 'condition' is true
+ * 
+ * @prop {string|number|boolean|*} if.falseValue return this value if 'condition' is false
+ * 
+ * @prop {string} [if.as] provides local reference name to the result of this switch case wrapper method
  */
-
-/**
- * bitXor aggregate function
- * @typedef {object} bitXorAggregator
- * 
- * @prop {object} bitXor used to bitXor the values
- * 
- * @prop {string|number|object} bitXor.value accepts a number / string (column name) / object wrapper / conditional object as its value
- * 
- * @prop {string} bitXor.as
- */
-
-/**
- * bitXor aggregate function
- * @typedef {object} bitXorCompareAggregator
- * 
- * @prop {object} bitXor used to bitXor the values
- * 
- * @prop {string|number|object} bitXor.value accepts a number / string (column name) / object wrapper / conditional object as its value
- * 
- * @prop {object} bitXor.compare accepts object with conditions to compare this aggregator method with
- */
-
 
 // #######################################################################################################
 
@@ -489,7 +475,7 @@
 
 /**
  * Select object definition
- * @typedef {Array<Array<string>|boolean|number|string|stringWrapper|numericWrapper|dateWrapper|concatWrapper|jsonObjWrapper|jsonArrayWrapper|fromWrapper|sumAggregator|avgAggregator|minAggregator|maxAggregator|{[column:string]:string}} selectObj
+ * @typedef {Array<Array<string>|boolean|number|string|stringWrapper|numericWrapper|dateWrapper|concatWrapper|jsonObjWrapper|jsonArrayWrapper|fromWrapper|sumAggregator|avgAggregator|minAggregator|maxAggregator|switchWrapper|ifWrapper|{[column:string]:string}} selectObj
  * 
  * @description accepts different types of values inside parent array: a. column name as regular 'string' value, b. string value inside array ['string'] for string value that is not a column name, c. number and boolean directly and d. methodWrappers in object form like {str:...}, {num:...} etc
  * 

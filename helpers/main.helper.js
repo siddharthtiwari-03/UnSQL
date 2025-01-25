@@ -1,5 +1,5 @@
 const { colors } = require("./console.helper")
-const { checkConstants, dataTypes, constantFunctions, aggregateFunctions } = require("./constants.helper")
+const { checkConstants, dataTypes, aggregateFunctions } = require("./constants.helper")
 const { prepDate } = require("./date.helper")
 const { prepName } = require("./name.helper")
 const { prepPlaceholder } = require("./placeholder.helper")
@@ -38,6 +38,8 @@ const joinTypes = {
 
 /**
  * prepares select query using various 
+ * @function prepSelect
+ * 
  * @param {object} selectParam
  * 
  * @param {string} [selectParam.alias] (optional) local reference name of the table
@@ -97,6 +99,18 @@ const prepSelect = ({ alias, select = [], encryption = undefined, ctx = undefine
                     const resp = prepFrom({ val, encryption, ctx })
                     values.push(...resp.values)
                     return resp?.sql
+                }
+
+                case key === 'if': {
+                    const resp = prepIf({ alias, val, encryption, ctx })
+                    values.push(...resp.values)
+                    return resp.sql
+                }
+
+                case key === 'case': {
+                    const resp = prepCase({ alias, val, encryption, ctx })
+                    values.push(...resp.values)
+                    return resp.sql
                 }
 
             }
@@ -290,6 +304,25 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', encrypt
                 break
             }
 
+            case key === 'case': {
+
+                const resp = prepCase({ alias, val, encryption, ctx })
+                sql += resp.sql
+                values.push(...resp.values)
+                break
+            }
+
+            case key === 'if': {
+
+                console.log('val inside if', val)
+
+                const resp = prepIf({ alias, val, junction, encryption, ctx })
+
+                sql == resp.sql
+                values.push(...resp.values)
+                break
+            }
+
             case key in conditions: {
                 console.group(colors.green, 'key is in conditions', colors.reset)
 
@@ -303,24 +336,22 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', encrypt
 
                 sql += conditions[key]
 
-                if (typeof val === 'object') {
+                if (key === 'in') sql += '('
+                else if (key === 'like' || key === 'notLike' || key === 'endLike' || key === 'notEndLike') sql += 'CONCAT("%", '
 
+                if (typeof val === 'object') {
                     const resp = prepWhere({ alias, where: val, parent: key, junction, encryption, ctx })
                     sql += resp.sql
                     values.push(...resp.values)
-
-                    break
+                } else {
+                    const valPlaceholder = prepPlaceholder(val)
+                    const valName = prepName({ alias, value: val })
+                    sql += valPlaceholder
+                    if (!checkConstants(val)) values.push(valName)
                 }
 
-                const valPlaceholder = prepPlaceholder(val)
-                const valName = prepName({ alias, value: val })
-
-                if (key === 'in') sql += '('
-                else if (key === 'like' || key === 'notLike' || key === 'endLike' || key === 'notEndLike') sql += 'CONCAT("%", '
-                sql += valPlaceholder
                 if (key === 'like' || key === 'notLike' || key === 'startLike' || key === 'notStartLike') sql += ' ,"%")'
                 else if (key === 'in') sql += ')'
-                if (!checkConstants(val)) values.push(valName)
 
                 break
             }
@@ -532,7 +563,7 @@ const prepJoin = ({ alias, join = [], encryption = undefined, ctx = undefined })
  * 
  * @param {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512)}} [numObj.encryption] (optional) inherits encryption config from its parent level
  * 
- * @param {*} [numObj.ctx]
+ * @param {*} [numObj.ctx] context reference to parent class
  * 
  * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
  */
@@ -750,6 +781,139 @@ const prepFrom = ({ val, parent = null, encryption = undefined, ctx = undefined 
 
     return { sql, values }
 
+}
+
+/**
+ * prepares if else condition
+ * @function prepIf
+ * 
+ * @param {object} ifParam
+ * 
+ * @param {string} [ifParam.alias] (optional) local reference name of the table
+ * 
+ * @param {*} ifParam.val
+ * 
+ * @param {'and'|'or'}  [ifParam.junction] (optional) clause used to join conditions
+ * 
+ * @param {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512)}} [ifParam.encryption] (optional) inherits encryption config from its parent level
+ * 
+ * @param {*} [caseParam.ctx] context reference to parent class
+ * 
+ * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
+ */
+const prepIf = ({ alias, val, junction = 'and', encryption = undefined, ctx = undefined }) => {
+
+    let sql = ''
+    const values = []
+
+    console.log('val inside prepIf', val)
+
+    const { condition = {}, trueValue = null, falseValue = null, as = 'if' } = val
+    sql += 'IF('
+
+    if (typeof condition === 'object') {
+        const resp = prepWhere({ alias, where: condition, junction, encryption, ctx })
+        sql += resp.sql
+        values.push(...resp.values)
+    } else {
+        const ifPlaceholder = prepPlaceholder(condition)
+        const ifName = prepName({ alias, value: condition })
+        sql += ifPlaceholder
+        if (!checkConstants(ifPlaceholder)) values.push(ifName)
+    }
+
+    sql += ', '
+
+    const truePlaceholder = prepPlaceholder(trueValue)
+    const trueName = prepName({ alias, value: trueValue })
+
+    sql += truePlaceholder
+    if (!checkConstants(trueValue)) values.push(trueName)
+
+    sql += ', '
+
+    const falsePlaceholder = prepPlaceholder(falseValue)
+    const falseName = prepName({ alias, value: falseValue })
+
+    sql += falsePlaceholder + ')'
+    if (!checkConstants(falseValue)) values.push(falseName)
+
+    sql += ' ?'
+    values.push(as)
+
+    return { sql, values }
+}
+
+/**
+ * prepares switch case
+ *@function prepCase
+ * 
+ * @param caseParam
+ * 
+ * @param {string} [caseParam.alias] reference to table name
+ * 
+ * @param {*} caseParam.val
+ * 
+ * @param {'and'|'or'} [caseParam.junction] (optional) clause used to join conditions
+ * 
+ * @param {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512)}} [caseParam.encryption] (optional) inherits encryption config from its parent level
+ * 
+ * @param {*} [caseParam.ctx] context reference to parent class
+ * 
+ * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
+ */
+const prepCase = ({ alias, val, junction = 'and', encryption = undefined, ctx = undefined }) => {
+    let sql = ''
+    const values = []
+
+    const { conditions = [], else: defaultElse, as = 'case' } = val
+
+    sql += 'CASE '
+
+    sql += conditions.map(condition => {
+
+        const { when, then } = condition
+
+        sql += 'WHEN '
+        if (typeof when === 'object') {
+            const whenResp = prepWhere({ alias, where: when, junction, encryption, ctx })
+            sql += whenResp.sql
+            values.push(...whenResp.values)
+        } else {
+            const whenPlaceholder = prepPlaceholder(when)
+            const whenName = prepName({ alias, value: when })
+            sql += whenPlaceholder
+            if (!checkConstants(when)) values.push(whenName)
+        }
+
+        sql += ' THEN '
+        if (typeof then === 'object') {
+            const thenResp = prepWhere({ alias, where: then, junction, encryption, ctx })
+            sql += thenResp.sql
+            values.push(...thenResp.values)
+        } else {
+            const thenPlaceholder = prepPlaceholder(then)
+            const thenName = prepName({ alias, value: then })
+            sql += thenPlaceholder
+            if (!checkConstants(then)) values.push(thenName)
+        }
+
+    }).join(' ')
+
+    sql += 'ELSE '
+
+    const elsePlaceholder = prepPlaceholder(defaultElse)
+    const elseName = prepName({ alias, value: defaultElse })
+
+    sql += elsePlaceholder
+    if (!checkConstants(defaultElse)) values.push(elseName)
+
+    sql == 'END'
+
+    sql += ' ?'
+    values.push(as)
+
+    return { sql, values }
 }
 
 module.exports = { prepSelect, prepWhere, prepJoin }
