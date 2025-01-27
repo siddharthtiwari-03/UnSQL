@@ -469,7 +469,7 @@
 
 /**
  * where object
- * @typedef {aggregateWrappers|andWrapper|orWrapper|stringWrapper|numericWrapper|dateWrapper|{[key:(string|number)]: valueObj}} whereObj
+ * @typedef {aggregateWrappers|andWrapper|orWrapper|stringWrapper|numericWrapper|dateWrapper|{[key:(string|number)]: (valueObj|compareObj)}} whereObj
  */
 
 // #######################################################################################################
