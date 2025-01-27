@@ -1,9 +1,7 @@
 const { colors } = require("./console.helper")
 const { checkConstants, dataTypes, aggregateFunctions } = require("./constants.helper")
-const { prepDate } = require("./date.helper")
 const { prepName } = require("./name.helper")
 const { prepPlaceholder } = require("./placeholder.helper")
-const { prepString } = require("./string.helper")
 
 const junctions = {
     and: ' AND ',
@@ -113,6 +111,12 @@ const prepSelect = ({ alias, select = [], encryption = undefined, ctx = undefine
                     return resp.sql
                 }
 
+                case key === 'concat': {
+                    const resp = prepConcat({ alias, val, encryption, ctx })
+                    values.push(...resp.values)
+                    return resp.sql
+                }
+
             }
 
         }
@@ -154,18 +158,12 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', encrypt
 
     const entriesResp = Object.entries(where).map(([key, val]) => {
 
-        console.log('key', key)
-        console.log('val', val)
-        console.log('parent', parent)
-
         let sql = ''
 
         switch (true) {
 
             case key === 'and':
             case key === 'or': {
-                console.log(colors.green, ' key is "and" / "or"', colors.reset)
-
                 const mapResp = val.map(condition => {
                     const resp = prepWhere({ alias, where: condition, junction, parent, encryption, ctx })
                     values.push(...resp.values)
@@ -179,10 +177,6 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', encrypt
 
             case key === 'between': {
                 const { gt, lt } = val
-                console.log(colors.red, 'between key', colors.reset)
-                console.log('parent', parent)
-
-
                 if (parent && !(parent in conditions)) {
                     const parentPlaceholder = prepPlaceholder(parent)
                     const parentName = prepName({ alias, value: parent })
@@ -318,8 +312,36 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', encrypt
 
                 const resp = prepIf({ alias, val, junction, encryption, ctx })
 
-                sql == resp.sql
+                sql += resp.sql
                 values.push(...resp.values)
+                break
+            }
+
+            case key === 'concat': {
+                const resp = prepConcat({ alias, val, junction, encryption, ctx })
+                sql += resp.sql
+                values.push(...resp.values)
+                break
+            }
+
+            case key === 'date': {
+                const resp = prepDate({ alias, val, encryption, ctx })
+                sql += resp?.sql
+                values.push(...resp?.values)
+                break
+            }
+
+            case key === 'str': {
+                const resp = prepString({ alias, val, encryption, ctx })
+                sql += resp?.sql
+                values.push(...resp?.values)
+                break
+            }
+
+            case key === 'num': {
+                const resp = prepNumeric({ alias, val, encryption, ctx })
+                sql += resp?.sql
+                values.push(...resp?.values)
                 break
             }
 
@@ -399,8 +421,6 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', encrypt
             case typeof val === 'number':
             case typeof val === 'string': {
 
-                console.log(colors.green, 'val is numeric / string / static string', colors.reset)
-
                 // if (key && key != 'UnSQL_Placeholder') {
                 const keyPlaceholder = prepPlaceholder(key)
                 const keyName = prepName({ alias, value: key })
@@ -418,7 +438,6 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', encrypt
             }
 
             default: {
-                console.log(colors.green, 'default where block', colors.reset)
                 const resp = prepWhere({ alias, where: val, parent: key, junction, encryption, ctx })
                 sql += resp.sql
                 values.push(...resp.values)
@@ -791,7 +810,12 @@ const prepFrom = ({ val, parent = null, encryption = undefined, ctx = undefined 
  * 
  * @param {string} [ifParam.alias] (optional) local reference name of the table
  * 
- * @param {*} ifParam.val
+ * @param {{
+ * check:*,
+ * trueValue: *,
+ * falseValue: *,
+ * as?: string
+ * }} ifParam.val
  * 
  * @param {'and'|'or'}  [ifParam.junction] (optional) clause used to join conditions
  * 
@@ -808,37 +832,48 @@ const prepIf = ({ alias, val, junction = 'and', encryption = undefined, ctx = un
 
     console.log('val inside prepIf', val)
 
-    const { condition = {}, trueValue = null, falseValue = null, as = 'if' } = val
+    const { check = {}, trueValue = null, falseValue = null, as = 'if' } = val
     sql += 'IF('
 
-    if (typeof condition === 'object') {
-        const resp = prepWhere({ alias, where: condition, junction, encryption, ctx })
+    if (typeof check === 'object') {
+        const resp = prepWhere({ alias, where: check, junction, encryption, ctx })
         sql += resp.sql
         values.push(...resp.values)
     } else {
-        const ifPlaceholder = prepPlaceholder(condition)
-        const ifName = prepName({ alias, value: condition })
+        const ifPlaceholder = prepPlaceholder(check)
+        const ifName = prepName({ alias, value: check })
         sql += ifPlaceholder
         if (!checkConstants(ifPlaceholder)) values.push(ifName)
     }
 
     sql += ', '
 
-    const truePlaceholder = prepPlaceholder(trueValue)
-    const trueName = prepName({ alias, value: trueValue })
+    if (typeof trueValue === 'object') {
+        const trueResp = prepWhere({ alias, where: trueValue, junction, encryption, ctx })
+        sql += trueResp.sql
+        values.push(...trueResp.values)
+    } else {
+        const truePlaceholder = prepPlaceholder(trueValue)
+        const trueName = prepName({ alias, value: trueValue })
 
-    sql += truePlaceholder
-    if (!checkConstants(trueValue)) values.push(trueName)
-
+        sql += truePlaceholder
+        if (!checkConstants(trueValue)) values.push(trueName)
+    }
     sql += ', '
 
-    const falsePlaceholder = prepPlaceholder(falseValue)
-    const falseName = prepName({ alias, value: falseValue })
+    if (typeof falseValue === 'object') {
+        const falseResp = prepWhere({ alias, where: falseValue, junction, encryption, ctx })
+        sql += falseResp.sql
+        values.push(...falseResp.values)
+    } else {
+        const falsePlaceholder = prepPlaceholder(falseValue)
+        const falseName = prepName({ alias, value: falseValue })
 
-    sql += falsePlaceholder + ')'
-    if (!checkConstants(falseValue)) values.push(falseName)
+        sql += falsePlaceholder + ')'
+        if (!checkConstants(falseValue)) values.push(falseName)
+    }
 
-    sql += ' ?'
+    sql += ' AS ?'
     values.push(as)
 
     return { sql, values }
@@ -850,9 +885,9 @@ const prepIf = ({ alias, val, junction = 'and', encryption = undefined, ctx = un
  * 
  * @param caseParam
  * 
- * @param {string} [caseParam.alias] reference to table name
+ * @param {string} [caseParam.alias] (optional) local reference to table name
  * 
- * @param {*} caseParam.val
+ * @param {{check: Array, else: *, as?: string}} caseParam.val
  * 
  * @param {'and'|'or'} [caseParam.junction] (optional) clause used to join conditions
  * 
@@ -866,11 +901,11 @@ const prepCase = ({ alias, val, junction = 'and', encryption = undefined, ctx = 
     let sql = ''
     const values = []
 
-    const { conditions = [], else: defaultElse, as = 'case' } = val
+    const { check = [], else: defaultElse, as = 'case' } = val
 
     sql += 'CASE '
 
-    sql += conditions.map(condition => {
+    sql += check.map(condition => {
 
         const { when, then } = condition
 
@@ -908,10 +943,632 @@ const prepCase = ({ alias, val, junction = 'and', encryption = undefined, ctx = 
     sql += elsePlaceholder
     if (!checkConstants(defaultElse)) values.push(elseName)
 
-    sql == 'END'
+    sql += 'END'
 
-    sql += ' ?'
+    sql += ' AS ?'
     values.push(as)
+
+    return { sql, values }
+}
+
+/**
+ * concat values
+ * @function prepConcat
+ * 
+ * @param {object} concatParam
+ * 
+ * @param {string} [concatParam.alias] (optional) local reference to table name
+ * 
+ * @param {{
+ * value:Array<string|boolean|number|import("../defs/types.def").fromWrapper|import("../defs/types.def").concatWrapper>,
+ * pattern: (string|number|boolean),
+ * as?: string}} concatParam.val
+ * 
+ * @param {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512)}} [concatParam.encryption] (optional) inherits encryption config from its parent level
+ * 
+ * @param {*} [concatParam.ctx] context reference to parent class
+ * 
+ * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
+ */
+const prepConcat = ({ alias, val, junction = 'and', encryption = undefined, ctx = undefined }) => {
+
+    const { value = [], pattern = '', as = 'concat' } = val
+
+    const values = []
+    let sql = 'CONCAT_WS('
+
+    const patternPlaceholder = prepPlaceholder(pattern)
+    const patternName = prepName({ alias, value: pattern })
+
+    sql += patternPlaceholder + ', '
+    if (!checkConstants(pattern)) values.push(patternName)
+
+    sql += value.map(v => {
+        if (typeof v === 'object') {
+            const resp = prepWhere({ alias, where: v, junction, encryption, ctx })
+            values.push(...resp.values)
+            return resp.sql
+        } else {
+            const valuePlaceholder = prepPlaceholder(v)
+            const valueName = prepName({ alias, value: v })
+            if (!checkConstants(v)) values.push(valueName)
+            return valuePlaceholder
+        }
+    }).join(', ')
+
+    sql += ') AS ?'
+    values.push(as)
+
+    return { sql, values }
+
+}
+
+/**
+ * performs various string based operations on the 'value' property
+ * @function prepString
+ * 
+ * @param {object} strObj
+ * 
+ * @param {string} [strObj.alias] (optional) alias reference for the table name
+ * 
+ * @param {{
+ * value: (string|string[]),
+ * replace?:{'target':string, 'with':string},
+ * reverse?: boolean,
+ * textCase?:('upper'|'lower'),
+ * padding?:{'left'?:{length:number, pattern:string}, 'right'?: {length:number, pattern:string}},
+ * substr?:{start:number, length:number},
+ * trim?: ('left'|'right'|boolean),
+ * cast?: ('char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary'),
+ * decrypt?:{
+ * secret?:string,
+ * iv?:string,
+ * sha?:(224|256|384|512)},
+ * as?: string,
+ * compare?:import("../defs/types.def").whereObj
+ * }} strObj.val object that holds values for different properties
+ * 
+ * @param {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512)}} [strObj.encryption] (optional) inherits encryption config from its parent level
+ * 
+ * @param {*} [strObj.ctx]
+ * 
+ * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
+ */
+const prepString = ({ alias, val, encryption = undefined, ctx = undefined }) => {
+
+    const { value, replace = null, reverse = false, textCase = null, padding = {}, substr = null, trim = false, cast = null, decrypt = null, as = null, compare = {} } = val
+
+    let sql = ''
+    const values = []
+
+    // replace target content
+    if (replace) sql += 'REPLACE('
+
+    // reverse the output string
+    if (reverse) sql += 'REVERSE('
+
+    // change text case
+    if (textCase === 'lower') sql += 'LOWER('
+    else if (textCase === 'upper') sql += 'UPPER('
+
+    // apply padding
+    if (padding?.left) sql += 'LPAD('
+    if (padding?.right) sql += 'RPAD('
+
+    // substring
+    if (substr) sql += 'SUBSTR('
+
+    // trim whitespace
+    if (trim === 'left') sql += 'LTRIM('
+    else if (trim === 'right') sql += 'RTRIM('
+    else if (trim === true) sql += 'TRIM('
+
+    // apply type casting
+    if (cast || decrypt) sql += 'CAST('
+
+    // patch decryption method if required
+    if (decrypt) sql += 'AES_DECRYPT('
+
+    // prepare place holder
+    const placeholder = prepPlaceholder(value)
+
+    // patch placeholder to the sql string
+    sql += placeholder
+    // patch value to values array (conditional)
+    if (!checkConstants(value)) {
+        const name = prepName({ alias, value })
+        values.push(name)
+    }
+
+    // patch decryption extras if required
+    if (decrypt) {
+
+        if (!decrypt?.secret && encryption?.secret && ctx?.config?.encryption?.secret) {
+            console.error(colors.red, 'secret is required to decrypt', colors.reset)
+            throw new Error('Secret is required to decrypt!', { cause: 'Missing "secret" to decrypt inside date wrapper!' })
+        }
+
+        if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && ctx?.config?.encryption?.mode?.includes('-cbc'))) {
+            sql += ', ?'
+        }
+
+        sql += ', UNHEX(SHA2(?, ?)))'
+
+        values.push(decrypt?.secret || encryption?.secret || ctx?.config?.encryption?.secret)
+
+        if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && ctx?.config?.encryption?.mode?.includes('-cbc'))) {
+            if (!decrypt?.iv && !encryption?.iv && !ctx?.config?.encryption?.iv) {
+                console.error(colors.red, 'Initialization Vector (iv) is required to decrypt', colors.reset)
+                throw new Error('Initialization Vector (iv) is required to decrypt!', { cause: 'Missing "iv" to decrypt inside date wrapper!' })
+            }
+            values.push(decrypt?.iv || encryption?.iv || ctx?.config?.encryption?.iv)
+        }
+
+        values.push(decrypt?.sha || encryption?.sha || ctx?.config?.encryption?.sha || 512)
+
+    }
+    // decrypt ends here
+
+    // type casting ends here
+    if (cast || decrypt) sql += ' AS ' + (dataTypes[cast] || 'CHAR') + ')'
+
+    // trim ends here
+    if (trim === 'left' || trim === 'right' || trim === true) sql += ')'
+
+    // substring extras
+    if (substr) {
+        // handle if substr length is missing
+        if (!substr?.length) {
+            console.error(colors.red, 'Sub-string length is missing!', colors.reset)
+            throw new Error('Sub-string length is missing!', { cause: "Missing 'length' property inside substr" })
+        }
+        // handle if substr start index is missing
+        if (!substr?.start) {
+            console.error(colors.red, 'Sub-string start index is missing!', colors.reset)
+            throw new Error('Sub-string start index is missing!', { cause: "Missing 'start' property inside substr" })
+        }
+
+        sql += ', ? ,?)'
+        values.push(substr?.start, substr?.length)
+    }
+
+    // apply right padding (extras)
+    if (padding?.right) {
+        sql += ', ?, ?)'
+        // handle if padding length is missing
+        if (!padding?.right?.length) {
+            console.error(colors.red, 'Right padding length is missing!', colors.reset)
+            throw new Error('Right padding length is missing!', { cause: "Missing 'length' property inside padding right" })
+        }
+        // handle if padding pattern is missing
+        if (!padding?.right?.pattern) {
+            console.error(colors.red, 'Right padding pattern is missing!', colors.reset)
+            throw new Error('Right padding pattern is missing!', { cause: "Missing 'pattern' property inside padding right" })
+        }
+        values.push(padding?.right?.length, padding?.right?.pattern)
+    }
+
+    // apply left padding (extras)
+    if (padding?.left) {
+        sql += ', ?, ?)'
+        // handle if padding length is missing
+        if (!padding?.left?.length) {
+            console.error(colors.red, 'Left padding length is missing!', colors.reset)
+            throw new Error('Left padding length is missing!', { cause: "Missing 'length' property inside padding left" })
+        }
+        // handle if padding pattern is missing
+        if (!padding?.left?.pattern) {
+            console.error(colors.red, 'Left padding pattern is missing!', colors.reset)
+            throw new Error('Left padding pattern is missing!', { cause: "Missing 'pattern' property inside padding left" })
+        }
+        values.push(padding?.left?.length, padding?.left?.pattern)
+    }
+
+    // text case ends here
+    if (textCase === 'lower' || textCase === 'upper') sql += ')'
+
+    // reverse ends here
+    if (reverse) sql += ')'
+
+    // replace target content ends here
+    if (replace) {
+        // handle if padding length is missing
+        if (!replace?.target) {
+            console.error(colors.red, 'Replace target is missing!', colors.reset)
+            throw new Error('Replace target is missing!', { cause: "Missing 'target' property inside replace" })
+        }
+        // handle if padding pattern is missing
+        if (!padding?.right?.pattern) {
+            console.error(colors.red, 'Replace with string is missing!', colors.reset)
+            throw new Error('Replace with string is missing!', { cause: "Missing 'with' property inside replace" })
+        }
+        sql += ', ?, ?)'
+        values?.push(replace?.target, replace?.with)
+    }
+
+    if (Object.keys(compare).length) {
+        const resp = prepWhere({ alias, where: compare, junction, encryption, ctx })
+        sql += resp.sql
+        values.push(...resp.values)
+    }
+
+    if (!Object.keys(compare).length) {
+        sql += ' AS ?'
+        values.push(as || (value.includes('.') ? value.split('.')[1] : value))
+    }
+    return { sql, values }
+
+}
+
+const dateUnits = {
+    mi: 'MICROSECOND',
+    s: 'SECOND',
+    m: 'MINUTE',
+    h: 'HOUR',
+    d: 'DAY',
+    w: 'WEEK',
+    M: 'MONTH',
+    q: 'QUARTER',
+    y: 'YEAR',
+    smi: 'SECOND_MICROSECOND',
+    mmi: 'MINUTE_MICROSECOND',
+    ms: 'MINUTE_SECOND',
+    hmi: 'HOUR_MICROSECOND',
+    hs: 'HOUR_SECOND',
+    hm: 'HOUR_MINUTE',
+    dmi: 'DAY_MICROSECOND',
+    ds: 'DAY_SECOND',
+    dm: 'DAY_MINUTE',
+    dh: 'DAY_HOUR',
+    yM: 'YEAR_MONTH',
+}
+
+
+/**
+ * @typedef {object} encryption
+ * 
+ * @prop {string} [mode] (optional) ('aes-128-ecb'|'aes-256-cbc'),
+ * @prop {string} [secret] (optional) string,
+ * @prop {string} [iv] (optional) string,
+ * @prop {string} [sha] (optional) (224|256|384|512)
+ */
+
+/**
+ * @typedef {object} dateVal
+ * 
+ * @prop  {string|string[]} value name of the column or date as a string
+ * @prop {number} [add] (optional) date / time to be added to the 'value' property
+ * @prop {number} [sub] (optional) date / time to be subtracted from the 'value' property
+ * @prop {string} [fromPattern] (optional) pattern to recognize and generate date from
+ * @prop {('char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary')} [cast] (optional) cast the decrypted 'value' property into
+ * @prop {encryption} [decrypt] (optional) decryption configuration for the 'value' property
+ */
+
+
+/**
+ * performs various date operation(s) on the value attribute
+ * @function prepDate
+ * @param {object} dateObj
+ * @param {string} [dateObj.alias] (optional) local reference for the table name
+ * @param {{
+ * value:(string|string[]), 
+ * add?:number, 
+ * sub?:number, 
+ * fromPattern?:string, 
+ * cast?:('char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary'), 
+ * decrypt?:{
+ * secret?:string, 
+ * iv?:string, 
+ * sha?:(224|256|384|512)}, 
+ * format?:string, 
+ * as?:string,
+ * compare?: import("../defs/types.def").whereObj
+ * }} dateObj.val object that holds values for different properties
+ * @param {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512)}} [dateObj.encryption] (optional) inherits encryption config from its parent level
+ * @param {*} [dateObj.ctx] (optional) inherits class context reference from its parent level
+ * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
+ */
+const prepDate = ({ alias, val, encryption = undefined, ctx = undefined }) => {
+
+    // deconstruct different props from the val object
+    const { value, add = 0, sub = 0, format = null, fromPattern = null, cast = null, decrypt = null, as = null, compare = {} } = val
+
+    const addInterval = (add && parseFloat(add)) || null
+    const subInterval = (sub && parseFloat(sub)) || null
+    const addUnit = (add && typeof add === 'string' && add?.match(/[a-z]+/ig)) || null
+    const subUnit = (sub && typeof sub === 'string' && sub?.match(/[a-z]+/ig)) || null
+
+    // init local sql string and values array
+    let sql = ''
+    const values = []
+
+    // format date
+    if (format) sql += 'DATE_FORMAT('
+
+    // subtract date / time
+    if (subInterval) sql += 'SUBDATE('
+
+    // add date / time
+    if (addInterval) sql += 'ADDDATE('
+
+    // create date from string pattern
+    if (fromPattern) sql += 'STR_TO_DATE('
+
+    // apply type casting
+    if (cast || decrypt) sql += 'CAST('
+
+    // patch decryption method if required
+    if (decrypt) sql += 'AES_DECRYPT('
+
+    // extract placeholder
+    const placeholder = prepPlaceholder(value)
+
+    // patch placeholder to the sql string
+    sql += placeholder
+    // patch value to values array (conditional)
+    if (!checkConstants(value)) {
+        // prepare name
+        const name = prepName({ alias, value })
+        values.push(name)
+    }
+
+    // patch decryption extras if required
+    if (decrypt) {
+
+        if (!decrypt?.secret && encryption?.secret && ctx?.config?.encryption?.secret) {
+            console.error(colors.red, 'secret is required to decrypt', colors.reset)
+            throw new Error('Secret is required to decrypt!', { cause: 'Missing "secret" to decrypt inside date wrapper!' })
+        }
+
+        if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && ctx?.config?.encryption?.mode?.includes('-cbc'))) {
+            sql += ', ?'
+        }
+
+        sql += ', UNHEX(SHA2(?, ?)))'
+
+        values.push(decrypt?.secret || encryption?.secret || ctx?.config?.encryption?.secret)
+
+        if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && ctx?.config?.encryption?.mode?.includes('-cbc'))) {
+            if (!decrypt?.iv && !encryption?.iv && !ctx?.config?.encryption?.iv) {
+                console.error(colors.red, 'Initialization Vector (iv) is required to decrypt', colors.reset)
+                throw new Error('Initialization Vector (iv) is required to decrypt!', { cause: 'Missing "iv" to decrypt inside date wrapper!' })
+            }
+            values.push(decrypt?.iv || encryption?.iv || ctx?.config?.encryption?.iv)
+        }
+
+        values.push(decrypt?.sha || encryption?.sha || ctx?.config?.encryption?.sha || 512)
+
+    }
+    // decrypt ends here
+
+    // type casting ends here
+    if (cast || decrypt) sql += ' AS ' + (dataTypes[cast] || 'CHAR') + ')'
+
+    // patch string to date pattern
+    if (fromPattern) {
+        sql += ', ?)'
+        values.push(fromPattern)
+    }
+
+    // patching if addInterval is provided
+    if (addInterval) {
+
+        if (!addUnit) {
+            sql += ', ?)'
+        }
+        else if (!dateUnits[addUnit]) {
+            console.error(colors.red, 'Invalid date / time unit provided', colors.reset)
+            throw new Error('Invalid date / time unit provided!', { cause: 'Unit value provided is invalid!' })
+        }
+        else {
+            sql += ', INTERVAL ? ' + dateUnits[addUnit] + ')'
+        }
+
+        values.push(addInterval)
+
+    }
+
+    // patching if subInterval is provided
+    if (subInterval) {
+
+        if (!subUnit) sql += ', ?)'
+
+        else if (!dateUnits[subUnit]) {
+            console.error(colors.red, 'Invalid date / time unit provided', colors.reset)
+            throw new Error('Invalid date / time unit provided!', { cause: 'Unit value provided is invalid!' })
+        }
+
+        else sql += ', INTERVAL ? ' + dateUnits[subUnit] + ')'
+
+        values.push(subInterval)
+
+    }
+
+    if (format) {
+        sql += ', ?)'
+        values.push(format)
+    }
+
+    if (!Object.keys(compare).length) {
+        sql += ' AS ?'
+        values.push(as || (value.includes('.') ? value.split('.')[1] : value))
+    }
+
+    // return result object
+    return { sql, values }
+}
+
+
+/**
+ * performs numeric operations on the 'value' property
+ * @function prepNumeric
+ * 
+ * @param {object} numObj
+ * 
+ * @param {string} [numObj.alias] (optional) alias reference for the table name
+ * 
+ * @param {{
+* value: string|number,
+* decimals?: (number|'floor'|'ceil'|'round'),
+* mod?: number|string,
+* sub?: number|string,
+* add?: number|string,
+* multiplyBy?: number|string,
+* divideBy?: number|string,
+* power?: number|string,
+* cast?: ('char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary'),
+* decrypt?:{
+* secret?: string,
+* iv?: string,
+* sha?: (224|256|384|512)}
+* as?:string,
+* compare?:import("../defs/types.def").whereObj
+* }} numObj.val
+* 
+* @param {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512)}} [numObj.encryption] (optional) inherits encryption config from its parent level
+* 
+* @param {*} [numObj.ctx]
+* 
+* @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
+*/
+const prepNumeric = ({ alias, val, encryption, ctx }) => {
+
+    const values = []
+    let sql = ''
+
+    const { value, decimals = null, mod = null, sub = 0, add = 0, multiplyBy = null, divideBy = null, power = null, cast = null, decrypt = null, as = null, compare = {} } = val
+
+    if (decimals === 'ceil') sql += 'CEIL('
+    else if (decimals === 'floor') sql += 'FLOOR('
+    else if (decimals === 'round') sql += 'ROUND('
+    else if (typeof decimals === 'number') sql += 'FORMAT('
+
+    // apply subtraction bracket
+    if (sub) sql += '('
+
+    // apply addition bracket
+    if (add) sql += '('
+
+    // apply multiplier bracket
+    if (multiplyBy) sql += '('
+
+    // apply modulus bracket
+    if (mod) sql += '('
+
+    // apply division
+    if (divideBy) sql += '('
+
+    // apply power of
+    if (power) sql += 'POWER('
+
+    // apply type casting
+    if (cast || decrypt) sql += 'CAST('
+
+    // patch decryption method if required
+    if (decrypt) sql += 'AES_DECRYPT('
+
+    // patch placeholder to the sql string
+    const placeholder = prepPlaceholder(value)
+    sql += placeholder
+    // patch value to values array (conditional)
+    if (!checkConstants(value)) {
+        const name = prepName({ alias, value })
+        values.push(name)
+    }
+
+    // patch decryption extras if required
+    if (decrypt) {
+
+        if (!decrypt?.secret && encryption?.secret && ctx?.config?.encryption?.secret) {
+            console.error(colors.red, 'secret is required to decrypt', colors.reset)
+            throw new Error('Secret is required to decrypt!', { cause: 'Missing "secret" to decrypt inside date wrapper!' })
+        }
+
+        if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && ctx?.config?.encryption?.mode?.includes('-cbc'))) {
+            sql += ', ?'
+        }
+
+        sql += ', UNHEX(SHA2(?, ?)))'
+
+        values.push(decrypt?.secret || encryption?.secret || ctx?.config?.encryption?.secret)
+
+        if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && ctx?.config?.encryption?.mode?.includes('-cbc'))) {
+            if (!decrypt?.iv && !encryption?.iv && !ctx?.config?.encryption?.iv) {
+                console.error(colors.red, 'Initialization Vector (iv) is required to decrypt', colors.reset)
+                throw new Error('Initialization Vector (iv) is required to decrypt!', { cause: 'Missing "iv" to decrypt inside date wrapper!' })
+            }
+            values.push(decrypt?.iv || encryption?.iv || ctx?.config?.encryption?.iv)
+        }
+
+        values.push(decrypt?.sha || encryption?.sha || ctx?.config?.encryption?.sha || 512)
+
+    }
+    // decrypt ends here
+
+    // type casting ends here
+    if (cast || decrypt) sql += ' AS ' + (dataTypes[cast] || 'CHAR') + ')'
+
+    // apply power (extras)
+    if (power) {
+        const powPlaceholder = prepPlaceholder(power)
+        const powName = prepName({ alias, value: power })
+        sql += ', ' + powPlaceholder + ')'
+        if (!checkConstants(power)) values.push(powName)
+    }
+
+    // apply division (extras)
+    if (divideBy) {
+        const divisorPlaceholder = prepPlaceholder(divideBy)
+        const divisorName = prepName({ alias, value: divideBy })
+        sql += ' / ' + divisorPlaceholder + ')'
+        if (!checkConstants(divideBy)) values.push(divisorName)
+    }
+
+    // apply modulus (extras)
+    if (mod) {
+        const modPlaceholder = prepPlaceholder(mod)
+        const modName = prepName({ alias, value: mod })
+        sql += ' MOD ' + modPlaceholder + ')'
+        if (!checkConstants(mod)) values.push(modName)
+    }
+
+    // apply multiplier (extras)
+    if (multiplyBy) {
+        const multiplierPlaceholder = prepPlaceholder(multiplyBy)
+        const multiplierName = prepName({ alias, value: multiplyBy })
+        sql += ' * ' + multiplierPlaceholder + ')'
+        if (!checkConstants(multiplyBy)) values.push(multiplierName)
+    }
+
+    // apply addition (extras)
+    if (add) {
+        const addPlaceholder = prepPlaceholder(add)
+        const addName = prepName({ alias, value: add })
+        sql += ' + ' + addPlaceholder + ')'
+        if (!checkConstants(add)) values.push(addName)
+    }
+
+    // apply subtraction (extras)
+    if (sub) {
+        const subPlaceholder = prepPlaceholder(sub)
+        const subName = prepName({ alias, value: sub })
+        sql += ' - ' + subPlaceholder + ')'
+        if (!checkConstants(sub)) values.push(subName)
+    }
+
+    // apply decimal format (extras)
+    if (decimals) {
+        if (typeof decimals === 'number') {
+            sql += ', ?'
+            values.push(decimals)
+        }
+        sql += ')'
+    }
+
+    if (!Object.keys(compare).length) {
+        sql += ' AS ?'
+        values.push(as || (value.includes('.') ? value.split('.')[1] : value))
+    }
 
     return { sql, values }
 }

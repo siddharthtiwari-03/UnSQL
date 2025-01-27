@@ -2,7 +2,10 @@ const { checkConstants, constantFunctions } = require("./constants.helper")
 
 /**
  * prepares placeholder depending upon the 'value' parameter
+ * @function prepPlaceholder
+ * 
  * @param {string|boolean|number|Date} value string / number / boolean / array of string to generate a placeholder for
+ * 
  * @returns {('?'|'??'|string)} placeholder or a constant function name
  */
 const prepPlaceholder = value => {

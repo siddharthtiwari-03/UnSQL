@@ -39,20 +39,9 @@
  * 
  * @prop {boolean} [sum.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
  * 
- * @prop {string} sum.as
- */
-
-/**
- * sum aggregate function
- * @typedef {object} sumCompareAggregator
+ * @prop {string} [sum.as] (optional) local reference name to the value returned by this aggregate method
  * 
- * @prop {object} sum used to sum the values
- * 
- * @prop {string|number|object} sum.value accepts a number / string (column name) / object wrapper / conditional object as its value
- * 
- * @prop {boolean} [sum.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
- * 
- * @prop {object} sum.compare accepts object with conditions to compare this aggregator method with
+ * @prop {object} [sum.compare] accepts object with conditions to compare this aggregator method with
  */
 
 /**
@@ -65,20 +54,9 @@
  * 
  * @prop {boolean} [avg.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
  * 
- * @prop {string} avg.as
- */
-
-/**
- * average aggregate function
- * @typedef {object} avgCompareAggregator
+ * @prop {string} [avg.as] (optional) local reference name to the value returned by this aggregate method
  * 
- * @prop {object} avg used to average the values
- * 
- * @prop {string|number|object} avg.value accepts a number / string (column name) / object wrapper / conditional object as its value
- * 
- * @prop {boolean} [avg.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
- * 
- * @prop {object} avg.compare accepts object with conditions to compare this aggregator method with
+ * @prop {object} [avg.compare] accepts object with conditions to compare this aggregator method with
  */
 
 /**
@@ -89,16 +67,7 @@
  * 
  * @prop {string|number|object} count.value accepts a number / string (column name) / object wrapper / conditional object as its value
  * 
- * @prop {string} count.as
- */
-
-/**
- * count aggregate function
- * @typedef {object} countCompareAggregator
- * 
- * @prop {object} count used to count the values
- * 
- * @prop {string|number|object} count.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * @prop {string} [count.as] (optional) local reference name to the value returned by this aggregate method
  * 
  * @prop {object} count.compare accepts object with conditions to compare this aggregator method with
  */
@@ -111,22 +80,11 @@
  * 
  * @prop {string|number|object} min.value accepts a number / string (column name) / object wrapper / conditional object as its value
  * 
- * @prop {boolean} [sum.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
+ * @prop {boolean} [min.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
  * 
- * @prop {string} min.as
- */
-
-/**
- * min aggregate function
- * @typedef {object} minCompareAggregator
+ * @prop {string} [min.as] (optional) local reference name to the value returned by this aggregate method
  * 
- * @prop {object} min used to min the values
- * 
- * @prop {string|number|object} min.value accepts a number / string (column name) / object wrapper / conditional object as its value
- * 
- * @prop {boolean} [sum.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
- * 
- * @prop {object} min.compare accepts object with conditions to compare this aggregator method with
+ * @prop {object} [min.compare] (optional) accepts object with conditions to compare this aggregate method with
  */
 
 /**
@@ -137,43 +95,51 @@
  * 
  * @prop {string|number|object} max.value accepts a number / string (column name) / object wrapper / conditional object as its value
  * 
- * @prop {boolean} [sum.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
+ * @prop {boolean} [max.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
  * 
- * @prop {string} max.as
+ * @prop {string} [max.as] (optional) local reference name to the value returned by this aggregate method
+ * 
+ * @prop {object}[ max.compare] (optional) accepts object with conditions to compare this aggregate method with
  */
 
 /**
- * max aggregate function
- * @typedef {object} maxCompareAggregator
- * 
- * @prop {object} max used to max the values
- * 
- * @prop {string|number|object} max.value accepts a number / string (column name) / object wrapper / conditional object as its value
- * 
- * @prop {boolean} [sum.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
- * 
- * @prop {object} max.compare accepts object with conditions to compare this aggregator method with
+ * only aggregate wrapper methods
+ * @typedef {avgAggregator|sumAggregator|countAggregator} aggregateWrappers
+ */
+
+/**
+ * only wrapper methods
+ * @typedef {aggregateWrappers|andWrapper|orWrapper|stringWrapper|numericWrapper|dateWrapper|concatWrapper} wrapperMethods
  */
 
 /**
  * and wrapper
  * @typedef {object} andWrapper
  * 
- * @prop {Array} and
+ * @prop {Array<wrapperMethods|{[column: string]: valueObj} >} andWrapper.and
  */
 
 /**
- * or wrapper
+ * and wrapper
  * @typedef {object} orWrapper
  * 
- * @prop {Array} or
+ * @prop {Array<wrapperMethods|{[column: string]: valueObj} >} orWrapper.or
+ */
+
+/**
+ * between wrapper
+ * @typedef {object} betweenWrapper
+ * 
+ * @prop {{lt: number|string, gt: number|string}} betweenWrapper.between
+ * 
+ * @prop {string} [betweenWrapper.as]
  */
 
 /**
  * prepares conditional statement
  * @typedef {object} whenThenCondition
  * 
- * @prop {boolean|string|number|sumCompareAggregator|avgCompareAggregator|countCompareAggregator|minCompareAggregator|maxCompareAggregator|andWrapper|orWrapper|{[key:string]:*}} whenThenCondition.when condition that needs to be checked
+ * @param { whereObj } whenThenCondition.when condition that needs to be checked
  * 
  * @prop {string|number} whenThenCondition.then value that will be returned when condition is found true in the 'when' statement
  */
@@ -186,7 +152,7 @@
  * 
  * @prop {object} case
  * 
- * @prop {Array<whenThenCondition>} case.conditions array of conditions (object) containing 'when' and 'then' keys
+ * @prop {Array<whenThenCondition>} case.check array of conditions (object) containing 'when' and 'then' keys
  * 
  * @prop {string|number|object} case.else default value if none of the conditions are matched
  * 
@@ -199,13 +165,27 @@
  * 
  * @prop {object} if
  * 
- * @prop {boolean|string|object} if.condition check this condition if it is true or false
+ * @param {whereObj} if.check checks the condition if it is true or false
  * 
- * @prop {string|number|boolean|*} if.trueValue return this value if 'condition' is true
+ * @prop {valueObj} if.trueValue return this value if 'condition' is true
  * 
- * @prop {string|number|boolean|*} if.falseValue return this value if 'condition' is false
+ * @prop {valueObj} if.falseValue return this value if 'condition' is false
  * 
  * @prop {string} [if.as] provides local reference name to the result of this switch case wrapper method
+ */
+
+/**
+ * @typedef {string|number|boolean|fromWrapper|stringWrapper|numericWrapper|dateWrapper|concatWrapper|aggregateWrappers|betweenWrapper|switchWrapper|ifWrapper} valueObj
+ */
+
+/**
+ * comparator wrapper
+ * @typedef { { eq: valueObj } | { notEq: valueObj } | { lt: valueObj } | { gt: valueObj } | { in: valueObj } | { notIn: valueObj } | { like: valueObj } | { startLike: valueObj } | { notStartLike: valueObj } | { endLike: valueObj } | { notEndLike: valueObj } | { isNull: valueObj } } compareObj
+ */
+
+/**
+ * comparator wrapper limited
+ * @typedef { { eq: valueObj } | { notEq: valueObj } | { lt: valueObj } | { gt: valueObj } } compareObjLimited 
  */
 
 // #######################################################################################################
@@ -254,6 +234,7 @@
  * 
  * @prop {string} [str.as] (optional) rename the value returned by this wrapper method by rename / tagging with local name using 'as' property
  * 
+ * @prop {whereObj} [str.compare] (optional) used chain the value returned by this wrapper method with comparison object
  */
 
 /**
@@ -263,9 +244,9 @@
  * concat method
  * @prop {Object} concat concatenation of values in the 'value' property, value from 'pattern' property is used to connect them
  * 
- * @prop {Array<string|number|Array<string>>} concat.value accepts column name / string value (in array) to perform string methods on
+ * @prop {Array<valueObj>} concat.value accepts column name / string value (in array) to perform string methods on
  * 
- * @prop {string} concat.pattern (optional) used to concat 'value' property
+ * @prop {string|boolean|number} concat.pattern (optional) used to concat 'value' property
  * 
  * @prop {{secret?:string, sha?:(224|256|384|512), iv?:string}} [concat.decrypt] (optional) property to configure decryption configurations (local) for this 'value' property
  * 
@@ -279,6 +260,7 @@
  * 
  * @prop {string} [concat.as] (optional) rename the value returned by this wrapper method by rename / tagging with local name using 'as' property
  * 
+ * @prop {whereObj} [concat.compare] (optional) used chain the value returned by this wrapper method with comparison object
  */
 
 /**
@@ -310,6 +292,7 @@
  * 
  * @prop {string} [num.as] (optional) rename the value returned by this wrapper method by rename / tagging with local name using 'as' property
  * 
+ * @prop {whereObj} [num.compare] (optional) used chain the value returned by this wrapper method with comparison object
  */
 
 /**
@@ -335,6 +318,7 @@
  * 
  * @prop {string} [date.as] (optional) rename the value returned by this wrapper method by rename / tagging with local name using 'as' property
  * 
+ * @prop {whereObj} [date.compare] (optional) used chain the value returned by this wrapper method with comparison object
  */
 
 /**
@@ -346,11 +330,11 @@
  * 
  * @prop {object} json.value accepts object as key value map
  * 
- * @prop {object} [json.table] (optional) reference of the table on which this sub-query is dependent
+ * @prop {string} [json.table] (optional) reference of the table on which this sub-query is dependent
  * 
- * @prop {object} [json.alias] (optional) local reference name of the table, only needed if table name is also provided in 'from' property
+ * @prop {string} [json.alias] (optional) local reference name of the table, only needed if table name is also provided in 'from' property
  * 
- * @prop {{[key:string]:*}} [json.where]  (optional) allows to filter records using various conditions
+ * @prop {whereObj} [json.where]  (optional) allows to filter records using various conditions
  * 
  * @prop {object} [json.as] (optional) rename the value returned by this wrapper method by rename / tagging with local name using 'as' property
  * 
@@ -363,15 +347,15 @@
  * array wrapper
  * @prop {object} array
  * 
- * @prop {object} array.value accepts array of values
+ * @prop {object|Array} array.value accepts array of values
  * 
- * @prop {object} [array.table] (optional) reference of the table on which this sub-query is dependent
+ * @prop {string} [array.table] (optional) reference of the table on which this sub-query is dependent
  * 
- * @prop {object} [array.alias] (optional) local reference name of the table, only needed if table name is also provided in 'from' property
+ * @prop {string} [array.alias] (optional) local reference name of the table, only needed if table name is also provided in 'from' property
  * 
- * @prop {{[key:string]:*}} [array.where]  (optional) allows to filter records using various conditions
+ * @prop {whereObj} [array.where]  (optional) allows to filter records using various conditions
  * 
- * @prop {object} [array.as] (optional) rename the value returned by this wrapper method by rename / tagging with local name using 'as' property
+ * @prop {string} [array.as] (optional) rename the value returned by this wrapper method by rename / tagging with local name using 'as' property
  * 
  */
 
@@ -389,13 +373,13 @@
  * 
  * @prop {Array<joinObj>} [joinObj.join] (optional) array of nested join object
  * 
- * @prop {{[key:string]:*}} [joinObj.where] (optional) allows to filter records in the associated child table using various conditions
+ * @prop {whereObj} [joinObj.where] (optional) allows to filter records in the associated child table using various conditions
  * 
  * @prop {('and'|'or')} [joinObj.junction] (optional) clause used to connect multiple where conditions, default value is 'and'
  * 
  * @prop {Array<string>} [joinObj.groupBy] (optional) accepts array of column name(s) that allow to group child records based on single (or list of) column(s)
  * 
- * @prop {import("./defs/types.def").havingObj} [joinObj.having] (optional) allows to perform comparison on the group of records, accepts array of aggregate method wrappers viz. {sum:...}, {avg:...}, {min:...}, {max:...} etc
+ * @prop {havingObj} [joinObj.having] (optional) allows to perform comparison on the group of records, accepts array of aggregate method wrappers viz. {sum:...}, {avg:...}, {min:...}, {max:...} etc
  * 
  * @prop {{[column:string]:('asc'|'desc')}} [joinObj.orderBy] (optional) allows to order result based on single (or list of) column(s)
  * 
@@ -419,13 +403,13 @@
  * 
  * @prop {Array<joinObj>} [from.join] (optional) array of nested join object
  * 
- * @prop {{[key:string]:*}} [from.where] (optional) allows to filter records in the associated child table using various conditions
+ * @prop {whereObj} [from.where] (optional) allows to filter records in the associated child table using various conditions
  * 
  * @prop {('and'|'or')} [from.junction] (optional) clause used to connect multiple where conditions
  * 
  * @param {Array<string>} [from.groupBy] (optional) allows to group result based on single (or list of) column(s)
  * 
- * @param {import("./defs/types.def").havingObj} [from.having] (optional) allows to perform comparison on the group of records, accepts array of aggregate method wrappers viz. {sum:...}, {avg:...}, {min:...}, {max:...} etc
+ * @param {havingObj} [from.having] (optional) allows to perform comparison on the group of records, accepts array of aggregate method wrappers viz. {sum:...}, {avg:...}, {min:...}, {max:...} etc
  * 
  * @param {{[column:string]:('asc'|'desc')}} [from.orderBy] (optional) allows to order result based on single (or list of) column(s)
  * 
@@ -463,8 +447,6 @@
  * 
  * @prop {object} [config.pool] MySQL connection pool object
  * 
- * @prop {boolean} [config.map] (optional) map enables to consider this model to be considered while migration, default 'true'
- * 
  * @prop {boolean} config.safeMode (optional) safe mode helps avoiding accidental delete of all method without 'where' property, default 'true'
  * 
  * @prop {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512)}} [config.encryption] (optional) used to define encryption / decryption parameters
@@ -472,10 +454,9 @@
  * 
  */
 
-
 /**
  * Select object definition
- * @typedef {Array<Array<string>|boolean|number|string|stringWrapper|numericWrapper|dateWrapper|concatWrapper|jsonObjWrapper|jsonArrayWrapper|fromWrapper|sumAggregator|avgAggregator|minAggregator|maxAggregator|switchWrapper|ifWrapper|{[column:string]:string}} selectObj
+ * @typedef {Array<valueObj|jsonObjWrapper|jsonArrayWrapper|{[column:string]:string}} selectObj
  * 
  * @description accepts different types of values inside parent array: a. column name as regular 'string' value, b. string value inside array ['string'] for string value that is not a column name, c. number and boolean directly and d. methodWrappers in object form like {str:...}, {num:...} etc
  * 
@@ -483,7 +464,12 @@
 
 /**
  * having object definition
- * @typedef {sumCompareAggregator|avgCompareAggregator|{and: Array}|{or: Array}|{[key:string]:*}} havingObj
+ * @typedef {aggregateWrappers|andWrapper|orWrapper|{[key:string]:*}} havingObj
+ */
+
+/**
+ * where object
+ * @typedef {aggregateWrappers|andWrapper|orWrapper|stringWrapper|numericWrapper|dateWrapper|{[key:(string|number)]: valueObj}} whereObj
  */
 
 // #######################################################################################################

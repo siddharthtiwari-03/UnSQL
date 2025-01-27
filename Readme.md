@@ -199,22 +199,20 @@ const found = await User.find({ alias: 't1' })
 **select** parameter accepts an array of various string, boolean, number, wrapper methods to dynamically generate valid SQL. A sting value that starts with a **#** is considered as a regular string, however a string that does not starts with a **#** is considered as a 'column name'. Select parameter also accepts wrapper methods (Also read [wrapper methods](#what-are-wrapper-methods-in-unsql) for more info)
 
 ```javascript
-const findObj = {
-        select: [
-                'userId',
-                { 
-                str: {
-                    value:'firstName',
-                    textCase: 'upper',
-                    as: 'fname'
-                    }
-                }, 
-                'lastName', 
-                '#this is static string and will be printed as it is',
-                ]
-}
-
-const found = await User.find(findObj)
+const found = await User.find({
+    select: [
+        'userId',
+        { 
+        str: {
+            value:'firstName',
+            textCase: 'upper',
+            as: 'fname'
+            }
+        }, 
+        'lastName', 
+        '#this is static string and will be printed as it is'
+    ]
+})
 ```
 
 > **Please note:** In the above code block, `'userId'`, `'lastName'` and `'lastName'` are the column names in the database table
@@ -224,8 +222,7 @@ const found = await User.find(findObj)
 **join** parameter accepts an array of join objects. Each join object represents the association of child table with the immediate parent table. Join object along with its default values is explained below:
 
 ```javascript
-
-const findObj = {
+const found = await User.find({
     join: [
         {
             select: ['*'],
@@ -241,9 +238,7 @@ const findObj = {
             as: undefined
         }
     ]
-}
-
-const found = await User.find(findObj)
+})
 ```
 
 Below are the explanation of each of these join parameters:
@@ -287,8 +282,7 @@ Below are the explanation of each of these join parameters:
 **where** parameter accepts object (or nested object(s)) as its value, that helps filter records from the database based on the conditions. Each object takes in a key value pair, where key can be a string referring on of the column name, static string value or number on the other hand value can either be a string referring column name, static string value, number, array of values (each being either column name, static string and (or) number), or any of the wrapper methods (See [wrapper methods](#what-are-wrapper-methods-in-unsql))
 
 ```javascript
-
-const findObj = {
+const found = await User.find({
     where: {
         or: [
             { userId: { between: { gt: 1, lt: 30 } } },
@@ -296,9 +290,7 @@ const findObj = {
         ],
         userStatus: 1
     }
-}
-
-const found = await User.find(findObj)
+})
 ```
 
 > **Please note:** Above is just an example referring an arbitrary *`user`* table with `'userId'`, `'role'` and `'userStatus'` as its column names
@@ -533,21 +525,23 @@ Below are the explanations for each of these properties:
 
 **UnSQL** provides various *built-in* methods to interact with data and perform specific tasks, each of these wrapper methods belong a certain *type*. All of the wrapper methods have object like interface (`key: value` pair) to interact with them, where `key` can be any one of the specially reserved keywords that represents its respective wrapper method. Below is the list of wrapper methods along with their respective keywords available inside **UnSQL**:
 
-| Keyword | Wrapper Type | Description                                                                                   |
-| ------- | ------------ | --------------------------------------------------------------------------------------------- |
-| `str`   | string       | used to perform string value related operations                                               |
-| `num`   | numeric      | used to perform numeric value related operations                                              |
-| `date`  | date         | used to perform date value related operations                                                 |
-| `and`   | junction     | used to perform junction override inside the `where` and (or) `having` parameters             |
-| `or`    | junction     | used to perform junction override inside the `where` and (or) `having` parameters             |
-| `sum`   | aggregate    | used to perform 'total' of values                                                             |
-| `avg`   | aggregate    | used to perform 'average' of values                                                           |
-| `count` | aggregate    | used to perform 'count' operation on provided values                                          |
-| `min`   | aggregate    | used to determine 'lowest' value among the provided values                                    |
-| `max`   | aggregate    | used to determine 'highest' value among the provided values                                   |
-| `json`  | sub-query    | used to patch a sub-query, to create a json object at the position it is invoked              |
-| `array` | sub-query    | used to patch a sub-query, to create a json array at the position it is invoked               |
-| `from`  | sub-query    | used to patch a sub-query, to fetch a column from another table at the position it is invoked |
+| Keyword | Wrapper Type | Description                                                                                                          |
+| ------- | ------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `str`   | string       | used to perform string value related operations                                                                      |
+| `num`   | numeric      | used to perform numeric value related operations                                                                     |
+| `date`  | date         | used to perform date value related operations                                                                        |
+| `and`   | junction     | used to perform junction override inside the `where` and (or) `having` parameters                                    |
+| `or`    | junction     | used to perform junction override inside the `where` and (or) `having` parameters                                    |
+| `if`    | conditional  | used to perform conditional checks and returns appropriate value inside the `select` `where` and `having` parameters |
+| `case`  | conditional  | used to perform conditional checks and returns appropriate value inside the `select` `where` and `having` parameters |
+| `sum`   | aggregate    | used to perform 'total' of values                                                                                    |
+| `avg`   | aggregate    | used to perform 'average' of values                                                                                  |
+| `count` | aggregate    | used to perform 'count' operation on provided values                                                                 |
+| `min`   | aggregate    | used to determine 'lowest' value among the provided values                                                           |
+| `max`   | aggregate    | used to determine 'highest' value among the provided values                                                          |
+| `json`  | sub-query    | used to patch a sub-query, to create a json object at the position it is invoked                                     |
+| `array` | sub-query    | used to patch a sub-query, to create a json array at the position it is invoked                                      |
+| `from`  | sub-query    | used to patch a sub-query, to fetch a column from another table at the position it is invoked                        |
 
 > **Please note:** 
 > 1. *junction* type wrapper methods can only be used inside `where` and `having` parameters as they provide
@@ -739,6 +733,43 @@ const result = await User.find({
 > 1. `and` | `or` wrappers directly cannot be used inside `select` property however, they can be used in-directly withing `json` | `array` | `from` wrappers
 > 2. Since, `junction` is not provided hence conditions inside `and` and `or` clause will be using the default value `'and'` to connect with each other
 > 3. `and` and `or` clause can also be nested in any fashion as desired
+
+#### If wrapper
+
+**If wrapper** (keyword `if`) has a `check` property that accepts a conditional object to compare two values and returns either `true` or `false`. If the `check` property returns `true`, the value in `trueValue` property is returned by this wrapper, if `check` is `false` then the value in `falseValue` property is returned. `as` *(optional)* is used to provide a local reference name to the value returned by `if` wrapper method. Below is the interface for the `if` wrapper:
+
+```javascript
+const result = await User.find({
+    select: [
+        { 
+            if: {
+                check: {},
+                trueValue: null,
+                falseValue: null,
+                as: null
+            }
+        }
+    ]
+})
+```
+
+#### Case wrapper
+
+**Case wrapper** (keyword `case`) is similar to `if` wrapper as it is also used to check the conditions provided inside `check` property and return respective value. However, a major difference here is that `if` wrapper is used to check **'single condition'** whereas `case` wrapper is used when you have **'multiple condition'** and corresponding value pairs. `check` property accepts an array of object(s), each object consists of exactly two `key: value` pairs, where `key` is `when` property that accepts object to check the condition and `then` property that holds the respective value (for each `when` property) to be returned when the condition is `true`. Below is the interface for the `if` wrapper:
+
+```javascript
+const result = await User.find({
+    select: [
+        { 
+            case: {
+                check: [{ when: {}, then: null }],
+                else: null,
+                as: null
+            }
+        }
+    ]
+})
+```
 
 #### Sum wrapper
 

@@ -14,7 +14,6 @@ const { prepSelect, prepWhere, prepJoin } = require("./helpers/main.helper")
  */
 class UnSQL {
 
-
     /**
      * config is a static property object, used to declare configurations relating to a model class
      * @type {import("./defs/types.def").config} (required) accepts configurations related to model class as its properties
@@ -26,17 +25,9 @@ class UnSQL {
     // @ts-ignore
     static config = {}
 
-    /**
-     * @prop {object} [schema] (optional) this is used to declare the structure of table in database
-     * 
-     * @static
-     */
-    static schema = null
-
     constructor() {
         console.dir(this.constructor)
     }
-
 
     /**
      * Find method
@@ -53,7 +44,7 @@ class UnSQL {
      * 
      * @param {Array<import("./defs/types.def").joinObj>} [findParam.join] (optional) enables association of child tables to this model class (parent table)
      * 
-     * @param {{[key:string]:*}} [findParam.where] (optional) allows to filter records using various conditions
+     * @param {import("./defs/types.def").whereObj} [findParam.where] (optional) used to filter records
      * 
      * @param {'and'|'or'} [findParam.junction] (optional) defines default behavior that is used to join different 'child properties' inside 'where' property, default value is 'and'
      * 
@@ -130,7 +121,6 @@ class UnSQL {
             if (Object.keys(where).length) {
                 sql += ' WHERE '
                 const whereResp = prepWhere({ alias, where, junction, encryption, ctx: this })
-                console.log('where resp', whereResp)
                 sql += whereResp.sql
                 values.push(...whereResp?.values)
             }
@@ -172,7 +162,7 @@ class UnSQL {
 
             try {
                 await conn.beginTransaction()
-                if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.time(colors.green + `UnSQL fetched records in` + colors.reset)
+                if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.time(colors.blue + 'UnSQL benchmark: ' + colors.reset + colors.cyan + `Fetched records in` + colors.reset)
 
                 const prepared = conn.format(sql, values)
 
@@ -182,7 +172,7 @@ class UnSQL {
 
                 await conn.commit()
                 if (debug === true) console.log(colors.green, 'Find query executed successfully!', colors.reset)
-                if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.timeEnd(colors.green + `UnSQL fetched records in` + colors.reset)
+                if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.timeEnd(colors.blue + 'UnSQL benchmark: ' + colors.reset + colors.cyan + `Fetched records in` + colors.reset)
                 if (debug === true) console.log('\n')
                 return { success: true, result: (encryption?.mode || this?.config?.encryption?.mode ? rows[1] : rows) }
 
@@ -214,7 +204,7 @@ class UnSQL {
      * 
      * @param {object|Array} saveParam.data object / array of objects to be inserted into the database table
      * 
-     * @param {{[key:string]:*}} [saveParam.where] (optional) used to filter records to be updated
+     * @param {import("./defs/types.def").whereObj} [saveParam.where] (optional) used to filter records to be updated
      * 
      * @param {'and'|'or'} [saveParam.junction] (optional) defines default behavior that is used to join different 'child properties' inside 'where' property, default value is 'and'
      * 
@@ -473,7 +463,7 @@ class UnSQL {
 
         try {
             await conn.beginTransaction()
-            if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.time(colors.green + `UnSQL ${Object.keys(where).length || Object.keys(having).length ? 'updated' : 'inserted'} ${data.length} records in` + colors.reset)
+            if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.time(colors.blue + 'UnSQL benchmark: ' + colors.reset + colors.cyan + `${Object.keys(where).length || Object.keys(having).length ? 'Updated' : 'Inserted'} ${data.length} records in` + colors.reset)
             const prepared = conn.format(sql, values)
 
             handleQueryDebug(debug, sql, values, prepared)
@@ -481,7 +471,7 @@ class UnSQL {
             const [result, row, err] = await conn.query(sql, values)
 
             await conn.commit()
-            if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.timeEnd(colors.green + `UnSQL ${Object.keys(where).length || Object.keys(having).length ? 'updated' : 'inserted'} ${data.length} records in` + colors.reset)
+            if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.timeEnd(colors.blue + 'UnSQL benchmark: ' + colors.reset + colors.cyan + `${Object.keys(where).length || Object.keys(having).length ? 'Updated' : 'Inserted'} ${data.length} records in` + colors.reset)
             return { success: true, ...(encryption?.mode || this?.config?.encryption?.mode ? result[1] : result) }
 
         } catch (error) {
@@ -508,7 +498,7 @@ class UnSQL {
      * 
      * @param {string} [deleteParam.alias] (optional) local alias name for the database table
      * 
-     * @param {{[key:string]:*}} [deleteParam.where] (optional) used to filter records to be updated
+     * @param {import("./defs/types.def").whereObj} [deleteParam.where] (optional) used to filter records to be updated
      * 
      * @param {'and'|'or'} [deleteParam.junction] (optional) defines default behavior that is used to join different 'child properties' inside 'where' property, default value is 'and'
      * 
@@ -590,7 +580,7 @@ class UnSQL {
 
         try {
             await conn.beginTransaction()
-            if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.time(colors.green + `UnSQL removed records in` + colors.reset)
+            if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.time(colors.blue + 'UnSQL benchmark: ' + colors.reset + colors.cyan + `Removed records in` + colors.reset)
 
             const prepared = conn.format(sql, values)
 
@@ -601,7 +591,7 @@ class UnSQL {
             console.log('result', result)
 
             await conn.commit()
-            if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.timeEnd(colors.green + `UnSQL removed records in` + colors.reset)
+            if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.timeEnd(colors.blue + 'UnSQL benchmark: ' + colors.reset + colors.cyan + `Removed records in` + colors.reset)
             return { success: true, ...result }
 
         } catch (error) {
@@ -611,7 +601,6 @@ class UnSQL {
         } finally {
             if (this?.config?.pool) {
                 await conn.release()
-                // console.log('connection released to pool')
             }
         }
 
