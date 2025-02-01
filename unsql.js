@@ -102,97 +102,97 @@ class UnSQL {
 
         sql += 'SELECT '
 
-        // try {
-
-        const selectResp = prepSelect({ alias, select, encryption, ctx: this })
-        sql += selectResp.sql
-        values.push(...selectResp.values)
-
-        sql += ' FROM ?? '
-        values.push(this.config.table)
-        if (alias) {
-            sql += '??'
-            values.push(alias)
-        }
-
-        if (join.length) {
-            const joinResp = prepJoin({ alias, join, encryption, ctx: this })
-            // console.log('joinResp', joinResp)
-            sql += joinResp.sql
-            values.push(...joinResp?.values)
-        }
-
-        if (Object.keys(where).length) {
-            sql += ' WHERE '
-            const whereResp = prepWhere({ alias, where, junction, encryption, ctx: this })
-            sql += whereResp.sql
-            values.push(...whereResp?.values)
-        }
-
-        if (groupBy.length) {
-            sql += ' GROUP BY '
-            sql += groupBy.map(gb => {
-                values.push(gb.includes('.') ? gb : ((alias && (alias + '.')) + gb))
-                return '??'
-            }).join(', ')
-        }
-
-        if (Object.keys(having).length) {
-            sql += ' HAVING '
-            const havingResp = prepWhere({ alias, where: having, junction, encryption, ctx: this })
-            sql += havingResp.sql
-            values.push(...havingResp.values)
-        }
-
-        if (Object.keys(orderBy).length) {
-            sql += ' ORDER BY '
-            const orderResp = prepOrders({ alias, orderBy })
-            sql += orderResp.sql
-            values.push(...orderResp.values)
-        }
-
-        if (typeof limit === 'number') {
-            sql += ' LIMIT ? '
-            values.push(limit)
-        }
-
-        if (typeof offset === 'number') {
-            sql += ' OFFSET ? '
-            values.push(offset)
-        }
-
-        const conn = await (this?.config?.pool?.getConnection() || this?.config?.connection)
-
-
         try {
-            await conn.beginTransaction()
-            if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.time(colors.blue + 'UnSQL benchmark: ' + colors.reset + colors.cyan + `Fetched records in` + colors.reset)
 
-            const prepared = conn.format(sql, values)
+            const selectResp = prepSelect({ alias, select, encryption, ctx: this })
+            sql += selectResp.sql
+            values.push(...selectResp.values)
 
-            handleQueryDebug(debug, sql, values, prepared)
+            sql += ' FROM ?? '
+            values.push(this.config.table)
+            if (alias) {
+                sql += '??'
+                values.push(alias)
+            }
 
-            const [rows] = await conn.query(prepared)
+            if (join.length) {
+                const joinResp = prepJoin({ alias, join, encryption, ctx: this })
+                // console.log('joinResp', joinResp)
+                sql += joinResp.sql
+                values.push(...joinResp?.values)
+            }
 
-            await conn.commit()
-            if (debug === true) console.log(colors.green, 'Find query executed successfully!', colors.reset)
-            if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.timeEnd(colors.blue + 'UnSQL benchmark: ' + colors.reset + colors.cyan + `Fetched records in` + colors.reset)
-            if (debug === true) console.log('\n')
-            return { success: true, result: (encryption?.mode || this?.config?.encryption?.mode ? rows[1] : rows) }
+            if (Object.keys(where).length) {
+                sql += ' WHERE '
+                const whereResp = prepWhere({ alias, where, junction, encryption, ctx: this })
+                sql += whereResp.sql
+                values.push(...whereResp?.values)
+            }
+
+            if (groupBy.length) {
+                sql += ' GROUP BY '
+                sql += groupBy.map(gb => {
+                    values.push(gb.includes('.') ? gb : ((alias && (alias + '.')) + gb))
+                    return '??'
+                }).join(', ')
+            }
+
+            if (Object.keys(having).length) {
+                sql += ' HAVING '
+                const havingResp = prepWhere({ alias, where: having, junction, encryption, ctx: this })
+                sql += havingResp.sql
+                values.push(...havingResp.values)
+            }
+
+            if (Object.keys(orderBy).length) {
+                sql += ' ORDER BY '
+                const orderResp = prepOrders({ alias, orderBy })
+                sql += orderResp.sql
+                values.push(...orderResp.values)
+            }
+
+            if (typeof limit === 'number') {
+                sql += ' LIMIT ? '
+                values.push(limit)
+            }
+
+            if (typeof offset === 'number') {
+                sql += ' OFFSET ? '
+                values.push(offset)
+            }
+
+            const conn = await (this?.config?.pool?.getConnection() || this?.config?.connection)
+
+
+            try {
+                await conn.beginTransaction()
+                if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.time(colors.blue + 'UnSQL benchmark: ' + colors.reset + colors.cyan + `Fetched records in` + colors.reset)
+
+                const prepared = conn.format(sql, values)
+
+                handleQueryDebug(debug, sql, values, prepared)
+
+                const [rows] = await conn.query(prepared)
+
+                await conn.commit()
+                if (debug === true) console.log(colors.green, 'Find query executed successfully!', colors.reset)
+                if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.timeEnd(colors.blue + 'UnSQL benchmark: ' + colors.reset + colors.cyan + `Fetched records in` + colors.reset)
+                if (debug === true) console.log('\n')
+                return { success: true, result: (encryption?.mode || this?.config?.encryption?.mode ? rows[1] : rows) }
+
+            } catch (error) {
+                handleError(debug, error)
+                if (conn) await conn.rollback()
+                return { success: false, error }
+            } finally {
+                if (this?.config?.pool) {
+                    await conn.release()
+                }
+            }
 
         } catch (error) {
-            handleError(debug, error)
-            if (conn) await conn.rollback()
-            return { success: false, error }
-        } finally {
-            if (this?.config?.pool) {
-                await conn.release()
-            }
+            return { success: false, error: error.sqlMessage || error.message || error }
         }
-
-        // } catch (error) {
-        //     return { success: false, error: error.sqlMessage || error.message || error }
-        // }
     }
 
 
