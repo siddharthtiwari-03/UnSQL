@@ -1,11 +1,11 @@
 /**
- * UnSQL base class
- * @class UnSQL
+ * UnSQL_Legacy base class
+ * @class UnSQL_Legacy
  * @description All the model classes must extend using this base class
  * 
  * @author Siddharth Tiwari <dev.unsql@gmail.com>
  */
-class UnSQL {
+class UnSQL_Legacy {
 
     /**
      * Generates 'select' statement
@@ -41,7 +41,7 @@ class UnSQL {
      * @returns {{ success: boolean, result?: Array, error?: * }} execution success acknowledgement along with either 'result' or 'error' object
      * 
      * @static
-     * @memberof UnSQL
+     * @memberof UnSQL_Legacy
      */
     static async find({ select = '*', alias = null, join = null, where = null, whereOr = null, junction = 'AND', groupBy = null, having = null, orderBy = null, orderDirection = 'DESC', rowCount = null, offset = null }) {
 
@@ -117,7 +117,7 @@ class UnSQL {
      * @returns {{success: boolean, insertID?: number, error?: object }} execution success acknowledgement along with either 'insertID' (inserted index) or 'error' object
      * 
      * @static
-     * @memberof UnSQL
+     * @memberof UnSQL_Legacy
      */
     static async save({ alias = null, data, updateObj = null, where = null, whereOr = null, junction = 'AND' }) {
 
@@ -213,4 +213,4 @@ class UnSQL {
 
 }
 
-exports = module.exports = UnSQL
+exports = module.exports = UnSQL_Legacy

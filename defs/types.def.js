@@ -69,7 +69,7 @@
  * 
  * @prop {string} [count.as] (optional) local reference name to the value returned by this aggregate method
  * 
- * @prop {object} count.compare accepts object with conditions to compare this aggregator method with
+ * @prop {object} [count.compare] accepts object with conditions to compare this aggregator method with
  */
 
 /**
@@ -99,7 +99,7 @@
  * 
  * @prop {string} [max.as] (optional) local reference name to the value returned by this aggregate method
  * 
- * @prop {object}[ max.compare] (optional) accepts object with conditions to compare this aggregate method with
+ * @prop {object} [max.compare] (optional) accepts object with conditions to compare this aggregate method with
  */
 
 /**
@@ -206,6 +206,33 @@
 
 // #######################################################################################################
 
+/**
+ * string obj
+ * @typedef {object} strObj
+ * 
+ * @prop {string} strObj.value accepts column name / string value (in array) to perform string methods on
+ * 
+ * @prop {{'target':{target:string, with:string}}} [strObj.replace] (optional) replaces 'target' content 'with' string pattern provided
+ * 
+ * @prop {boolean} [strObj.reverse] (optional) reverses the order of characters in output string
+ * 
+ * @prop {'upper'|'lower'} [strObj.textCase] (optional) transforms text to 'upper' or 'lower' case
+ * 
+ * @prop {string|string[]|number} [strObj.search] (optional) searches for a string / number in the 'value' property, if found returns the starting index value else returns 0
+ * 
+ * @prop {{'left'?:{length:number, pattern:string}, 'right'?:{length:number, pattern:string}}} [strObj.padding] (optional) applies 'left' and (or) 'right' padding to the 'value' property, 'length' determines the padding amount and 'pattern' is used to fill the additionally required places (if length of 'value' property is smaller that 'length' property) else ignored
+ * 
+ * @prop {{start:number, length:number}} [strObj.substr] (optional) creates a sub-string using the values of start index and length
+ * 
+ * @prop {'char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary'} [strObj.cast] (optional) enables casting of 'value' property into any of the valid types
+ * 
+ * @prop {{secret?:string, sha?:(224|256|384|512), iv?:string}} [strObj.decrypt] (optional) property to configure decryption configurations (local) for this 'value' property
+ * 
+ * @prop {string} [strObj.as] (optional) rename the value returned by this wrapper method by rename / tagging with local name using 'as' property
+ * 
+ * @prop {whereObj} [strObj.compare] (optional) used chain the value returned by this wrapper method with comparison object
+ */
+
 
 /**
  * string method wrapper
@@ -214,7 +241,7 @@
  * string method
  * @prop {Object} str
  * 
- * @prop {string|Array<string>} str.value accepts column name / string value (in array) to perform string methods on
+ * @prop {string} str.value accepts column name / string value (in array) to perform string methods on
  * 
  * @prop {{'target':{target:string, with:string}}} [str.replace] (optional) replaces 'target' content 'with' string pattern provided
  * 
@@ -302,7 +329,7 @@
  * date method
  * @prop {Object} date
  * 
- * @prop {string|Array<string>} date.value accepts column name / string value (in array) to perform string methods on
+ * @prop {string} date.value accepts column name / string value (in array) to perform string methods on
  * 
  * @prop {{secret?:string, sha?:(224|256|384|512), iv?:string}} [date.decrypt] (optional) property to configure decryption configurations (local) for this 'value' property
  * 
@@ -441,7 +468,7 @@
  * config object type
  * @typedef {Object} config
  * 
- * @prop {string} config.table name of the table in the database
+ * @prop {?string} config.table name of the table in the database
  * 
  * @prop {object} [config.connection] MySQL connection object
  * 
@@ -469,7 +496,7 @@
 
 /**
  * where object
- * @typedef {aggregateWrappers|andWrapper|orWrapper|stringWrapper|numericWrapper|dateWrapper|{[key:(string|number)]: (valueObj|compareObj)}} whereObj
+ * @typedef { stringWrapper | dateWrapper | numericWrapper | andWrapper | orWrapper | aggregateWrappers | {[key:(string|number)]: (valueObj|compareObj)} } whereObj
  */
 
 // #######################################################################################################

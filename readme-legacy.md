@@ -55,7 +55,7 @@ Import by using any one of the following methods:
 
 CommonJS import
 ```javascript
-const  UnSQL = require('unsql')
+const  UnSQL = require('unsql/legacy')
 
 ```
 
@@ -63,13 +63,13 @@ OR
 
 ES6 import
 ```javascript
-import  UnSQL  from  'unsql'
+import  UnSQL  from  'unsql/legacy'
 
 ```
 
 ## Usage
 
-UnSQL provides three methods viz. ``find``, ``save`` and ``del`` to perform the **CRUD** operations.
+UnSQL provides three methods viz. `find`, `save` and `del` to perform the **CRUD** operations.
 These methods are designed to have a simple interface but are capable of generating any level of complex structured query.
 
 Each of these three methods accept a plain JavaScript object (We call it the query object)
@@ -84,7 +84,7 @@ Below are the examples of how to create a Model file for functional and object o
 
 ### Model Class:
 
-Here ``Product`` is the demo Model class. By extending the ``Product`` with the ``UnSQL`` class, ``Product`` gains access to all the built-in functionalities and methods required to interact with the database.
+Here `Product` is the demo Model class. By extending the `Product` with the `UnSQL` class, `Product` gains access to all the built-in functionalities and methods required to interact with the database.
 
 Product.class.js
 ```javascript
@@ -156,7 +156,7 @@ findQuery = {
 
 ```
 
-Below is the example of the result **resolved** from the ``find`` method:
+Below is the example of the result **resolved** from the `find` method:
 ```javascript
 resultObject = {
     success: true,
@@ -170,22 +170,22 @@ resultObject = {
 Below are the explanations for each of the parameters of the findQuery object:
 
 **select:** It takes in a string value, containing various column names as a comma separated values.
-Default value is ``'*'``.
-You may pass a full SQL as a sub-query inside this parameter to get value(s) from another table ``AS`` a field.
+Default value is `'*'`.
+You may pass a full SQL as a sub-query inside this parameter to get value(s) from another table `AS` a field.
 ```javascript
 select = 'columnOne, columnTwo, (SELECT anotherColumn FROM anotherTable WHERE conditions...) AS columnThree'
 ```
 
 **alias:** This parameter takes in a string value that you want to use as an alias name for the table associated with the Model.
-Default value is ``null``.
+Default value is `null`.
 Passing this value enables you to use the same alias value as a prefix to all the associated columns, in all the other parameters.
-This parameter is extremely important and handy for writing ``join`` queries.
+This parameter is extremely important and handy for writing `join` queries.
 ```javascript
 alias = 't1'
 
 ```
 
-**join:** This parameter takes in an array of objects. Each object represents a unique join condition, and **must** have these exact three properties ``type``, ``table`` and ``on``. Default value is ``null``.
+**join:** This parameter takes in an array of objects. Each object represents a unique join condition, and **must** have these exact three properties `type`, `table` and `on`. Default value is `null`.
 
 - type: It defines the type of join query, can have any one of the values of "LEFT", "RIGHT", "INNER", "OUTER", "CROSS" etc.
 - table: Table name (along with its alias) with which the Model's table has to be joined
@@ -201,10 +201,10 @@ join = [ condition1, condition2 ]
 ```
 
 **where** & **whereOr:** Both of these parameters accept a two dimensional array i.e. an array of array.
-Each child array represents a unique ``WHERE`` condition.
+Each child array represents a unique `WHERE` condition.
 The only difference between the two parameters is the joining clause used by them.
-``where`` uses ``AND`` clause to join the conditions and ``whereOr`` uses ``OR`` as joining clause.
-Default value for both the parameters is ``null``.
+`where` uses `AND` clause to join the conditions and `whereOr` uses `OR` as joining clause.
+Default value for both the parameters is `null`.
 
 ```javascript
 condition1 = [ 'columnOne', '=', value1 ]
@@ -217,59 +217,59 @@ where = whereOr = [condition1, condition2, condition3]
 
 ```
 
-Here, ``condition1`` represents typical condition array with three values:
+Here, `condition1` represents typical condition array with three values:
 - columnName
 - Equalities, "IN", "NOT IN", "IS", "IS NOT" etc.
 - Value, "null", structured SQL
 
-``condition2`` represents a more advanced level or pairing of multiple types of conditions inside a single array. This type of string can consist any number of conditions within, but with a limitation of being a single valued array. Notice we have not passed the second and third values here.
+`condition2` represents a more advanced level or pairing of multiple types of conditions inside a single array. This type of string can consist any number of conditions within, but with a limitation of being a single valued array. Notice we have not passed the second and third values here.
 
-``condition3`` represents the example of using "IN" as a condition check and also shows passing a structured SQL as the value.
+`condition3` represents the example of using "IN" as a condition check and also shows passing a structured SQL as the value.
 
-Please note: When working with ``alias`` and ``join`` same **alias prefix** have to be passed with the corresponding column names in these condition as well.
+Please note: When working with `alias` and `join` same **alias prefix** have to be passed with the corresponding column names in these condition as well.
 
-**junction:** This parameter accepts any one of the two string values ``AND``, ``OR``. Default value is ``AND``. It acts as the joining clause to connect the ``where`` and ``whereOr`` parameters.
-It only comes into the picture if both ``where`` and ``whereOr`` are passed.
+**junction:** This parameter accepts any one of the two string values `AND`, `OR`. Default value is `AND`. It acts as the joining clause to connect the `where` and `whereOr` parameters.
+It only comes into the picture if both `where` and `whereOr` are passed.
 
 ```javascript
 [where_conditions] (junction- 'AND' / 'OR') [whereOr_conditions]
 
 ```
 
-**groupBy:** This parameter accepts a column name as a string value and groups the result rows based on this column. Default value is ``null``. When using with ``alias`` and (or) ``join``, corresponding prefix must be used.
+**groupBy:** This parameter accepts a column name as a string value and groups the result rows based on this column. Default value is `null`. When using with `alias` and (or) `join`, corresponding prefix must be used.
 ```javascript
 groupBy = 'columnName'
 
 ```
 
-**having:** This parameter accepts a string value, containing a condition with aggregate function. Default value is ``null``. It is used in paired with the ``groupBy`` parameter. It is extremely useful because ``where`` and ``whereOr`` does not support the aggregate functions. When used with ``alias`` or ``join``, corresponding prefix must be used.
+**having:** This parameter accepts a string value, containing a condition with aggregate function. Default value is `null`. It is used in paired with the `groupBy` parameter. It is extremely useful because `where` and `whereOr` does not support the aggregate functions. When used with `alias` or `join`, corresponding prefix must be used.
 ```javascript
 having = 'COUNT(columnName) > someValue'
 
 ```
 
-**orderBy:** This parameter accepts the column name as a string value. It is used to sort the result rows on the bases of this column. Default value is ``null``. When used with ``alias`` or ``join``, same prefix must be used.
+**orderBy:** This parameter accepts the column name as a string value. It is used to sort the result rows on the bases of this column. Default value is `null`. When used with `alias` or `join`, same prefix must be used.
 
 ```javascript
 orderBy = 'columnName'
 
 ```
 
-**orderDirection:** This parameter is used in pair with the ``orderBy`` parameter and accepts any one of the two values ``ASC`` or ``DESC``. It defines the order in which the sorting of the result rows must be done. Default value is ``DESC``.
+**orderDirection:** This parameter is used in pair with the `orderBy` parameter and accepts any one of the two values `ASC` or `DESC`. It defines the order in which the sorting of the result rows must be done. Default value is `DESC`.
 
 ```javascript
 orderDirection = 'ASC'
 
 ```
 
-**rowCount:** This parameter accepts an integer value and is used to set the maximum limit for the number of result rows that are required. Default value is ``null`` hence all the rows will be returned by default.
+**rowCount:** This parameter accepts an integer value and is used to set the maximum limit for the number of result rows that are required. Default value is `null` hence all the rows will be returned by default.
 
 ```javascript
 rowCount = 20
 
 ```
 
-**offset:** This parameter accepts an integer value, it determines the start index for the result rows. All the entries that are before this index are skipped. Default value is ``null``. This parameter paired with the ``rowCount`` parameter to to achieve server side pagination.
+**offset:** This parameter accepts an integer value, it determines the start index for the result rows. All the entries that are before this index are skipped. Default value is `null`. This parameter paired with the `rowCount` parameter to to achieve server side pagination.
 
 ```javascript
 offset = 2
@@ -278,7 +278,7 @@ offset = 2
 
 ## save: Insert / Update / Upsert
 
-``save`` method is used for insert / update / upsert operations of data into the database. It takes in a plain JavaScript object with multiple parameters, ``data`` being the only mandatory / required parameter among these.
+`save` method is used for insert / update / upsert operations of data into the database. It takes in a plain JavaScript object with multiple parameters, `data` being the only mandatory / required parameter among these.
 
 For the sake of explanations, we will call this object as **saveQuery**.
 
@@ -296,18 +296,18 @@ saveQuery = {
 
 ```
 
-Depending upon the combinations of parameters passed, ``save`` method will automatically perform different type of operations.
+Depending upon the combinations of parameters passed, `save` method will automatically perform different type of operations.
 
 Different combinations of parameters to achieve different operations are explained below:
 
-**Insert:** When only ``data`` parameter is passed inside the saveQuery, the ``save`` method will generate ``insert`` sql.
+**Insert:** When only `data` parameter is passed inside the saveQuery, the `save` method will generate `insert` sql.
 
 ```javascript
 saveQuery = { data: dataToBeInserted }
 
 ```
 
-**Update:** When ``where`` and (or) ``whereOr`` parameters are passed along with the ``data`` parameter inside the saveQuery, the ``save`` method will generate ``update`` sql and perform an update operation with corresponding conditions passed inside the ``where`` and (or) ``whereOr`` parameters.
+**Update:** When `where` and (or) `whereOr` parameters are passed along with the `data` parameter inside the saveQuery, the `save` method will generate `update` sql and perform an update operation with corresponding conditions passed inside the `where` and (or) `whereOr` parameters.
 
 Sample 1
 ```javascript
@@ -341,7 +341,7 @@ saveQuery = {
 
 ```
 
-**Upsert:** When ``updateObj`` parameter is passed along with the ``data`` parameter inside the saveQuery, the ``save`` method will generate ``upsert`` sql and perform an upsert operation by updating the corresponding columns with their values passed inside the ``updateObj`` parameter.
+**Upsert:** When `updateObj` parameter is passed along with the `data` parameter inside the saveQuery, the `save` method will generate `upsert` sql and perform an upsert operation by updating the corresponding columns with their values passed inside the `updateObj` parameter.
 
 ```javascript
 
@@ -354,17 +354,17 @@ saveQuery = {
 
 ### saveQuery
 
-Below are the explanations for ``data`` and ``updateObj`` parameters of the saveQuery object.
+Below are the explanations for `data` and `updateObj` parameters of the saveQuery object.
 Remaining parameters are exactly the same as explained above for the findQuery object.
 
 **data:** This parameter accepts data in two forms:
 - Javascript object for insert / update of single row
 - Array or javascript objects for inserting multiple rows at once.
 
-**updateObj:** This parameter is optional and is only used for **upsert** operations. This accepts data as javascript object, however, requires only that part of data that needs to be updated in case of "Duplicate Primary Key" is found in the ``data`` parameter.
+**updateObj:** This parameter is optional and is only used for **upsert** operations. This accepts data as javascript object, however, requires only that part of data that needs to be updated in case of "Duplicate Primary Key" is found in the `data` parameter.
   
 
-Below is the example of the result resolved from an ``save`` method after **insert** operation:
+Below is the example of the result resolved from an `save` method after **insert** operation:
 
 ```javascript
 
@@ -382,7 +382,7 @@ For **update** and **upsert** operations this "insertID" field will return "0" a
 
 ``del`` method is used to perform delete operation of data from the database. It accepts a plain javascript object with multiple parameters,
 for the sake of explanation, we will call this object as **delQuery**.
-It removes one or multiple rows at once depending upon the conditions passed inside the ``where`` and (or) ``whereOr`` parameters.
+It removes one or multiple rows at once depending upon the conditions passed inside the `where` and (or) `whereOr` parameters.
 
 Below is the example for this saveQuery object with all the parameters and their corresponding default values:
 
@@ -401,7 +401,7 @@ All the parameters passed here are already explained above, inside the findQuery
 ## Examples
 
 For all the below examples we assume these samples are existing inside express app,
-``Product`` is the **Model Class** imported into the same routes file, and all the above setup is complete.
+`Product` is the **Model Class** imported into the same routes file, and all the above setup is complete.
 "ID" here is the demo field that may represent your primary key or any identifier.
 Depending upon if result is resolved or rejected, **Products** variable will get the result object as mentioned above.
 

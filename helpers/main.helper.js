@@ -962,6 +962,7 @@ const prepCase = ({ alias, val, junction = 'and', encryption = undefined, ctx = 
  * @param {{
  * value:Array<string|boolean|number|import("../defs/types.def").fromWrapper|import("../defs/types.def").concatWrapper>,
  * pattern: (string|number|boolean),
+ * compare?: import("../defs/types.def").whereObj,
  * as?: string}} concatParam.val
  * 
  * @param {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512)}} [concatParam.encryption] (optional) inherits encryption config from its parent level
@@ -996,8 +997,18 @@ const prepConcat = ({ alias, val, junction = 'and', encryption = undefined, ctx 
         }
     }).join(', ')
 
-    sql += ') AS ?'
-    values.push(as)
+    sql += ')'
+
+    if (Object.keys(compare).length) {
+        const resp = prepWhere({ alias, where: compare, junction, encryption, ctx })
+        sql += resp.sql
+        values.push(...resp.values)
+    }
+
+    if (!Object.keys(compare).length) {
+        sql += ' AS ?'
+        values.push(as)
+    }
 
     return { sql, values }
 
@@ -1034,7 +1045,7 @@ const prepConcat = ({ alias, val, junction = 'and', encryption = undefined, ctx 
  * 
  * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
  */
-const prepString = ({ alias, val, encryption = undefined, ctx = undefined }) => {
+const prepString = ({ alias, val, junction = 'and', encryption = undefined, ctx = undefined }) => {
 
     const { value, replace = null, reverse = false, textCase = null, padding = {}, substr = null, trim = false, cast = null, decrypt = null, as = null, compare = {} } = val
 
@@ -1201,13 +1212,13 @@ const prepString = ({ alias, val, encryption = undefined, ctx = undefined }) => 
 }
 
 const dateUnits = {
-    mi: 'MICROSECOND',
+    f: 'MICROSECOND',
     s: 'SECOND',
-    m: 'MINUTE',
+    i: 'MINUTE',
     h: 'HOUR',
     d: 'DAY',
     w: 'WEEK',
-    M: 'MONTH',
+    m: 'MONTH',
     q: 'QUARTER',
     y: 'YEAR',
     smi: 'SECOND_MICROSECOND',
@@ -1250,6 +1261,7 @@ const dateUnits = {
  * @function prepDate
  * @param {object} dateObj
  * @param {string} [dateObj.alias] (optional) local reference for the table name
+ * @param {'and'|'or'} [dateObj.junction]
  * @param {{
  * value:(string|string[]), 
  * add?:number, 
@@ -1268,7 +1280,7 @@ const dateUnits = {
  * @param {*} [dateObj.ctx] (optional) inherits class context reference from its parent level
  * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
  */
-const prepDate = ({ alias, val, encryption = undefined, ctx = undefined }) => {
+const prepDate = ({ alias, val, junction = 'and', encryption = undefined, ctx = undefined }) => {
 
     // deconstruct different props from the val object
     const { value, add = 0, sub = 0, format = null, fromPattern = null, cast = null, decrypt = null, as = null, compare = {} } = val
@@ -1389,7 +1401,14 @@ const prepDate = ({ alias, val, encryption = undefined, ctx = undefined }) => {
         values.push(format)
     }
 
-    if (!Object.keys(compare).length) {
+    if (Object.keys(compare).length) {
+        const resp = prepWhere({ alias, where: compare, junction, encryption, ctx })
+        sql += resp.sql
+        values.push(...resp.values)
+    }
+
+
+    if (!Object.keys(compare).length && as) {
         sql += ' AS ?'
         values.push(as || (value.includes('.') ? value.split('.')[1] : value))
     }
@@ -1406,6 +1425,8 @@ const prepDate = ({ alias, val, encryption = undefined, ctx = undefined }) => {
  * @param {object} numObj
  * 
  * @param {string} [numObj.alias] (optional) alias reference for the table name
+ * 
+ * @param {'and'|'or'} [numObj.junction]
  * 
  * @param {{
 * value: string|number,
@@ -1431,7 +1452,7 @@ const prepDate = ({ alias, val, encryption = undefined, ctx = undefined }) => {
 * 
 * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
 */
-const prepNumeric = ({ alias, val, encryption, ctx }) => {
+const prepNumeric = ({ alias, val, junction = 'and', encryption, ctx }) => {
 
     const values = []
     let sql = ''
@@ -1563,6 +1584,12 @@ const prepNumeric = ({ alias, val, encryption, ctx }) => {
             values.push(decimals)
         }
         sql += ')'
+    }
+
+    if (Object.keys(compare).length) {
+        const resp = prepWhere({ alias, where: compare, junction, encryption, ctx })
+        sql += resp.sql
+        values.push(...resp.values)
     }
 
     if (!Object.keys(compare).length) {
