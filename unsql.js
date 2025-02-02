@@ -74,8 +74,8 @@ class UnSQL {
     static async find({ alias = undefined, select = ['*'], join = [], where = {}, junction = 'and', groupBy = [], having = {}, orderBy = {}, limit = undefined, offset = undefined, encryption = {}, debug = false } = {}) {
 
         if (!this.config && ('TABLE_NAME' in this) && ('POOL' in this)) {
-            console.warn(colors.yellow, 'UnSQL has detected you are using v1.x model class configuration with v2.x If you wish to continue with v1.x kindly switch the unsql import to "unsql/legacy"', colors.reset)
-            return { success: false, error: 'UnSQL has detected you are using v1.x model class configuration with v2.x If you wish to continue with v1.x kindly switch the unsql import to "unsql/legacy"' }
+            console.warn(colors.yellow, `[UnSQL Version Conflict]: '${this.name}' model class is using 'v1.x' class configuration with 'v2.x' to continue with 'v1.x' kindly switch the 'unsql' import to 'unsql/legacy'`, colors.reset)
+            return { success: false, error: `[UnSQL Version Conflict]: '${this.name}' model class is using 'v1.x' class configuration with 'v2.x' to continue with 'v1.x' kindly switch the 'unsql' import to 'unsql/legacy'` }
         }
 
         // handle if connection object is missing
@@ -232,8 +232,8 @@ class UnSQL {
     static async save({ alias = undefined, data = [], where = {}, junction = 'and', groupBy = [], having = {}, upsert = {}, encrypt = {}, encryption = {}, debug = false }) {
 
         if (!this.config && ('TABLE_NAME' in this) && ('POOL' in this)) {
-            console.warn(colors.yellow, 'UnSQL has detected you are using v1.x model class configuration with v2.x If you wish to continue with v1.x kindly switch the unsql import to "unsql/legacy"', colors.reset)
-            return { success: false, error: 'UnSQL has detected you are using v1.x model class configuration with v2.x If you wish to continue with v1.x kindly switch the unsql import to "unsql/legacy"' }
+            console.warn(colors.yellow, `[UnSQL Version Conflict]: '${this.name}' model class is using 'v1.x' class configuration with 'v2.x' to continue with 'v1.x' kindly switch the 'unsql' import to 'unsql/legacy'`, colors.reset)
+            return { success: false, error: `[UnSQL Version Conflict]: '${this.name}' model class is using 'v1.x' class configuration with 'v2.x' to continue with 'v1.x' kindly switch the 'unsql' import to 'unsql/legacy'` }
         }
 
         if (Array.isArray(data) && (Object.keys(where).length || Object.keys(having).length || groupBy.length)) {
@@ -561,29 +561,29 @@ class UnSQL {
     static async delete({ alias = undefined, where = {}, junction = 'and', groupBy = [], having = {}, debug = false, encryption = undefined } = {}) {
 
         if (!this.config && ('TABLE_NAME' in this) && ('POOL' in this)) {
-            console.warn(colors.yellow, `[UnSQL Version Conflict]: '${this.name}' model class is using v1.x class configuration with v2.x to continue with v1.x kindly switch the 'unsql' import to 'unsql/legacy'`, colors.reset)
-            return { success: false, error: `[UnSQL Version Conflict]: '${this.name}' model class is using v1.x class configuration with v2.x to continue with v1.x kindly switch the 'unsql' import to 'unsql/legacy'` }
+            console.warn(colors.yellow, `[UnSQL Version Conflict]: '${this.name}' model class is using 'v1.x' class configuration with 'v2.x' to continue with 'v1.x' kindly switch the 'unsql' import to 'unsql/legacy'`, colors.reset)
+            return { success: false, error: `[UnSQL Version Conflict]: '${this.name}' model class is using 'v1.x' class configuration with 'v2.x' to continue with 'v1.x' kindly switch the 'unsql' import to 'unsql/legacy'` }
         }
 
         switch (true) {
 
             // handle if connection object is missing
             case !this?.config?.pool && !this?.config?.connection: {
-                console.error(colors.red, `Please provide mysql connection or connection pool inside config of '${this.name}' model class`, colors.reset)
-                return { success: false, error: `Please provide mysql connection or connection pool inside config of + '${this.name}' model class` }
+                console.error(colors.red, `[Missing]: Either of Mysql 'connection' or connection 'pool' property is required inside 'config' of '${this.name}' model class`, colors.reset)
+                return { success: false, error: `Either of Mysql 'connection' or connection 'pool' property is required inside 'config' of '${this.name}' model class` }
             }
 
             // handle if table name is missing
             case !this?.config?.table: {
-                console.error(colors.red, 'Please provide database table name inside config of', this.name, 'model class', colors.reset)
-                return { success: false, error: 'Please provide database table name inside config of ' + this.name + ' model class' }
+                console.error(colors.red, `[Missing]: 'table' name property missing inside 'config' property of '${this.name}' model class`, colors.reset)
+                return { success: false, error: `'table' name property missing inside 'config' property of '${this.name}' model class` }
             }
 
             // handle delete all if safe mode is active
             case !Object.keys(where).length && (this?.config?.safeMode || !('safeMode' in this.config)): {
-                console.error(colors.red + 'Delete all records from database table in Safe Mode is prohibited!' + colors.reset)
-                console.error(colors.yellow + 'Please either disable Safe Mode in the model class config or provide a criteria inside where block to restrict delete action!' + colors.reset)
-                return { success: false, error: 'Please disable Safe Mode inside config of ' + this.name + ' model class' }
+                console.error(colors.red + `Delete all records from database table in 'safeMode' is prohibited!` + colors.reset)
+                console.error(colors.yellow + `Kindly disable 'safeMode' in 'config' property of '${this?.name}' model class or provide a filter using 'where' or 'having' property to restrict delete action!` + colors.reset)
+                return { success: false, error: `Please disable 'safeMode' inside 'config' property of '${this.name}' model class` }
             }
         }
 
@@ -675,6 +675,11 @@ class UnSQL {
      */
     static async export({ filename = this.config.table, directory = 'exports_unsql', select = ['*'], where = {}, mode = 'append', debug = false } = {}) {
 
+        if (!this.config && ('TABLE_NAME' in this) && ('POOL' in this)) {
+            console.warn(colors.yellow, `[UnSQL Version Conflict]: '${this.name}' model class is using 'v1.x' class configuration with 'v2.x' to continue with 'v1.x' kindly switch the 'unsql' import to 'unsql/legacy'`, colors.reset)
+            return { success: false, error: `[UnSQL Version Conflict]: '${this.name}' model class is using 'v1.x' class configuration with 'v2.x' to continue with 'v1.x' kindly switch the 'unsql' import to 'unsql/legacy'` }
+        }
+
         if (!this?.config?.devMode) {
             console.error(colors.red, `[Action Denied]: Record(s) can only be exported from '${this?.name}' model if inside 'config', 'devMode' is set to 'true' (currently ${this?.config?.devMode})`, colors.reset)
         }
@@ -716,6 +721,11 @@ class UnSQL {
      * @memberof UnSQL
      */
     static async reset({ debug = false } = {}) {
+
+        if (!this.config && ('TABLE_NAME' in this) && ('POOL' in this)) {
+            console.warn(colors.yellow, `[UnSQL Version Conflict]: '${this.name}' model class is using 'v1.x' class configuration with 'v2.x' to continue with 'v1.x' kindly switch the 'unsql' import to 'unsql/legacy'`, colors.reset)
+            return { success: false, error: `[UnSQL Version Conflict]: '${this.name}' model class is using 'v1.x' class configuration with 'v2.x' to continue with 'v1.x' kindly switch the 'unsql' import to 'unsql/legacy'` }
+        }
 
         if (!this?.config?.devMode || this?.config?.safeMode) {
             console.error(colors.red, `[Action Denied]: '${this.name}' model can only be reset only if inside 'config', 'devMode' is set to 'true' (currently ${this?.config?.devMode}) and 'safeMode' is set to 'false' (currently ${this?.config?.safeMode})`, colors.reset)
