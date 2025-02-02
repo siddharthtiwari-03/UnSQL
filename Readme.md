@@ -18,6 +18,7 @@ UnSQL is an open-source JavaScript library that provides schemaless, class based
    - [Find method](#find-method)
    - [Save method](#save-method)
    - [Delete method](#delete-method)
+   - [Export method](#export-method)
 8. [Examples](#examples)
    - [How to find (read/retrieve) record(s) using UnSQL?](#how-to-find-readretrieve-records-using-unsql)
    - [How to save (insert/update/upsert) data using UnSQL?](#how-to-save-insertupdateupsert-data-using-unsql)
@@ -178,13 +179,15 @@ export class User extends UnSQL {
 
 ## What are the built-in methods in UnSQL?
 
-`UnSQL` provides three (03) *static* methods to perform the **CRUD** operations via. model class as mentioned below:
+`UnSQL` provides five (05) *static* methods to perform the **CRUD** operations via. model class as mentioned below:
 
-| Method   | Description                                              |
-| -------- | -------------------------------------------------------- |
-| `find`   | fetch record(s) from the database table                  |
-| `save`   | insert / update / upsert record(s) in the database table |
-| `delete` | remove record(s) from the database table                 |
+| Method   | Description                                                                           |
+| -------- | ------------------------------------------------------------------------------------- |
+| `find`   | fetch record(s) from the database table                                               |
+| `save`   | insert / update / upsert record(s) in the database table                              |
+| `delete` | remove record(s) from the database table                                              |
+| `export` | export record(s) from the database table into a 'json' file                           |
+| `reset`  | remove all records from database table, also reset `'auto increment'` IDs to zero (0) |
 
 ### Find method
 
@@ -674,6 +677,45 @@ Below are the explanations for each of these properties:
 `encryption` (optional) same as explained above (See [encryption](#encryption) for more details)
 
 `debug` (optional) enables various **debug modes** (See [debug](#debug) for more details)
+
+### Export method
+
+`export` is a static, asynchronous method. As the name suggests, it is used to export record(s) from the database table into a dynamically generated **json file** (with same name as `table` property inside `config` property), by default inside `'exports_unsql'` directory. Record(s) can be filtered using `where` property and even columns can also be restricted using the `select` property. **This method only works when `devMode` inside `config` property is set to `true`**. This method is helpful in taking backups of the database table. `export` method takes in an object as its parameter with various properties as mentioned below:
+
+```javascript
+await User.export({
+    filename: 'test_user',
+    directory: 'exports_unsql',
+    select: ['*'],
+    where: {},
+    mode: 'append',
+    debug: false
+})
+```
+
+Each of these properties is explained below:
+
+`filename` (optional) used to change the default name (without file extension) of the dynamically generated file
+
+`directory` (optional) used to change the default name of the dynamically generated directory that contains all exported `.json` files
+
+`select` (optional) limits the columns that will be considered while exporting records, can also be used to manipulate record(s) of selected columns while exporting (see [select](#select) for details)
+
+`where` (optional) filter record(d) that will be considered for exporting (see [where](#where) for details)
+
+`mode` (optional) defines the behavior of export, `'append'` will recursively add data if invoked multiple times, `'override'` as the name suggests will override the dynamically generated file if invoked multiple times
+
+`debug` (optional) enables various debug modes (see [Debug](#debug) for details)
+
+### Reset method
+
+`reset` is a static, asynchronous method. As the name suggests, this method resets the database table to its initial state by removing all record(s) and also setting the `auto increment` Id to zero (0). **This method only works when `devMode` is set to true and `safeMode` is set to `false`.** `export` method takes in an object as its parameter with only one (optional) property `debug` (see [debug](#debug) for details) as mentioned below:
+
+```javascript
+await User.reset({ debug: false })
+```
+
+> **Caution: This method results in a destructive change and hence should be used with caution as changes cannot be reverted back**
 
 ### What are wrapper methods in UnSQL?
 

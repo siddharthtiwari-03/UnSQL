@@ -19,6 +19,7 @@ class UnSQL {
      * @type {{
      * table:string,
      * safeMode: boolean,
+     * devMode?: boolean,
      * connection?: *,
      * pool?: *,
      * encryption?: import("./defs/types.def").encryption
@@ -560,16 +561,16 @@ class UnSQL {
     static async delete({ alias = undefined, where = {}, junction = 'and', groupBy = [], having = {}, debug = false, encryption = undefined } = {}) {
 
         if (!this.config && ('TABLE_NAME' in this) && ('POOL' in this)) {
-            console.warn(colors.yellow, 'UnSQL has detected you are using v1.x model class configuration with v2.x If you wish to continue with v1.x kindly switch the unsql import to "unsql/legacy"', colors.reset)
-            return { success: false, error: 'UnSQL has detected you are using v1.x model class configuration with v2.x If you wish to continue with v1.x kindly switch the unsql import to "unsql/legacy"' }
+            console.warn(colors.yellow, `[UnSQL Version Conflict]: '${this.name}' model class is using v1.x class configuration with v2.x to continue with v1.x kindly switch the 'unsql' import to 'unsql/legacy'`, colors.reset)
+            return { success: false, error: `[UnSQL Version Conflict]: '${this.name}' model class is using v1.x class configuration with v2.x to continue with v1.x kindly switch the 'unsql' import to 'unsql/legacy'` }
         }
 
         switch (true) {
 
             // handle if connection object is missing
             case !this?.config?.pool && !this?.config?.connection: {
-                console.error(colors.red, 'Please provide mysql connection or connection pool inside config of', this.name, 'model class', colors.reset)
-                return { success: false, error: 'Please provide mysql connection or connection pool inside config of ' + this.name + ' model class' }
+                console.error(colors.red, `Please provide mysql connection or connection pool inside config of '${this.name}' model class`, colors.reset)
+                return { success: false, error: `Please provide mysql connection or connection pool inside config of + '${this.name}' model class` }
             }
 
             // handle if table name is missing
@@ -620,6 +621,112 @@ class UnSQL {
 
         const conn = await (this?.config?.pool?.getConnection() || this?.config?.connection)
 
+        try {
+            await conn.beginTransaction()
+            if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.time(colors.blue + 'UnSQL benchmark: ' + colors.reset + colors.cyan + `Removed records in` + colors.reset)
+
+            const prepared = conn.format(sql, values)
+
+            handleQueryDebug(debug, sql, values, prepared)
+
+            const [result] = await conn.query(sql, values)
+
+            console.log('result', result)
+
+            await conn.commit()
+            if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.timeEnd(colors.blue + 'UnSQL benchmark: ' + colors.reset + colors.cyan + `Removed records in` + colors.reset)
+            return { success: true, ...result }
+
+        } catch (error) {
+            handleError(debug, error)
+            if (conn) await conn.rollback()
+            return { success: false, error }
+        } finally {
+            if (this?.config?.pool) {
+                await conn.release()
+            }
+        }
+
+    }
+
+    /**
+     * export record(s) from the table
+     * @method export
+     * @description This method exports record(s) (filtered/un-filtered) from the database table in form of the 'Json Array' into a json file
+     * 
+     * @param {object} exportParam
+     * 
+     * @param {string} [exportParam.filename]
+     * 
+     * @param {string} [exportParam.directory]
+     * 
+     * @param {import("./defs/types.def").selectObj} [exportParam.select]
+     * 
+     * @param {import("./defs/types.def").whereObj} [exportParam.where]
+     * 
+     * @param {'append'|'override'} [exportParam.mode]
+     * 
+     * @param {'query'|'error'|'benchmark'|'benchmark-query'|'benchmark-error'|boolean} [exportParam.debug]
+     * 
+     * @returns {Promise<{success: boolean, message?: string, error?: *}>}
+     * 
+     * @static
+     * @memberof UnSQL
+     */
+    static async export({ filename = this.config.table, directory = 'exports_unsql', select = ['*'], where = {}, mode = 'append', debug = false } = {}) {
+
+        if (!this?.config?.devMode) {
+            console.error(colors.red, `[Action Denied]: Record(s) can only be exported from '${this?.name}' model if inside 'config', 'devMode' is set to 'true' (currently ${this?.config?.devMode})`, colors.reset)
+        }
+
+        const path = require('path')
+        const dir = path.join(path.dirname(require.main?.filename || ''), directory)
+
+        const fs = require('fs/promises')
+
+        await fs.mkdir(dir, { recursive: true })
+
+        const result = await this.find({ select, where, debug })
+
+        if (!result.success) {
+            console.error(colors.red, result.error?.sqlMessage || result.error?.message, colors.reset)
+            return result
+        }
+
+        if (mode === 'override')
+            await fs.writeFile(path.join(dir, filename + '.json'), JSON.stringify(result.result))
+        else
+            await fs.appendFile(path.join(dir, filename + '.json'), JSON.stringify(result.result))
+
+
+        return { success: true, message: `${result.result.length} records exported from ${this?.name} model` }
+    }
+
+    /**
+     * Will reset the database table to initial state
+     * @method reset
+     * 
+     * @param {object} resetParam
+     * 
+     * @param {'query'|'error'|'benchmark'|'benchmark-query'|'benchmark-error'|boolean} [resetParam.debug]
+     * 
+     * @returns {Promise<{success: boolean, message?: string, error: *}>}
+     * 
+     * @static
+     * @memberof UnSQL
+     */
+    static async reset({ debug = false } = {}) {
+
+        if (!this?.config?.devMode || this?.config?.safeMode) {
+            console.error(colors.red, `[Action Denied]: '${this.name}' model can only be reset only if inside 'config', 'devMode' is set to 'true' (currently ${this?.config?.devMode}) and 'safeMode' is set to 'false' (currently ${this?.config?.safeMode})`, colors.reset)
+            return { success: false, error: `[Action Denied]: '${this.name}' model can only be reset only if inside 'config', 'devMode' is set to 'true' (currently ${this?.config?.devMode}) and 'safeMode' is set to 'false' (currently ${this?.config?.safeMode})` }
+        }
+
+        const values = []
+        let sql = 'TRUNCATE ??'
+        values.push(this?.config?.table)
+
+        const conn = await (this?.config?.pool?.getConnection() || this?.config?.connection)
 
         try {
             await conn.beginTransaction()
