@@ -9,15 +9,11 @@
   ],
   "files": [
     "LICENSE",
-    "helpers/",
-    "defs/",
-    "unsql.js",
     "legacy.js"
   ],
   "exports": {
     "./legacy": "./legacy.js",
     ".": "./legacy.js",
-    "./next": "./unsql.js",
     "./package.json": "./package.json"
   },
   "repository": {
