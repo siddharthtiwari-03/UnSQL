@@ -35,7 +35,7 @@
  * 
  * @prop {object} sum used to sum the values
  * 
- * @prop {string|number|object} sum.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * @prop {string|number|valueObj} sum.value accepts a number / string (column name) / object wrapper / conditional object as its value
  * 
  * @prop {boolean} [sum.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
  * 
@@ -50,7 +50,7 @@
  * 
  * @prop {object} avg used to avg the values
  * 
- * @prop {string|number|object} avg.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * @prop {string|number|valueObj} avg.value accepts a number / string (column name) / object wrapper / conditional object as its value
  * 
  * @prop {boolean} [avg.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
  * 
@@ -65,7 +65,7 @@
  * 
  * @prop {object} count used to count the values
  * 
- * @prop {string|number|object} count.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * @prop {string|number|valueObj} count.value accepts a number / string (column name) / object wrapper / conditional object as its value
  * 
  * @prop {string} [count.as] (optional) local reference name to the value returned by this aggregate method
  * 
@@ -78,7 +78,7 @@
  * 
  * @prop {object} min used to min the values
  * 
- * @prop {string|number|object} min.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * @prop {string|number|valueObj} min.value accepts a number / string (column name) / object wrapper / conditional object as its value
  * 
  * @prop {boolean} [min.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
  * 
@@ -93,7 +93,7 @@
  * 
  * @prop {object} max used to max the values
  * 
- * @prop {string|number|object} max.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * @prop {string|number|valueObj} max.value accepts a number / string (column name) / object wrapper / conditional object as its value
  * 
  * @prop {boolean} [max.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
  * 
@@ -156,7 +156,7 @@
  * 
  * @prop {string|number|object} case.else default value if none of the conditions are matched
  * 
- * @prop {string} case.as provides local reference name to the result of this switch case wrapper method
+ * @prop {string} [case.as] provides local reference name to the result of this switch case wrapper method
  */
 
 /**

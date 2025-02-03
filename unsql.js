@@ -387,41 +387,6 @@ class UnSQL {
 
                         values.push(encrypt[col]?.sha || encryption?.sha || this?.config?.encryption?.sha || 512)
 
-                        // // handle if local query encryption mode is set
-                        // if (encryption?.mode && (encrypt[col]?.secret || encryption?.secret || this?.config?.encryption?.secret)) {
-
-                        //     if (encryption?.mode?.includes('-cbc')) rowSql += ', ?'
-
-                        //     rowSql += ', UNHEX(SHA2(?, ?))'
-
-                        //     values.push(encrypt[col]?.secret || encryption?.secret || this?.config?.encryption?.secret)
-
-                        //     // check if encryption mode requires iv or sha
-                        //     if (encryption?.mode?.includes('-cbc')) {
-                        //         values.push(encrypt[col]?.iv || encryption?.iv || this?.config?.encryption?.iv)
-                        //     }
-
-                        //     values.push(encrypt[col]?.sha || encryption?.sha || this?.config?.encryption?.sha || 512)
-
-                        // }
-                        // // handle if global encryption mode is set
-                        // else if (this?.config?.encryption?.mode && (encrypt[col]?.secret || encryption?.secret || this?.config?.encryption?.secret)) {
-
-                        //     if (this?.config?.encryption?.mode?.includes('-cbc')) rowSql += ', ?'
-
-                        //     rowSql += ', UNHEX(SHA2(?, ?))'
-
-                        //     values.push(encrypt[col]?.secret || encryption?.secret || this?.config?.encryption?.secret)
-
-                        //     // check if encryption mode requires iv or sha
-                        //     if (this?.config?.encryption?.mode?.includes('-cbc')) {
-                        //         values.push(encrypt[col]?.iv || encryption?.iv || this?.config?.encryption?.iv)
-                        //     }
-
-                        //     values.push(encrypt[col]?.sha || encryption?.sha || this?.config?.encryption?.sha || 512)
-
-                        // }
-
                         rowSql += ')'
 
                     } else {
@@ -431,7 +396,6 @@ class UnSQL {
 
                     return rowSql
                 }).join(', ')
-                values.push(data)
 
                 if (Object.keys(upsert).length) {
                     sql += ' ON DUPLICATE KEY UPDATE '
@@ -473,8 +437,9 @@ class UnSQL {
                 }
 
                 if (Object.keys(where).length) {
-                    sql += 'WHERE '
+                    sql += ' WHERE '
                     const whereResp = prepWhere({ alias, where, junction, encryption, ctx: this })
+                    console.log('whereResp', whereResp)
                     sql += whereResp.sql
                     values.push(...whereResp.values)
                 }

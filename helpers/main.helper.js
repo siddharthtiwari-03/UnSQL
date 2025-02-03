@@ -358,6 +358,8 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', encrypt
 
                 sql += conditions[key]
 
+                if (key === 'isNull') break
+
                 if (key === 'in') sql += '('
                 else if (key === 'like' || key === 'notLike' || key === 'endLike' || key === 'notEndLike') sql += 'CONCAT("%", '
 
@@ -421,12 +423,11 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', encrypt
             case typeof val === 'number':
             case typeof val === 'string': {
 
-                // if (key && key != 'UnSQL_Placeholder') {
                 const keyPlaceholder = prepPlaceholder(key)
                 const keyName = prepName({ alias, value: key })
+
                 sql += keyPlaceholder
                 if (!checkConstants(key)) values.push(keyName)
-                // }
 
                 const valPlaceholder = prepPlaceholder(val)
                 const valName = prepName({ alias, value: val })
@@ -873,8 +874,10 @@ const prepIf = ({ alias, val, junction = 'and', encryption = undefined, ctx = un
         if (!checkConstants(falseValue)) values.push(falseName)
     }
 
-    sql += ' AS ?'
-    values.push(as)
+    if (as) {
+        sql += ' AS ?'
+        values.push(as)
+    }
 
     return { sql, values }
 }
@@ -945,9 +948,10 @@ const prepCase = ({ alias, val, junction = 'and', encryption = undefined, ctx = 
 
     sql += 'END'
 
-    sql += ' AS ?'
-    values.push(as)
-
+    if (as) {
+        sql += ' AS ?'
+        values.push(as)
+    }
     return { sql, values }
 }
 
@@ -1005,7 +1009,7 @@ const prepConcat = ({ alias, val, junction = 'and', encryption = undefined, ctx 
         values.push(...resp.values)
     }
 
-    if (!Object.keys(compare).length) {
+    if (!Object.keys(compare).length && as) {
         sql += ' AS ?'
         values.push(as)
     }
@@ -1203,7 +1207,7 @@ const prepString = ({ alias, val, junction = 'and', encryption = undefined, ctx 
         values.push(...resp.values)
     }
 
-    if (!Object.keys(compare).length) {
+    if (!Object.keys(compare).length && as) {
         sql += ' AS ?'
         values.push(as || (value.includes('.') ? value.split('.')[1] : value))
     }
