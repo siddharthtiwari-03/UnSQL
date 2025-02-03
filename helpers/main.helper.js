@@ -661,18 +661,16 @@ const prepJson = ({ key, val, encryption = undefined, ctx = undefined }) => {
  * 
  * @param {string} aggParam.key refers the name of the aggregate method, viz. 'sum', 'avg', 'min', 'max' etc.
  * 
- * @param {{value:(object|string|number), distinct?:boolean, compare?:object, as?:string}} aggParam.val accepts values related to aggregate method
- * 
- * @param {('char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary')} [aggParam.cast] 
+ * @param {{value:(object|string|number), distinct?:boolean, cast?: ('char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary'), compare?:object, as?:string}} aggParam.val accepts values related to aggregate method
  * 
  * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
  */
-const prepAggregate = ({ alias, key, val, parent = null, junction = 'and', cast = null, encryption = undefined, ctx = undefined }) => {
+const prepAggregate = ({ alias, key, val, parent = null, junction = 'and', encryption = undefined, ctx = undefined }) => {
 
     const values = []
     let sql = ''
 
-    const { value, distinct = false, compare = {}, as = null } = val
+    const { value, distinct = false, cast = null, compare = {}, as = null } = val
 
     console.dir(val)
 
