@@ -429,6 +429,11 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', encrypt
                 sql += keyPlaceholder
                 if (!checkConstants(key)) values.push(keyName)
 
+                if (val === 'isNull') {
+                    sql += ' ' + conditions.isNull
+                    break
+                }
+
                 const valPlaceholder = prepPlaceholder(val)
                 const valName = prepName({ alias, value: val })
 
@@ -833,7 +838,7 @@ const prepIf = ({ alias, val, junction = 'and', encryption = undefined, ctx = un
 
     console.log('val inside prepIf', val)
 
-    const { check = {}, trueValue = null, falseValue = null, as = 'if' } = val
+    const { check = {}, trueValue = null, falseValue = null, as = null } = val
     sql += 'IF('
 
     if (typeof check === 'object') {
@@ -904,7 +909,7 @@ const prepCase = ({ alias, val, junction = 'and', encryption = undefined, ctx = 
     let sql = ''
     const values = []
 
-    const { check = [], else: defaultElse, as = 'case' } = val
+    const { check = [], else: defaultElse, as = null } = val
 
     sql += 'CASE '
 
@@ -977,7 +982,7 @@ const prepCase = ({ alias, val, junction = 'and', encryption = undefined, ctx = 
  */
 const prepConcat = ({ alias, val, junction = 'and', encryption = undefined, ctx = undefined }) => {
 
-    const { value = [], pattern = '', as = 'concat' } = val
+    const { value = [], pattern = '', as = null } = val
 
     const values = []
     let sql = 'CONCAT_WS('
