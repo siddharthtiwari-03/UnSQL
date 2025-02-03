@@ -43,7 +43,7 @@
  * 
  * @prop {string} [sum.as] (optional) local reference name to the value returned by this aggregate method
  * 
- * @prop {object} [sum.compare] accepts object with conditions to compare this aggregator method with
+ * @prop {whereObj} [sum.compare] accepts object with conditions to compare this aggregator method with
  */
 
 /**
@@ -60,7 +60,7 @@
  * 
  * @prop {string} [avg.as] (optional) local reference name to the value returned by this aggregate method
  * 
- * @prop {object} [avg.compare] accepts object with conditions to compare this aggregator method with
+ * @prop {whereObj} [avg.compare] accepts object with conditions to compare this aggregator method with
  */
 
 /**
@@ -75,7 +75,7 @@
  * 
  * @prop {string} [count.as] (optional) local reference name to the value returned by this aggregate method
  * 
- * @prop {object} [count.compare] accepts object with conditions to compare this aggregator method with
+ * @prop {whereObj} [count.compare] accepts object with conditions to compare this aggregator method with
  */
 
 /**
@@ -92,7 +92,7 @@
  * 
  * @prop {string} [min.as] (optional) local reference name to the value returned by this aggregate method
  * 
- * @prop {object} [min.compare] (optional) accepts object with conditions to compare this aggregate method with
+ * @prop {whereObj} [min.compare] (optional) accepts object with conditions to compare this aggregate method with
  */
 
 /**
@@ -109,7 +109,7 @@
  * 
  * @prop {string} [max.as] (optional) local reference name to the value returned by this aggregate method
  * 
- * @prop {object} [max.compare] (optional) accepts object with conditions to compare this aggregate method with
+ * @prop {whereObj} [max.compare] (optional) accepts object with conditions to compare this aggregate method with
  */
 
 /**
@@ -191,11 +191,6 @@
 /**
  * comparator wrapper
  * @typedef { { eq: valueObj } | { notEq: valueObj } | { lt: valueObj } | { gt: valueObj } | { in: valueObj } | { notIn: valueObj } | { like: valueObj } | { startLike: valueObj } | { notStartLike: valueObj } | { endLike: valueObj } | { notEndLike: valueObj } | { isNull: valueObj } } compareObj
- */
-
-/**
- * comparator wrapper limited
- * @typedef { { eq: valueObj } | { notEq: valueObj } | { lt: valueObj } | { gt: valueObj } } compareObjLimited 
  */
 
 // #######################################################################################################
@@ -373,7 +368,7 @@
  * 
  * @prop {whereObj} [json.where]  (optional) allows to filter records using various conditions
  * 
- * @prop {object} [json.as] (optional) rename the value returned by this wrapper method by rename / tagging with local name using 'as' property
+ * @prop {string} [json.as] (optional) rename the value returned by this wrapper method by rename / tagging with local name using 'as' property
  * 
  */
 
@@ -473,24 +468,6 @@
 
 // #######################################################################################################
 
-
-/**
- * config object type
- * @typedef {Object} config
- * 
- * @prop {?string} config.table name of the table in the database
- * 
- * @prop {object} [config.connection] MySQL connection object
- * 
- * @prop {object} [config.pool] MySQL connection pool object
- * 
- * @prop {boolean} config.safeMode (optional) safe mode helps avoiding accidental delete of all method without 'where' property, default 'true'
- * 
- * @prop {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512)}} [config.encryption] (optional) used to define encryption / decryption parameters
- * 
- * 
- */
-
 /**
  * Select object definition
  * @typedef {Array<valueObj|jsonObjWrapper|jsonArrayWrapper|{[column:string]:string}} selectObj
@@ -506,7 +483,7 @@
 
 /**
  * where object
- * @typedef { stringWrapper | dateWrapper | numericWrapper | andWrapper | orWrapper | aggregateWrappers | {[key:(string|number)]: (valueObj|compareObj)} } whereObj
+ * @typedef { (stringWrapper | dateWrapper | numericWrapper | andWrapper | orWrapper | aggregateWrappers) | ({[key:(string|number)]: (valueObj|compareObj)}) } whereObj
  */
 
 // #######################################################################################################

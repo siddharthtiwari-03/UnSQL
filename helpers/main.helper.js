@@ -142,7 +142,7 @@ const prepSelect = ({ alias, select = [], encryption = undefined, ctx = undefine
  * 
  * @param {string} [whereParam.alias] (optional) local reference name of the table
  * 
- * @param {{[key:string]:*}} [whereParam.where] (optional) allows to filter records using various conditions
+ * @param {import("../defs/types.def").whereObj} [whereParam.where] (optional) allows to filter records using various conditions
  * 
  * @param {'and'|'or'} [whereParam.junction] (optional) clause used to connect multiple where conditions
  * 
@@ -661,7 +661,7 @@ const prepJson = ({ key, val, encryption = undefined, ctx = undefined }) => {
  * 
  * @param {string} aggParam.key refers the name of the aggregate method, viz. 'sum', 'avg', 'min', 'max' etc.
  * 
- * @param {{value:(object|string|number), distinct?:boolean, cast?: ('char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary'), compare?:object, as?:string}} aggParam.val accepts values related to aggregate method
+ * @param {{value:(import("../defs/types.def").valueObj), distinct?:boolean, cast?: ('char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary'), compare?:import("../defs/types.def").whereObj, as?:string}} aggParam.val accepts values related to aggregate method
  * 
  * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
  */

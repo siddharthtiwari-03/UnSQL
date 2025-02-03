@@ -1071,10 +1071,19 @@ const result = await User.find({
 **Sum wrapper** (keyword `sum`) is used to calculate 'sum' of a set (group) of records. This is and aggregate method hence it will be applied not to single but group of records. It can be used / nested only inside `select` and `having` parameters, and not with `where` clause as a `value`. Below is the interface for this wrapper method along with the default values for each of its properties:
 
 ```javascript
+{
+    sum: {
+        value:'',
+        cast: null,
+        compare: {},
+        as: null
+    }
+}
 const result = await User.find({
     select: [
         { sum: {
-            value: 'salary'
+            value: 'salary',
+            cast: 'signed',
             as: 'totalSalary'
             }
         }
@@ -1094,9 +1103,10 @@ const result = await User.find({
 > **Explanation:**
 > In the above sample, `'salary'` and `'department'` represents columns in `user` table. Here, inside `select` property, we are calculating sum of salaries, since we have used `groupBy` to group records using `'department'`, sum of salaries from each `'department'` will be calculated are returned with the local reference name `'totalSalary'`, then we are filtering to fetch all records only when 'totalSalary' is greater than 5000
 > **Please note:** 
-> 1. `compare` property is available when `sum` is used inside `having` and not available when it is being used inside `select` clause
-> 2. `as` property is available when this wrapper is used inside `select` and not available when it is being used inside `having` clause
-> 3. `value` can either accept either a column name or number value or an object (simple or nested) as its value
+> 1. `cast` is used for type casting of `value` property into desired type
+> 2. `compare` property is available when `sum` is used inside `having` and not available when it is being used inside `select` clause
+> 3. `as` property is available when this wrapper is used inside `select` and not available when it is being used inside `having` clause
+> 4. `value` can either accept either a column name or number value or an object (simple or nested) as its value
 
 #### Average wrapper
 
@@ -1106,7 +1116,8 @@ const result = await User.find({
 const result = await User.find({
     select: [
         { avg: {
-            value: 'salary'
+            value: 'salary',
+            cast: 'unsigned',
             as: 'averageSalary'
             }
         }
@@ -1139,6 +1150,7 @@ const result = await User.find({
     select: [
         { min: {
             value: 'salary'
+            cast: 'unsigned',
             as: 'minSalary'
             }
         }
@@ -1171,6 +1183,7 @@ const result = await User.find({
     select: [
         { max: {
             value: 'salary'
+            cast: 'unsigned',
             as: 'maxSalary'
             }
         }
