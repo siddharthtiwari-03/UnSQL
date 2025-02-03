@@ -39,6 +39,8 @@
  * 
  * @prop {boolean} [sum.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
  * 
+ * @prop {('char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary')} [sum.cast] (optional) enables casting of 'value' property into any of the valid types
+ * 
  * @prop {string} [sum.as] (optional) local reference name to the value returned by this aggregate method
  * 
  * @prop {object} [sum.compare] accepts object with conditions to compare this aggregator method with
@@ -54,6 +56,8 @@
  * 
  * @prop {boolean} [avg.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
  * 
+ * @prop {('char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary')} [avg.cast] (optional) enables casting of 'value' property into any of the valid types
+ * 
  * @prop {string} [avg.as] (optional) local reference name to the value returned by this aggregate method
  * 
  * @prop {object} [avg.compare] accepts object with conditions to compare this aggregator method with
@@ -66,6 +70,8 @@
  * @prop {object} count used to count the values
  * 
  * @prop {string|number|valueObj} count.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * 
+ * @prop {('char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary')} [count.cast] (optional) enables casting of 'value' property into any of the valid types
  * 
  * @prop {string} [count.as] (optional) local reference name to the value returned by this aggregate method
  * 
@@ -82,6 +88,8 @@
  * 
  * @prop {boolean} [min.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
  * 
+ * @prop {('char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary')} [min.cast] (optional) enables casting of 'value' property into any of the valid types
+ * 
  * @prop {string} [min.as] (optional) local reference name to the value returned by this aggregate method
  * 
  * @prop {object} [min.compare] (optional) accepts object with conditions to compare this aggregate method with
@@ -96,6 +104,8 @@
  * @prop {string|number|valueObj} max.value accepts a number / string (column name) / object wrapper / conditional object as its value
  * 
  * @prop {boolean} [max.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
+ * 
+ * @prop {('char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary')} [max.cast] (optional) enables casting of 'value' property into any of the valid types
  * 
  * @prop {string} [max.as] (optional) local reference name to the value returned by this aggregate method
  * 

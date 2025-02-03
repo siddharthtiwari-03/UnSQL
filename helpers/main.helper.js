@@ -661,11 +661,13 @@ const prepJson = ({ key, val, encryption = undefined, ctx = undefined }) => {
  * 
  * @param {string} aggParam.key refers the name of the aggregate method, viz. 'sum', 'avg', 'min', 'max' etc.
  * 
- * @param {{value:(object|string|number), distinct?:boolean, compare?:object, as?:string}} jsonObj.val accepts values related to aggregate method
+ * @param {{value:(object|string|number), distinct?:boolean, compare?:object, as?:string}} aggParam.val accepts values related to aggregate method
+ * 
+ * @param {('char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary')} [aggParam.cast] 
  * 
  * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
  */
-const prepAggregate = ({ alias, key, val, parent = null, junction = 'and', encryption = undefined, ctx = undefined }) => {
+const prepAggregate = ({ alias, key, val, parent = null, junction = 'and', cast = null, encryption = undefined, ctx = undefined }) => {
 
     const values = []
     let sql = ''
@@ -673,6 +675,8 @@ const prepAggregate = ({ alias, key, val, parent = null, junction = 'and', encry
     const { value, distinct = false, compare = {}, as = null } = val
 
     console.dir(val)
+
+    if (cast) sql += 'CAST('
 
     sql += aggregateFunctions[key] + '('
     if (distinct) sql += 'DISTINCT '
@@ -691,6 +695,9 @@ const prepAggregate = ({ alias, key, val, parent = null, junction = 'and', encry
     }
 
     sql += ')'
+
+    // type casting ends here
+    if (cast) sql += ` AS ${dataTypes[cast]})`
 
     if (as) {
         sql += ' AS ??'
