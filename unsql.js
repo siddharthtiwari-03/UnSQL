@@ -39,36 +39,23 @@ class UnSQL {
      * @method find
      * @description find method is used to fetch records from the database table
      * 
-     * @static
-     * 
      * @param {object} findParam takes in various parameters that governs different query conditions and values
-     * 
      * @param {string} [findParam.alias] (optional) local alias name for the database table
-     * 
      * @param {import("./defs/types.def").selectObj} [findParam.select] (optional) accepts different types of values inside parent array: a. column name as regular 'string' value, b. string value inside array ['string'] for string value that is not a column name, c. number and boolean directly and d. methodWrappers in object form like {str:...}, {num:...}, {date:...} etc
-     * 
      * @param {Array<import("./defs/types.def").joinObj>} [findParam.join] (optional) enables association of child tables to this model class (parent table)
-     * 
      * @param {import("./defs/types.def").whereObj} [findParam.where] (optional) used to filter records
-     * 
      * @param {'and'|'or'} [findParam.junction] (optional) defines default behavior that is used to join different 'child properties' inside 'where' property, default value is 'and'
-     * 
      * @param {Array<string>} [findParam.groupBy] (optional) allows to group result based on single (or list of) column(s)
-     * 
      * @param {import("./defs/types.def").havingObj} [findParam.having] (optional) allows to perform comparison on the group of records, accepts nested conditions as object along with aggregate method wrappers viz. {sum:...}, {avg:...}, {min:...}, {max:...} etc
-     * 
      * @param {{[column:string]:('asc'|'desc')}} [findParam.orderBy] (optional) allows to order result based on single (or list of) column(s)
-     * 
      * @param {number} [findParam.limit] (optional) limits the number of records to be fetched from the database table
-     * 
      * @param {number} [findParam.offset] (optional) determines the starting index for records to be fetched from the database table
-     * 
      * @param {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512)}} [findParam.encryption] (optional) defines query level encryption configurations
-     * 
      * @param {'query'|'error'|'benchmark'|'benchmark-query'|'benchmark-error'|boolean} [findParam.debug] (optional) enables different debug modes
      * 
      * @returns {Promise<{success:boolean, error?:object, result?:object}>} returns Promise that always resolves with two parameters: success and either error or result depending on the condition if query ran successfully or failed
      * 
+     * @static
      * @memberof UnSQL
      */
     static async find({ alias = undefined, select = ['*'], join = [], where = {}, junction = 'and', groupBy = [], having = {}, orderBy = {}, limit = undefined, offset = undefined, encryption = {}, debug = false } = {}) {
@@ -201,32 +188,21 @@ class UnSQL {
      * @method save 
      * @description save method used in insert / update / upsert record(s) in the database table
      * 
-     * @static
-     * 
      * @param {object} saveParam save query object definition
-     * 
      * @param {string} [saveParam.alias] (optional) local alias name for the database table
-     * 
      * @param {object|Array<object>} saveParam.data object / array of objects to be inserted into the database table
-     * 
      * @param {import("./defs/types.def").whereObj} [saveParam.where] (optional) used to filter records to be updated
-     * 
      * @param {'and'|'or'} [saveParam.junction] (optional) defines default behavior that is used to join different 'child properties' inside 'where' property, default value is 'and'
-     * 
      * @param {Array<string>} [saveParam.groupBy] (optional) allows to group result based on single (or list of) column(s)
-     * 
      * @param {import("./defs/types.def").havingObj} [saveParam.having] (optional) allows to perform comparison on the group of records, accepts nested conditions as object along with aggregate method wrappers viz. {sum:...}, {avg:...}, {min:...}, {max:...} etc
-     * 
      * @param {object} [saveParam.upsert] (optional) object data to be updated in case of 'duplicate key entry' found in the database
-     * 
      * @param {{[column:string]:{secret?:string, iv?:string, sha?:(224|256|384|512)} }} [saveParam.encrypt] (optional) define encryption overrides for column(s)
-     * 
      * @param {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512) }} [saveParam.encryption] (optional) defines query level encryption configurations
-     * 
      * @param {'query'|'error'|'benchmark'|'benchmark-query'|'benchmark-error'|boolean} [saveParam.debug] (optional) enables various debug mode
      * 
      * @returns {Promise<{success:boolean, error?:object, result?:object}>} returns Promise that always resolves with two parameters: success and either error or result depending on the condition if query ran successfully or failed
      * 
+     * @static
      * @memberof UnSQL
      */
     static async save({ alias = undefined, data = [], where = {}, junction = 'and', groupBy = [], having = {}, upsert = {}, encrypt = {}, encryption = {}, debug = false }) {
@@ -501,26 +477,18 @@ class UnSQL {
      * @method delete
      * @description delete method is used to remove record(s) from the database table
      * 
-     * @static
-     * 
      * @param {object} deleteParam delete query object definition
-     * 
      * @param {string} [deleteParam.alias] (optional) local alias name for the database table
-     * 
      * @param {import("./defs/types.def").whereObj} [deleteParam.where] (optional) used to filter records to be updated
-     * 
      * @param {'and'|'or'} [deleteParam.junction] (optional) defines default behavior that is used to join different 'child properties' inside 'where' property, default value is 'and'
-     * 
      * @param {Array<string>} [deleteParam.groupBy] (optional) allows to group result based on single (or list of) column(s)
-     * 
      * @param {import("./defs/types.def").havingObj} [deleteParam.having] (optional) allows to perform comparison on the group of records, accepts nested conditions as object along with aggregate method wrappers viz. {sum:...}, {avg:...}, {min:...}, {max:...} etc
-     * 
      * @param {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512) }} [deleteParam.encryption] (optional) defines query level encryption configurations
-     * 
      * @param {'query'|'error'|'benchmark'|'benchmark-query'|'benchmark-error'|boolean} [deleteParam.debug] (optional) enables various debug mode
      * 
      * @returns {Promise<{success:boolean, error?:object, result?:object}>} returns Promise that always resolves with two parameters: success and either error or result depending on the condition if query ran successfully or failed
      * 
+     * @static
      * @memberof UnSQL
      */
     static async delete({ alias = undefined, where = {}, junction = 'and', groupBy = [], having = {}, debug = false, encryption = undefined } = {}) {
@@ -618,19 +586,12 @@ class UnSQL {
      * export record(s) from the table
      * @method export
      * @description This method exports record(s) (filtered/un-filtered) from the database table in form of the 'Json Array' into a json file
-     * 
      * @param {object} exportParam
-     * 
      * @param {string} [exportParam.filename]
-     * 
      * @param {string} [exportParam.directory]
-     * 
      * @param {import("./defs/types.def").selectObj} [exportParam.select]
-     * 
      * @param {import("./defs/types.def").whereObj} [exportParam.where]
-     * 
      * @param {'append'|'override'} [exportParam.mode]
-     * 
      * @param {'query'|'error'|'benchmark'|'benchmark-query'|'benchmark-error'|boolean} [exportParam.debug]
      * 
      * @returns {Promise<{success: boolean, message?: string, error?: *}>}
@@ -647,6 +608,7 @@ class UnSQL {
 
         if (!this?.config?.devMode) {
             console.error(colors.red, `[Action Denied]: Record(s) can only be exported from '${this?.name}' model if inside 'config', 'devMode' is set to 'true' (currently ${this?.config?.devMode})`, colors.reset)
+            return { success: false, error: `[Action Denied]: Record(s) can only be exported from '${this?.name}' model if inside 'config', 'devMode' is set to 'true' (currently ${this?.config?.devMode})` }
         }
 
         const path = require('path')
@@ -675,9 +637,7 @@ class UnSQL {
     /**
      * Will reset the database table to initial state
      * @method reset
-     * 
      * @param {object} resetParam
-     * 
      * @param {'query'|'error'|'benchmark'|'benchmark-query'|'benchmark-error'|boolean} [resetParam.debug]
      * 
      * @returns {Promise<{success: boolean, message?: string, error: *}>}

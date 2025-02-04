@@ -1230,7 +1230,7 @@ const result = await User.find({
 
 Each of the properties is explained below:
 
-`value` accepts an object `key: value` pair(s) as value. `key` being a string value, `value` can be either string value or a column or number or nested object
+`value` accepts an object `key: value` pair(s) as value. `key` being a string value, `value` can be either string value or a column or any of the UnSQL reserved constants (see [reserved constants](#what-are-unsql-reserved-constants)) or number or nested object
 
 `table` (optional) reference to the child table from which the columns needs to be fetched
 
@@ -1562,6 +1562,20 @@ const result = await User.find({
 })
 ```
 > **Explanation:** In the above example, `'userId'`, `'firstName'` and `'lastName'` are the column names hence does not start with `#` on the other hand `'test'` and `'Siddharth'` are the string values hence contains `#` as prefix to differentiate them with column names.
+
+### What are UnSQL Reserved Constants?
+
+`UnSQL` has various **built-in reserved constants** as mentioned below:
+
+| constant           | description                                                         |
+| ------------------ | ------------------------------------------------------------------- |
+| `currentDate`      | represents reference of current date and time                       |
+| `now`              | same as `currentDate` represents reference of current date and time |
+| `currentTime`      | same as `currentDate` represents reference of current date and time |
+| `currentTimestamp` | same as `currentDate` represents reference of current date and time |
+| `localTime`        | same as `currentDate` represents reference of current date and time |
+| `localTimestamp`   | same as `currentDate` represents reference of current date and time |
+| `pi`               | same as `currentDate` represents reference of current date and time |
 
 ## Author
 
