@@ -31,7 +31,7 @@
  * sum aggregate function
  * @typedef {object} sumAggregator
  * @prop {object} sum used to sum the values
- * @prop {string|number|valueObj} sum.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * @prop {string|number|whereObj} sum.value accepts a number / string (column name) / object wrapper / conditional object as its value
  * @prop {boolean} [sum.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
  * @prop {('char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary')} [sum.cast] (optional) enables casting of 'value' property into any of the valid types
  * @prop {string} [sum.as] (optional) local reference name to the value returned by this aggregate method
@@ -42,7 +42,7 @@
  * avg aggregate function
  * @typedef {object} avgAggregator
  * @prop {object} avg used to avg the values
- * @prop {string|number|valueObj} avg.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * @prop {string|number|whereObj} avg.value accepts a number / string (column name) / object wrapper / conditional object as its value
  * @prop {boolean} [avg.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
  * @prop {('char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary')} [avg.cast] (optional) enables casting of 'value' property into any of the valid types
  * @prop {string} [avg.as] (optional) local reference name to the value returned by this aggregate method
@@ -53,7 +53,7 @@
  * count aggregate function
  * @typedef {object} countAggregator
  * @prop {object} count used to count the values
- * @prop {string|number|valueObj} count.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * @prop {string|number|whereObj} count.value accepts a number / string (column name) / object wrapper / conditional object as its value
  * @prop {('char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary')} [count.cast] (optional) enables casting of 'value' property into any of the valid types
  * @prop {string} [count.as] (optional) local reference name to the value returned by this aggregate method
  * @prop {whereObj} [count.compare] accepts object with conditions to compare this aggregator method with
@@ -63,7 +63,7 @@
  * min aggregate function
  * @typedef {object} minAggregator
  * @prop {object} min used to min the values
- * @prop {string|number|valueObj} min.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * @prop {string|number|whereObj} min.value accepts a number / string (column name) / object wrapper / conditional object as its value
  * @prop {boolean} [min.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
  * @prop {('char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary')} [min.cast] (optional) enables casting of 'value' property into any of the valid types
  * @prop {string} [min.as] (optional) local reference name to the value returned by this aggregate method
@@ -74,7 +74,7 @@
  * max aggregate function
  * @typedef {object} maxAggregator
  * @prop {object} max used to max the values
- * @prop {string|number|valueObj} max.value accepts a number / string (column name) / object wrapper / conditional object as its value
+ * @prop {string|number|whereObj} max.value accepts a number / string (column name) / object wrapper / conditional object as its value
  * @prop {boolean} [max.distinct] (optional) used to identify if the 'distinct' records needs to be considered inside this aggregate method
  * @prop {('char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary')} [max.cast] (optional) enables casting of 'value' property into any of the valid types
  * @prop {string} [max.as] (optional) local reference name to the value returned by this aggregate method
@@ -94,13 +94,13 @@
 /**
  * and wrapper
  * @typedef {object} andWrapper
- * @prop {Array<wrapperMethods|{[column: string]: valueObj} >} andWrapper.and
+ * @prop {Array<wrapperMethods|{[column: (Exclude.str|Exclude.num|Exclude.date|string|number)]: valueObj}|Exclude.Boolean|Exclude.String|Exclude.Number>} andWrapper.and
  */
 
 /**
  * and wrapper
  * @typedef {object} orWrapper
- * @prop {Array<wrapperMethods|{[column: string]: valueObj} >} orWrapper.or
+ * @prop {Array<wrapperMethods|{[column: (Exclude.str|Exclude.num|Exclude.date|string|number)]: valueObj}|Exclude.Boolean|Exclude.String|Exclude.Number>} orWrapper.or
  */
 
 /**
@@ -141,8 +141,12 @@
  */
 
 /**
+ * @typedef {valueObj|compareObj} valueWithComparatorsObj
+ */
+
+/**
  * comparator wrapper
- * @typedef { { eq: valueObj } | { notEq: valueObj } | { lt: valueObj } | { gt: valueObj } | { in: valueObj } | { notIn: valueObj } | { like: valueObj } | { startLike: valueObj } | { notStartLike: valueObj } | { endLike: valueObj } | { notEndLike: valueObj } | { isNull: valueObj } } compareObj
+ * @typedef {{eq:valueObj}|{notEq:valueObj}|{lt:valueObj}|{gt:valueObj}|{in:valueObj}|{notIn:valueObj}|{like:valueObj}|{startLike:valueObj}|{notStartLike:valueObj}|{endLike:valueObj}|{notEndLike:valueObj}|{isNull:valueObj}} compareObj
  */
 
 // #######################################################################################################
@@ -162,23 +166,6 @@
 //                                      WRAPPERS TYPE DEF START HERE
 
 // #######################################################################################################
-
-/**
- * string obj
- * @typedef {object} strObj
- * @prop {string} strObj.value accepts column name / string value (in array) to perform string methods on
- * @prop {{'target':{target:string, with:string}}} [strObj.replace] (optional) replaces 'target' content 'with' string pattern provided
- * @prop {boolean} [strObj.reverse] (optional) reverses the order of characters in output string
- * @prop {'upper'|'lower'} [strObj.textCase] (optional) transforms text to 'upper' or 'lower' case
- * @prop {string|string[]|number} [strObj.search] (optional) searches for a string / number in the 'value' property, if found returns the starting index value else returns 0
- * @prop {{'left'?:{length:number, pattern:string}, 'right'?:{length:number, pattern:string}}} [strObj.padding] (optional) applies 'left' and (or) 'right' padding to the 'value' property, 'length' determines the padding amount and 'pattern' is used to fill the additionally required places (if length of 'value' property is smaller that 'length' property) else ignored
- * @prop {{start:number, length:number}} [strObj.substr] (optional) creates a sub-string using the values of start index and length
- * @prop {'char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary'} [strObj.cast] (optional) enables casting of 'value' property into any of the valid types
- * @prop {{secret?:string, sha?:(224|256|384|512), iv?:string}} [strObj.decrypt] (optional) property to configure decryption configurations (local) for this 'value' property
- * @prop {string} [strObj.as] (optional) rename the value returned by this wrapper method by rename / tagging with local name using 'as' property
- * @prop {whereObj} [strObj.compare] (optional) used chain the value returned by this wrapper method with comparison object
- */
-
 
 /**
  * string method wrapper
@@ -335,7 +322,7 @@
 
 /**
  * Select object definition
- * @typedef {Array<valueObj|jsonObjWrapper|jsonArrayWrapper|{[column:string]:string}} selectObj
+ * @typedef {Array<valueObj|jsonObjWrapper|jsonArrayWrapper} selectObj
  * 
  * @description accepts different types of values inside parent array: a. column name as regular 'string' value, b. string value inside array ['string'] for string value that is not a column name, c. number and boolean directly and d. methodWrappers in object form like {str:...}, {num:...} etc
  * 
@@ -343,12 +330,12 @@
 
 /**
  * having object definition
- * @typedef {aggregateWrappers|andWrapper|orWrapper|{[key:string]:*}} havingObj
+ * @typedef {aggregateWrappers|whereObj} havingObj
  */
 
 /**
  * where object
- * @typedef { (stringWrapper | dateWrapper | numericWrapper | andWrapper | orWrapper | aggregateWrappers) | ({[key:(string|number)]: (valueObj|compareObj)}) } whereObj
+ * @typedef {stringWrapper|dateWrapper|numericWrapper|concatWrapper|andWrapper|orWrapper|{[key:string|number|Exclude.str|Exclude.num|Exclude.date|Exclude.and|Exclude.or]: valueWithComparatorsObj}} whereObj
  */
 
 // #######################################################################################################
