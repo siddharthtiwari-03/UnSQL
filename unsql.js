@@ -22,7 +22,7 @@ class UnSQL {
      * devMode?: boolean,
      * connection?: *,
      * pool?: *,
-     * encryption?: import("./defs/types.def").encryption
+     * encryption?: import("./defs/types").EncryptionConfig
      * }} (required) accepts configurations related to model class as its properties
      * 
      * @static
@@ -41,16 +41,16 @@ class UnSQL {
      * 
      * @param {object} findParam takes in various parameters that governs different query conditions and values
      * @param {string} [findParam.alias] (optional) local alias name for the database table
-     * @param {import("./defs/types.def").selectObj} [findParam.select] (optional) accepts different types of values inside parent array: a. column name as regular 'string' value, b. string value inside array ['string'] for string value that is not a column name, c. number and boolean directly and d. methodWrappers in object form like {str:...}, {num:...}, {date:...} etc
-     * @param {Array<import("./defs/types.def").joinObj>} [findParam.join] (optional) enables association of child tables to this model class (parent table)
-     * @param {import("./defs/types.def").whereObj} [findParam.where] (optional) used to filter records
+     * @param {import("./defs/types").SelectObject} [findParam.select] (optional) accepts different types of values inside parent array: a. column name as regular 'string' value, b. string value inside array ['string'] for string value that is not a column name, c. number and boolean directly and d. methodWrappers in object form like {str:...}, {num:...}, {date:...} etc
+     * @param {import("./defs/types").JoinObject} [findParam.join] (optional) enables association of child tables to this model class (parent table)
+     * @param {import("./defs/types").WhereObject} [findParam.where] (optional) used to filter records
      * @param {'and'|'or'} [findParam.junction] (optional) defines default behavior that is used to join different 'child properties' inside 'where' property, default value is 'and'
      * @param {Array<string>} [findParam.groupBy] (optional) allows to group result based on single (or list of) column(s)
-     * @param {import("./defs/types.def").havingObj} [findParam.having] (optional) allows to perform comparison on the group of records, accepts nested conditions as object along with aggregate method wrappers viz. {sum:...}, {avg:...}, {min:...}, {max:...} etc
+     * @param {import("./defs/types").HavingObject} [findParam.having] (optional) allows to perform comparison on the group of records, accepts nested conditions as object along with aggregate method wrappers viz. {sum:...}, {avg:...}, {min:...}, {max:...} etc
      * @param {{[column:string]:('asc'|'desc')}} [findParam.orderBy] (optional) allows to order result based on single (or list of) column(s)
      * @param {number} [findParam.limit] (optional) limits the number of records to be fetched from the database table
      * @param {number} [findParam.offset] (optional) determines the starting index for records to be fetched from the database table
-     * @param {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512)}} [findParam.encryption] (optional) defines query level encryption configurations
+     * @param {import("./defs/types").EncryptionConfig} [findParam.encryption] (optional) defines query level encryption configurations
      * @param {'query'|'error'|'benchmark'|'benchmark-query'|'benchmark-error'|boolean} [findParam.debug] (optional) enables different debug modes
      * 
      * @returns {Promise<{success:boolean, error?:object, result?:object}>} returns Promise that always resolves with two parameters: success and either error or result depending on the condition if query ran successfully or failed
@@ -58,7 +58,7 @@ class UnSQL {
      * @static
      * @memberof UnSQL
      */
-    static async find({ alias = undefined, select = ['*'], join = [], where = {}, junction = 'and', groupBy = [], having = {}, orderBy = {}, limit = undefined, offset = undefined, encryption = {}, debug = false } = {}) {
+    static async find({ alias = undefined, select = [], join = [], where = {}, junction = 'and', groupBy = [], having = {}, orderBy = {}, limit = undefined, offset = undefined, encryption = {}, debug = false } = {}) {
 
         if (!this.config && ('TABLE_NAME' in this) && ('POOL' in this)) {
             console.warn(colors.yellow, `[UnSQL Version Conflict]: '${this.name}' model class is using 'v1.x' class configuration with 'v2.x' to continue with 'v1.x' kindly switch the 'unsql' import to 'unsql/legacy'`, colors.reset)
@@ -96,16 +96,15 @@ class UnSQL {
             sql += selectResp.sql
             values.push(...selectResp.values)
 
-            sql += ' FROM ?? '
+            sql += ' FROM ??'
             values.push(this.config.table)
             if (alias) {
-                sql += '??'
+                sql += ' ??'
                 values.push(alias)
             }
 
             if (join.length) {
                 const joinResp = prepJoin({ alias, join, encryption, ctx: this })
-                // console.log('joinResp', joinResp)
                 sql += joinResp.sql
                 values.push(...joinResp?.values)
             }
@@ -163,9 +162,9 @@ class UnSQL {
                 const [rows] = await conn.query(prepared)
 
                 await conn.commit()
-                if (debug === true) console.log(colors.green, 'Find query executed successfully!', colors.reset)
+                if (debug === true) console.info(colors.green, 'Find query executed successfully!', colors.reset)
                 if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.timeEnd(colors.blue + 'UnSQL benchmark: ' + colors.reset + colors.cyan + `Fetched records in` + colors.reset)
-                if (debug === true) console.log('\n')
+                if (debug === true) console.info('\n')
                 return { success: true, result: (encryption?.mode || this?.config?.encryption?.mode ? rows[1] : rows) }
 
             } catch (error) {
@@ -191,13 +190,13 @@ class UnSQL {
      * @param {object} saveParam save query object definition
      * @param {string} [saveParam.alias] (optional) local alias name for the database table
      * @param {object|Array<object>} saveParam.data object / array of objects to be inserted into the database table
-     * @param {import("./defs/types.def").whereObj} [saveParam.where] (optional) used to filter records to be updated
+     * @param {import("./defs/types").WhereObject} [saveParam.where] (optional) used to filter records to be updated
      * @param {'and'|'or'} [saveParam.junction] (optional) defines default behavior that is used to join different 'child properties' inside 'where' property, default value is 'and'
      * @param {Array<string>} [saveParam.groupBy] (optional) allows to group result based on single (or list of) column(s)
-     * @param {import("./defs/types.def").havingObj} [saveParam.having] (optional) allows to perform comparison on the group of records, accepts nested conditions as object along with aggregate method wrappers viz. {sum:...}, {avg:...}, {min:...}, {max:...} etc
+     * @param {import("./defs/types").HavingObject} [saveParam.having] (optional) allows to perform comparison on the group of records, accepts nested conditions as object along with aggregate method wrappers viz. {sum:...}, {avg:...}, {min:...}, {max:...} etc
      * @param {object} [saveParam.upsert] (optional) object data to be updated in case of 'duplicate key entry' found in the database
-     * @param {{[column:string]:{secret?:string, iv?:string, sha?:(224|256|384|512)} }} [saveParam.encrypt] (optional) define encryption overrides for column(s)
-     * @param {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512) }} [saveParam.encryption] (optional) defines query level encryption configurations
+     * @param {{[column:string]:{secret?:string, iv?:string, sha?:import("./defs/types").EncryptionSHAs} }} [saveParam.encrypt] (optional) define encryption overrides for column(s)
+     * @param {import("./defs/types").EncryptionConfig} [saveParam.encryption] (optional) defines query level encryption configurations
      * @param {'query'|'error'|'benchmark'|'benchmark-query'|'benchmark-error'|boolean} [saveParam.debug] (optional) enables various debug mode
      * 
      * @returns {Promise<{success:boolean, error?:object, result?:object}>} returns Promise that always resolves with two parameters: success and either error or result depending on the condition if query ran successfully or failed
@@ -287,8 +286,6 @@ class UnSQL {
 
                 // loop over each json object for values
                 for (let i = 0; i < data.length; i++) {
-                    // console.log(colors.cyan, 'preparing query for record:', colors.reset, i + 1)
-
                     const rows = []
                     for (let j = 0; j < insertColumns.length; j++) {
 
@@ -415,7 +412,6 @@ class UnSQL {
                 if (Object.keys(where).length) {
                     sql += ' WHERE '
                     const whereResp = prepWhere({ alias, where, junction, encryption, ctx: this })
-                    console.log('whereResp', whereResp)
                     sql += whereResp.sql
                     values.push(...whereResp.values)
                 }
@@ -466,7 +462,6 @@ class UnSQL {
         } finally {
             if (this?.config?.pool) {
                 await conn.release()
-                // console.log('connection released to pool')
             }
         }
 
@@ -479,11 +474,11 @@ class UnSQL {
      * 
      * @param {object} deleteParam delete query object definition
      * @param {string} [deleteParam.alias] (optional) local alias name for the database table
-     * @param {import("./defs/types.def").whereObj} [deleteParam.where] (optional) used to filter records to be updated
+     * @param {import("./defs/types").WhereObject} [deleteParam.where] (optional) used to filter records to be updated
      * @param {'and'|'or'} [deleteParam.junction] (optional) defines default behavior that is used to join different 'child properties' inside 'where' property, default value is 'and'
      * @param {Array<string>} [deleteParam.groupBy] (optional) allows to group result based on single (or list of) column(s)
-     * @param {import("./defs/types.def").havingObj} [deleteParam.having] (optional) allows to perform comparison on the group of records, accepts nested conditions as object along with aggregate method wrappers viz. {sum:...}, {avg:...}, {min:...}, {max:...} etc
-     * @param {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512) }} [deleteParam.encryption] (optional) defines query level encryption configurations
+     * @param {import("./defs/types").HavingObject} [deleteParam.having] (optional) allows to perform comparison on the group of records, accepts nested conditions as object along with aggregate method wrappers viz. {sum:...}, {avg:...}, {min:...}, {max:...} etc
+     * @param {import("./defs/types").EncryptionConfig} [deleteParam.encryption] (optional) defines query level encryption configurations
      * @param {'query'|'error'|'benchmark'|'benchmark-query'|'benchmark-error'|boolean} [deleteParam.debug] (optional) enables various debug mode
      * 
      * @returns {Promise<{success:boolean, error?:object, result?:object}>} returns Promise that always resolves with two parameters: success and either error or result depending on the condition if query ran successfully or failed
@@ -561,11 +556,7 @@ class UnSQL {
             const prepared = conn.format(sql, values)
 
             handleQueryDebug(debug, sql, values, prepared)
-
             const [result] = await conn.query(sql, values)
-
-            console.log('result', result)
-
             await conn.commit()
             if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.timeEnd(colors.blue + 'UnSQL benchmark: ' + colors.reset + colors.cyan + `Removed records in` + colors.reset)
             return { success: true, ...result }
@@ -589,8 +580,8 @@ class UnSQL {
      * @param {object} exportParam
      * @param {string} [exportParam.filename]
      * @param {string} [exportParam.directory]
-     * @param {import("./defs/types.def").selectObj} [exportParam.select]
-     * @param {import("./defs/types.def").whereObj} [exportParam.where]
+     * @param {import("./defs/types").SelectObject} [exportParam.select]
+     * @param {import("./defs/types").WhereObject} [exportParam.where]
      * @param {'append'|'override'} [exportParam.mode]
      * @param {'query'|'error'|'benchmark'|'benchmark-query'|'benchmark-error'|boolean} [exportParam.debug]
      * 
@@ -672,9 +663,6 @@ class UnSQL {
             handleQueryDebug(debug, sql, values, prepared)
 
             const [result] = await conn.query(sql, values)
-
-            console.log('result', result)
-
             await conn.commit()
             if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.timeEnd(colors.blue + 'UnSQL benchmark: ' + colors.reset + colors.cyan + `Removed records in` + colors.reset)
             return { success: true, ...result }

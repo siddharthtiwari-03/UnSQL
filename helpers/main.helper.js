@@ -37,22 +37,18 @@ const joinTypes = {
 /**
  * prepares select query using various 
  * @function prepSelect
- * 
  * @param {object} selectParam
- * 
  * @param {string} [selectParam.alias] (optional) local reference name of the table
- * 
- * @param {Array<string|string[]|object|fromWrapper|*>} selectParam.select array of columns / values / wrapper methods
- * 
- * @param {object} [selectParam.encryption] (optional) query level encryption configuration
- * 
+ * @param {import("../defs/types").SelectObject} selectParam.select array of columns / values / wrapper methods
+ * @param {import("../defs/types").EncryptionConfig} [selectParam.encryption] (optional) query level encryption configuration
  * @param {object} [selectParam.ctx] (optional) context reference of the parent model class
- * 
  * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
  */
 const prepSelect = ({ alias, select = [], encryption = undefined, ctx = undefined }) => {
 
     const values = []
+
+    select = select.length ? select : ['*']
 
     const sql = select.map(selectable => {
 
@@ -93,8 +89,8 @@ const prepSelect = ({ alias, select = [], encryption = undefined, ctx = undefine
                     return resp?.sql
                 }
 
-                case key === 'from': {
-                    const resp = prepFrom({ val, encryption, ctx })
+                case key === 'refer': {
+                    const resp = prepRefer({ val, encryption, ctx })
                     values.push(...resp.values)
                     return resp?.sql
                 }
@@ -137,19 +133,12 @@ const prepSelect = ({ alias, select = [], encryption = undefined, ctx = undefine
 /**
  * prepares where statement
  * @function prepWhere
- * 
  * @param {object} whereParam
- * 
  * @param {string} [whereParam.alias] (optional) local reference name of the table
- * 
- * @param {import("../defs/types.def").whereObj} [whereParam.where] (optional) allows to filter records using various conditions
- * 
+ * @param {import("../defs/types").WhereObject|import("../defs/types").HavingObject} [whereParam.where] (optional) allows to filter records using various conditions
  * @param {'and'|'or'} [whereParam.junction] (optional) clause used to connect multiple where conditions
- * 
- * @param {object} [whereParam.encryption] (optional) defines query level encryption configurations
- * 
+ * @param {import("../defs/types").EncryptionConfig} [whereParam.encryption] (optional) defines query level encryption configurations
  * @param {*} [whereParam.ctx] (optional) local reference name of the table
- * 
  * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
  */
 const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', encryption = undefined, ctx = undefined }) => {
@@ -170,7 +159,6 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', encrypt
 
                     return resp.sql
                 })
-
                 sql += (mapResp.length > 1 ? '(' : '') + mapResp.join(junctions[key]) + (mapResp.length > 1 ? ')' : '')
                 break
             }
@@ -187,16 +175,12 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', encrypt
                 sql += ' BETWEEN '
 
                 if (typeof gt === 'object') {
-
                     const gtResp = prepWhere({ alias, where: gt, junction, encryption, ctx })
                     sql += gtResp.sql
                     values.push(...gtResp.values)
-
                 } else {
-
                     const gtPlaceholder = prepPlaceholder(gt)
                     const gtName = prepName({ alias, value: gt })
-
                     sql += gtPlaceholder
                     if (!checkConstants(gt)) values.push(gtName)
                 }
@@ -204,42 +188,30 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', encrypt
                 sql += ' AND '
 
                 if (typeof lt === 'object') {
-
                     const ltResp = prepWhere({ alias, where: lt, junction, encryption, ctx })
                     sql += ltResp.sql
                     values.push(...ltResp.values)
-
                 } else {
                     const ltPlaceholder = prepPlaceholder(lt)
                     const ltName = prepName({ alias, value: lt })
-
                     sql += ltPlaceholder
                     if (!checkConstants(lt)) values.push(ltName)
                 }
-
                 break
             }
 
             case key === 'decrypt': {
-
-                console.log(colors.green, 'decrypt detected', colors.reset, val)
-
-
                 const { value, compare, secret, iv, sha, cast = 'char' } = val
 
-
                 if (parent && !(parent in conditions)) {
-
                     const parentPlaceholder = prepPlaceholder(parent)
                     const parentName = prepName({ alias, value: parent })
                     sql += parentPlaceholder
                     if (!checkConstants(parent)) values.push(parentName)
                     sql += ' = '
-
                 }
 
                 if (typeof value === 'object') {
-                    console.log(colors.red, 'value is object inside decrypt', colors.reset)
                     const resp = prepWhere({ alias, where: value, parent, junction, encryption, ctx })
                     sql += resp.sql
                     values.push(...resp.values)
@@ -268,7 +240,6 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', encrypt
                 values.push(sha || encryption?.sha || ctx?.config?.encryption?.sha || 512)
 
                 // cascading compare conditions
-
                 if (compare) {
                     const resp = prepWhere({ alias, where: compare, junction, encryption, ctx })
                     values.push(...resp.values)
@@ -277,29 +248,22 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', encrypt
                 break
             }
 
-            case key === 'from': {
-
-                console.log(colors.green, 'key is "from"', colors.reset)
-
+            case key === 'refer': {
                 if (parent && !(parent in conditions)) {
-
                     const parentPlaceholder = prepPlaceholder(parent)
                     const parentName = prepName({ alias, value: parent })
                     sql += parentPlaceholder
                     if (!checkConstants(parent)) values.push(parentName)
                     sql += ' = '
-
                 }
 
-                const resp = prepFrom({ val, parent, encryption, ctx })
+                const resp = prepRefer({ val, parent, encryption, ctx })
                 sql += resp.sql
                 values.push(...resp.values)
-
                 break
             }
 
             case key === 'case': {
-
                 const resp = prepCase({ alias, val, encryption, ctx })
                 sql += resp.sql
                 values.push(...resp.values)
@@ -307,11 +271,7 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', encrypt
             }
 
             case key === 'if': {
-
-                console.log('val inside if', val)
-
                 const resp = prepIf({ alias, val, junction, encryption, ctx })
-
                 sql += resp.sql
                 values.push(...resp.values)
                 break
@@ -346,12 +306,9 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', encrypt
             }
 
             case key in conditions: {
-                console.group(colors.green, 'key is in conditions', colors.reset)
-
                 if (parent && !(parent in conditions) && parent != 'from') {
                     const parentPlaceholder = prepPlaceholder(parent)
                     const parentName = prepName({ alias, value: parent })
-
                     sql += parentPlaceholder
                     if (!checkConstants(parent)) values.push(parentName)
                 }
@@ -381,30 +338,17 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', encrypt
             }
 
             case key in aggregateFunctions: {
-
-                console.log(colors.yellow, 'key is in constant functions', colors.reset)
-
-                console.log('key', key)
-                console.log('val', val)
-                console.log('parent', parent)
-
                 const resp = prepAggregate({ alias, key, parent, junction, val, encryption, ctx })
                 sql += resp.sql
                 values.push(...resp.values)
-
                 break
             }
 
             case Array.isArray(val): {
-                console.log(colors.green, 'key is array "IN" condition invoked', colors.reset)
-
-                // if (key && key != 'UnSQL_Placeholder') {
                 const keyPlaceholder = prepPlaceholder(key)
                 const keyName = prepName({ alias, value: key })
-
                 sql += keyPlaceholder
                 if (!checkConstants(key)) values.push(keyName)
-                // }
 
                 sql += ' IN ('
 
@@ -416,7 +360,6 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', encrypt
                 }).join(', ')
 
                 sql += ')'
-
                 break
             }
 
@@ -462,23 +405,14 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', encrypt
 /**
  * prepares join query statement
  * @function prepJoin
- * 
- * @param {object} joinParam
- * 
+ * @param {Object} joinParam
  * @param {string} [joinParam.alias] (optional) local reference name of the table
- * 
- * @param {Array<import("../defs/types.def").joinObj>} joinParam.join array of joining conditions
- * 
- * @param {object} [joinParam.encryption] (optional) defines query level encryption configurations
- * 
+ * @param {import("../defs/types").JoinObject} joinParam.join array of joining conditions
+ * @param {import("../defs/types").EncryptionConfig} [joinParam.encryption] (optional) defines query level encryption configurations
  * @param {*} [joinParam.ctx] context reference to parent class
- * 
  * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
  */
 const prepJoin = ({ alias, join = [], encryption = undefined, ctx = undefined }) => {
-
-    console.log('prep join invoked')
-
     const values = []
 
     const resp = join.map(joinable => {
@@ -579,24 +513,14 @@ const prepJoin = ({ alias, join = [], encryption = undefined, ctx = undefined })
 /**
  * prepares sub query that generates json object / array with aggregate wrapper (optional)
  * @function prepJson
- * 
  * @param jsonObj object with different properties that help generate a json object / array
- * 
  * @param {'json'|'array'} [jsonObj.key] (optional) alias reference for the table name
- * 
  * @param {{value:(object|Array), from?:string, alias?:string, where?:object, as?:string}} jsonObj.val accepts values related to sub-query
- * 
- * @param {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512)}} [numObj.encryption] (optional) inherits encryption config from its parent level
- * 
+ * @param {{mode?:import("../defs/types").EncryptionModes, secret?:string, iv?:string, sha?:EncryptionSHAs}} [numObj.encryption] (optional) inherits encryption config from its parent level
  * @param {*} [numObj.ctx] context reference to parent class
- * 
  * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
  */
 const prepJson = ({ key, val, encryption = undefined, ctx = undefined }) => {
-
-    console.log('prep json invoked')
-    console.log('key', key)
-    console.log('val', val)
     let sql = ''
     const values = []
 
@@ -609,10 +533,6 @@ const prepJson = ({ key, val, encryption = undefined, ctx = undefined }) => {
     if (key === 'json' || !Array.isArray(value)) sql += 'JSON_OBJECT('
 
     sql += Object.entries(value).map(([k, v]) => {
-        console.log(colors.red, 'entries inside map', colors.reset)
-        console.log('k', k)
-        console.log('v', v)
-
         const vPlaceholder = prepPlaceholder(v)
         const vName = prepName({ alias, value: v })
 
@@ -654,15 +574,10 @@ const prepJson = ({ key, val, encryption = undefined, ctx = undefined }) => {
 /**
  * prepares aggregate functions
  * @function prepAggregate
- * 
  * @param {object} aggParam object with different properties that help generate aggregate method
- * 
  * @param {string} [aggParam.alias] (optional) local reference name of the table
- * 
  * @param {string} aggParam.key refers the name of the aggregate method, viz. 'sum', 'avg', 'min', 'max' etc.
- * 
- * @param {{value:(import("../defs/types.def").valueObj), distinct?:boolean, cast?: ('char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary'), compare?:import("../defs/types.def").whereObj, as?:string}} aggParam.val accepts values related to aggregate method
- * 
+ * @param {{value:(import("../defs/types").ValuesObject), distinct?:boolean, cast?: import("../defs/types").CastingTypes, compare?:import("../defs/types").WhereObject, as?:string}} aggParam.val accepts values related to aggregate method
  * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
  */
 const prepAggregate = ({ alias, key, val, parent = null, junction = 'and', encryption = undefined, ctx = undefined }) => {
@@ -672,20 +587,16 @@ const prepAggregate = ({ alias, key, val, parent = null, junction = 'and', encry
 
     const { value, distinct = false, cast = null, compare = {}, as = null } = val
 
-    console.dir(val)
-
     if (cast) sql += 'CAST('
 
     sql += aggregateFunctions[key] + '('
     if (distinct) sql += 'DISTINCT '
 
     if (typeof value === 'object') {
-        console.log('value is object')
         const resp = prepWhere({ alias, where: value, parent, junction, encryption, ctx })
         sql += resp.sql
         values.push(...resp.values)
     } else {
-        console.log('value is not object', typeof value)
         const placeholder = prepPlaceholder(value)
         const name = prepName({ alias, value })
         sql += placeholder
@@ -714,27 +625,24 @@ const prepAggregate = ({ alias, key, val, parent = null, junction = 'and', encry
 
 /**
  * prepares sub query
- * @function prepFrom
- * 
+ * @function prepRefer
  * @param {object} fromParam object with different properties that help generate aggregate method
- * 
  * @param {{
- * select:import("../defs/types.def").selectObj, 
+ * select:import("../defs/types").SelectObject, 
  * table:string, 
- * join:Array<import("../defs/types.def").joinObj>, 
- * where?:object, 
+ * join:import("../defs/types").JoinObject, 
+ * where?:import("../defs/types").WhereObject, 
  * junction?:('and'|'or'), 
- * groupBy?:Array, 
- * having?:import("../defs/types.def").havingObj, 
+ * groupBy?:string[], 
+ * having?:import("../defs/types").HavingObject, 
  * orderBy?:object, 
  * limit?:number, 
  * offset?:number, 
  * as?:string
  * }} jsonObj.val accepts values related to aggregate method
- * 
  * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
  */
-const prepFrom = ({ val, parent = null, encryption = undefined, ctx = undefined }) => {
+const prepRefer = ({ val, parent = null, encryption = undefined, ctx = undefined }) => {
 
     const { select = ['*'], table, alias = null, join = [], where = {}, junction = 'and', groupBy = [], having = [], orderBy = {}, limit = null, offset = null, as = null } = val
 
@@ -749,11 +657,11 @@ const prepFrom = ({ val, parent = null, encryption = undefined, ctx = undefined 
     sql += selectResp.sql
     values.push(...selectResp.values)
 
-    sql += ' FROM ?? '
+    sql += ' FROM ??'
     values.push(table)
 
     if (alias) {
-        sql += '?? '
+        sql += ' ??'
         values.push(alias)
     }
 
@@ -764,7 +672,7 @@ const prepFrom = ({ val, parent = null, encryption = undefined, ctx = undefined 
     }
 
     if (Object.keys(where).length) {
-        sql += 'WHERE '
+        sql += ' WHERE '
         const whereResp = prepWhere({ alias, where, junction, parent, encryption, ctx })
         sql += whereResp.sql
         values.push(...whereResp.values)
@@ -782,7 +690,7 @@ const prepFrom = ({ val, parent = null, encryption = undefined, ctx = undefined 
         sql += 'HAVING '
         const havingResp = prepWhere({ alias, where: having, junction, encryption, ctx })
         sql += havingResp.sql
-        values.push(...havingResp.value)
+        values.push(...havingResp.values)
     }
 
     if (Object.keys(orderBy).length) {
@@ -816,33 +724,23 @@ const prepFrom = ({ val, parent = null, encryption = undefined, ctx = undefined 
 /**
  * prepares if else condition
  * @function prepIf
- * 
  * @param {object} ifParam
- * 
  * @param {string} [ifParam.alias] (optional) local reference name of the table
- * 
  * @param {{
  * check:*,
  * trueValue: *,
  * falseValue: *,
  * as?: string
  * }} ifParam.val
- * 
  * @param {'and'|'or'}  [ifParam.junction] (optional) clause used to join conditions
- * 
- * @param {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512)}} [ifParam.encryption] (optional) inherits encryption config from its parent level
- * 
+ * @param {import("../defs/types").EncryptionConfig} [ifParam.encryption] (optional) inherits encryption config from its parent level
  * @param {*} [caseParam.ctx] context reference to parent class
- * 
  * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
  */
 const prepIf = ({ alias, val, junction = 'and', encryption = undefined, ctx = undefined }) => {
 
     let sql = ''
     const values = []
-
-    console.log('val inside prepIf', val)
-
     const { check = {}, trueValue = null, falseValue = null, as = null } = val
     sql += 'IF('
 
@@ -895,20 +793,13 @@ const prepIf = ({ alias, val, junction = 'and', encryption = undefined, ctx = un
 /**
  * prepares switch case
  *@function prepCase
- * 
- * @param caseParam
- * 
- * @param {string} [caseParam.alias] (optional) local reference to table name
- * 
- * @param {{check: Array, else: *, as?: string}} caseParam.val
- * 
- * @param {'and'|'or'} [caseParam.junction] (optional) clause used to join conditions
- * 
- * @param {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512)}} [caseParam.encryption] (optional) inherits encryption config from its parent level
- * 
- * @param {*} [caseParam.ctx] context reference to parent class
- * 
- * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
+ @param caseParam
+ @param {string} [caseParam.alias] (optional) local reference to table name
+ @param {{check: Array, else: *, as?: string}} caseParam.val
+ @param {'and'|'or'} [caseParam.junction] (optional) clause used to join conditions
+ @param {import("../defs/types").EncryptionConfig} [caseParam.encryption] (optional) inherits encryption config from its parent level
+ @param {*} [caseParam.ctx] context reference to parent class
+ @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
  */
 const prepCase = ({ alias, val, junction = 'and', encryption = undefined, ctx = undefined }) => {
     let sql = ''
@@ -968,21 +859,15 @@ const prepCase = ({ alias, val, junction = 'and', encryption = undefined, ctx = 
 /**
  * concat values
  * @function prepConcat
- * 
  * @param {object} concatParam
- * 
  * @param {string} [concatParam.alias] (optional) local reference to table name
- * 
  * @param {{
- * value:Array<string|boolean|number|import("../defs/types.def").fromWrapper|import("../defs/types.def").concatWrapper>,
+ * value: (import("../defs/types").ValuesObject|import("../defs/types").WrapperMethods)[]>,
  * pattern: (string|number|boolean),
- * compare?: import("../defs/types.def").whereObj,
+ * compare?: import("../defs/types").WhereObject,
  * as?: string}} concatParam.val
- * 
- * @param {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512)}} [concatParam.encryption] (optional) inherits encryption config from its parent level
- * 
+ * @param {import("../defs/types").EncryptionConfig} [concatParam.encryption] (optional) inherits encryption config from its parent level
  * @param {*} [concatParam.ctx] context reference to parent class
- * 
  * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
  */
 const prepConcat = ({ alias, val, junction = 'and', encryption = undefined, ctx = undefined }) => {
@@ -1031,32 +916,11 @@ const prepConcat = ({ alias, val, junction = 'and', encryption = undefined, ctx 
 /**
  * performs various string based operations on the 'value' property
  * @function prepString
- * 
  * @param {object} strObj
- * 
  * @param {string} [strObj.alias] (optional) alias reference for the table name
- * 
- * @param {{
- * value: (string|string[]),
- * replace?:{'target':string, 'with':string},
- * reverse?: boolean,
- * textCase?:('upper'|'lower'),
- * padding?:{'left'?:{length:number, pattern:string}, 'right'?: {length:number, pattern:string}},
- * substr?:{start:number, length:number},
- * trim?: ('left'|'right'|boolean),
- * cast?: ('char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary'),
- * decrypt?:{
- * secret?:string,
- * iv?:string,
- * sha?:(224|256|384|512)},
- * as?: string,
- * compare?:import("../defs/types.def").whereObj
- * }} strObj.val object that holds values for different properties
- * 
- * @param {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512)}} [strObj.encryption] (optional) inherits encryption config from its parent level
- * 
+ * @param {import("../defs/types").stringObject} strObj.val object that holds values for different properties
+ * @param {import("../defs/types").EncryptionConfig} [strObj.encryption] (optional) inherits encryption config from its parent level
  * @param {*} [strObj.ctx]
- * 
  * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
  */
 const prepString = ({ alias, val, junction = 'and', encryption = undefined, ctx = undefined }) => {
@@ -1108,28 +972,11 @@ const prepString = ({ alias, val, junction = 'and', encryption = undefined, ctx 
     // patch decryption extras if required
     if (decrypt) {
 
-        if (!decrypt?.secret && encryption?.secret && ctx?.config?.encryption?.secret) {
-            console.error(colors.red, 'secret is required to decrypt', colors.reset)
-            throw new Error('Secret is required to decrypt!', { cause: 'Missing "secret" to decrypt inside date wrapper!' })
-        }
+        const decryptResp = prepDecrypt({ decrypt, encryption, ctx })
 
-        if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && ctx?.config?.encryption?.mode?.includes('-cbc'))) {
-            sql += ', ?'
-        }
+        sql += decryptResp.sql
 
-        sql += ', UNHEX(SHA2(?, ?)))'
-
-        values.push(decrypt?.secret || encryption?.secret || ctx?.config?.encryption?.secret)
-
-        if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && ctx?.config?.encryption?.mode?.includes('-cbc'))) {
-            if (!decrypt?.iv && !encryption?.iv && !ctx?.config?.encryption?.iv) {
-                console.error(colors.red, 'Initialization Vector (iv) is required to decrypt', colors.reset)
-                throw new Error('Initialization Vector (iv) is required to decrypt!', { cause: 'Missing "iv" to decrypt inside date wrapper!' })
-            }
-            values.push(decrypt?.iv || encryption?.iv || ctx?.config?.encryption?.iv)
-        }
-
-        values.push(decrypt?.sha || encryption?.sha || ctx?.config?.encryption?.sha || 512)
+        values.push(...decryptResp.values)
 
     }
     // decrypt ends here
@@ -1251,21 +1098,19 @@ const dateUnits = {
 
 /**
  * @typedef {object} encryption
- * 
- * @prop {string} [mode] (optional) ('aes-128-ecb'|'aes-256-cbc'),
+ * @prop {string} [mode] (optional) EncryptionModes,
  * @prop {string} [secret] (optional) string,
  * @prop {string} [iv] (optional) string,
- * @prop {string} [sha] (optional) (224|256|384|512)
+ * @prop {string} [sha] (optional) EncryptionSHAs
  */
 
 /**
  * @typedef {object} dateVal
- * 
  * @prop  {string|string[]} value name of the column or date as a string
  * @prop {number} [add] (optional) date / time to be added to the 'value' property
  * @prop {number} [sub] (optional) date / time to be subtracted from the 'value' property
  * @prop {string} [fromPattern] (optional) pattern to recognize and generate date from
- * @prop {('char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary')} [cast] (optional) cast the decrypted 'value' property into
+ * @prop {CastingTypes} [cast] (optional) cast the decrypted 'value' property into
  * @prop {encryption} [decrypt] (optional) decryption configuration for the 'value' property
  */
 
@@ -1276,21 +1121,8 @@ const dateUnits = {
  * @param {object} dateObj
  * @param {string} [dateObj.alias] (optional) local reference for the table name
  * @param {'and'|'or'} [dateObj.junction]
- * @param {{
- * value:(string|string[]), 
- * add?:number, 
- * sub?:number, 
- * fromPattern?:string, 
- * cast?:('char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary'), 
- * decrypt?:{
- * secret?:string, 
- * iv?:string, 
- * sha?:(224|256|384|512)}, 
- * format?:string, 
- * as?:string,
- * compare?: import("../defs/types.def").whereObj
- * }} dateObj.val object that holds values for different properties
- * @param {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512)}} [dateObj.encryption] (optional) inherits encryption config from its parent level
+ * @param {import("../defs/types").dateObject} dateObj.val object that holds values for different properties
+ * @param {import("../defs/types").EncryptionConfig} [dateObj.encryption] (optional) inherits encryption config from its parent level
  * @param {*} [dateObj.ctx] (optional) inherits class context reference from its parent level
  * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
  */
@@ -1341,28 +1173,11 @@ const prepDate = ({ alias, val, junction = 'and', encryption = undefined, ctx = 
     // patch decryption extras if required
     if (decrypt) {
 
-        if (!decrypt?.secret && encryption?.secret && ctx?.config?.encryption?.secret) {
-            console.error(colors.red, 'secret is required to decrypt', colors.reset)
-            throw new Error('Secret is required to decrypt!', { cause: 'Missing "secret" to decrypt inside date wrapper!' })
-        }
+        const decryptResp = prepDecrypt({ decrypt, encryption, ctx })
 
-        if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && ctx?.config?.encryption?.mode?.includes('-cbc'))) {
-            sql += ', ?'
-        }
+        sql += decryptResp.sql
 
-        sql += ', UNHEX(SHA2(?, ?)))'
-
-        values.push(decrypt?.secret || encryption?.secret || ctx?.config?.encryption?.secret)
-
-        if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && ctx?.config?.encryption?.mode?.includes('-cbc'))) {
-            if (!decrypt?.iv && !encryption?.iv && !ctx?.config?.encryption?.iv) {
-                console.error(colors.red, 'Initialization Vector (iv) is required to decrypt', colors.reset)
-                throw new Error('Initialization Vector (iv) is required to decrypt!', { cause: 'Missing "iv" to decrypt inside date wrapper!' })
-            }
-            values.push(decrypt?.iv || encryption?.iv || ctx?.config?.encryption?.iv)
-        }
-
-        values.push(decrypt?.sha || encryption?.sha || ctx?.config?.encryption?.sha || 512)
+        values.push(...decryptResp.values)
 
     }
     // decrypt ends here
@@ -1435,32 +1250,12 @@ const prepDate = ({ alias, val, junction = 'and', encryption = undefined, ctx = 
 /**
  * performs numeric operations on the 'value' property
  * @function prepNumeric
- * 
  * @param {object} numObj
- * 
  * @param {string} [numObj.alias] (optional) alias reference for the table name
- * 
  * @param {'and'|'or'} [numObj.junction]
- * 
- * @param {{
-* value: string|number,
-* decimals?: (number|'floor'|'ceil'|'round'),
-* mod?: number|string,
-* sub?: number|string,
-* add?: number|string,
-* multiplyBy?: number|string,
-* divideBy?: number|string,
-* power?: number|string,
-* cast?: ('char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary'),
-* decrypt?:{
-* secret?: string,
-* iv?: string,
-* sha?: (224|256|384|512)}
-* as?:string,
-* compare?:import("../defs/types.def").whereObj
-* }} numObj.val
+ * @param {import("../defs/types").numericObject} numObj.val
 * 
-* @param {{mode?:('aes-128-ecb'|'aes-256-cbc'), secret?:string, iv?:string, sha?:(224|256|384|512)}} [numObj.encryption] (optional) inherits encryption config from its parent level
+* @param {import("../defs/types").EncryptionConfig} [numObj.encryption] (optional) inherits encryption config from its parent level
 * 
 * @param {*} [numObj.ctx]
 * 
@@ -1514,28 +1309,11 @@ const prepNumeric = ({ alias, val, junction = 'and', encryption, ctx }) => {
     // patch decryption extras if required
     if (decrypt) {
 
-        if (!decrypt?.secret && encryption?.secret && ctx?.config?.encryption?.secret) {
-            console.error(colors.red, 'secret is required to decrypt', colors.reset)
-            throw new Error('Secret is required to decrypt!', { cause: 'Missing "secret" to decrypt inside date wrapper!' })
-        }
+        const decryptResp = prepDecrypt({ decrypt, encryption, ctx })
 
-        if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && ctx?.config?.encryption?.mode?.includes('-cbc'))) {
-            sql += ', ?'
-        }
+        sql += decryptResp.sql
 
-        sql += ', UNHEX(SHA2(?, ?)))'
-
-        values.push(decrypt?.secret || encryption?.secret || ctx?.config?.encryption?.secret)
-
-        if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && ctx?.config?.encryption?.mode?.includes('-cbc'))) {
-            if (!decrypt?.iv && !encryption?.iv && !ctx?.config?.encryption?.iv) {
-                console.error(colors.red, 'Initialization Vector (iv) is required to decrypt', colors.reset)
-                throw new Error('Initialization Vector (iv) is required to decrypt!', { cause: 'Missing "iv" to decrypt inside date wrapper!' })
-            }
-            values.push(decrypt?.iv || encryption?.iv || ctx?.config?.encryption?.iv)
-        }
-
-        values.push(decrypt?.sha || encryption?.sha || ctx?.config?.encryption?.sha || 512)
+        values.push(...decryptResp.values)
 
     }
     // decrypt ends here
@@ -1610,6 +1388,37 @@ const prepNumeric = ({ alias, val, junction = 'and', encryption, ctx }) => {
         sql += ' AS ?'
         values.push(as || (value.includes('.') ? value.split('.')[1] : value))
     }
+
+    return { sql, values }
+}
+
+const prepDecrypt = ({ decrypt, encryption, ctx }) => {
+
+    if (!decrypt?.secret && encryption?.secret && ctx?.config?.encryption?.secret) {
+        console.error(colors.red, 'secret is required to decrypt', colors.reset)
+        throw new Error('Secret is required to decrypt!', { cause: 'Missing "secret" to decrypt inside date wrapper!' })
+    }
+
+    let sql = ''
+    const values = []
+
+    if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && ctx?.config?.encryption?.mode?.includes('-cbc'))) {
+        sql += ', ?'
+    }
+
+    sql += ', UNHEX(SHA2(?, ?)))'
+
+    values.push(decrypt?.secret || encryption?.secret || ctx?.config?.encryption?.secret)
+
+    if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && ctx?.config?.encryption?.mode?.includes('-cbc'))) {
+        if (!decrypt?.iv && !encryption?.iv && !ctx?.config?.encryption?.iv) {
+            console.error(colors.red, 'Initialization Vector (iv) is required to decrypt', colors.reset)
+            throw new Error('Initialization Vector (iv) is required to decrypt!', { cause: 'Missing "iv" to decrypt inside date wrapper!' })
+        }
+        values.push(decrypt?.iv || encryption?.iv || ctx?.config?.encryption?.iv)
+    }
+
+    values.push(decrypt?.sha || encryption?.sha || ctx?.config?.encryption?.sha || 512)
 
     return { sql, values }
 }

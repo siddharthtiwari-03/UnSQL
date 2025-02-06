@@ -8,11 +8,7 @@ const orderDirections = {
 }
 
 const prepOrders = ({ alias, orderBy }) => {
-
-    console.log('prepare orders invoked')
-
     const values = []
-
     const sql = Object.entries(orderBy).map(([col, dir]) => {
         const name = prepName({ alias, value: col })
         const sql = ' ?? ' + orderDirections[dir]
