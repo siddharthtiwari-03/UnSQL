@@ -11,31 +11,18 @@ class UnSQL_Legacy {
      * Generates 'select' statement
      * @method find
      * @description This method is used to dynamically generate valid SQL 'select' query that is used to read / retrieve records from the database
-     * 
      * @param {object} findParam
-     * 
      * @param {string} [findParam.select] (optional) comma separated string value of columns, functions that needs to be selected from the database
-     * 
      * @param {string} [findParam.alias] (optional) local reference name for the database table
-     * 
      * @param {Array<{type:string, table:string, on:string}>} [findParam.join] (optional) array of join object(s), each object representing the association of child table to this table
-     * 
      * @param {Array<Array<string|number|boolean>>} [findParam.where] (optional) array of array containing conditions to filter the records from the database, each condition is joined using 'and' clause
-     * 
      * @param {Array<Array<string|number|boolean>>} [findParam.whereOr] (optional) same as 'where' property, only difference is the conditions are connected using 'or' clause
-     * 
      * @param {'and'|'or'} [findParam.junction] (optional) connects 'where' and 'whereOr' together, can be either 'and' or 'or', default is 'and'
-     * 
      * @param {string} [findParam.groupBy] (optional) takes in comma separated string value of column(s) that will be used to group the records together
-     * 
      * @param {string} [findParam.having] (optional) takes in comma separated string value of column(s) / aggregate method(s) with comparators to filter records
-     * 
      * @param {string} [findParam.orderBy] (optional) takes in comma separated string value of column(s) along with key words 'ASC' or 'DESC', that will be used to reorder the records together
-     * 
      * @param {'asc'|'desc'} [findParam.orderDirection] (optional) used to define the order 'ascending' or 'descending' via. keywords 'asc' and 'desc' respectively, used when only one column name is entered in 'orderBy' property
-     * 
      * @param {number} [findParam.rowCount] (optional) limits the number of records that will be fetched from the database table
-     * 
      * @param {number} [findParam.offset] (optional) defines the starting index for the records to be fetched from the database table
      * 
      * @returns {{ success: boolean, result?: Array, error?: * }} execution success acknowledgement along with either 'result' or 'error' object
@@ -99,19 +86,12 @@ class UnSQL_Legacy {
      * Generates 'insert' and 'update' query
      * @method save
      * @description This method is used to 'insert' or 'update' data into the database table by dynamically generating valid SQL based on the parameters passed
-     * 
      * @param {object} saveParam
-     * 
      * @param {string} [saveParam.alias] (optional) local reference name for the database table
-     * 
      * @param {object} saveParam.data (required) actual data that needs to be 'inserted' or 'updated' into the database table
-     * 
      * @param {object} [saveParam.updateObj] (optional) data that needs to be 'upsert' into the database table in case of 'duplicate key' is detected
-     * 
      * @param {Array<Array<string|number|boolean>>} [saveParam.where] (optional) array of array containing conditions to filter the record in the database that needs to be 'updated', each condition is joined using 'and' clause 
-     * 
      * @param {Array<Array<string|number|boolean>>} [saveParam.whereOr] (optional) same as 'where' property, only difference is the conditions are connected using 'or' clause
-     * 
      * @param {'and'|'or'} [saveParam.junction] (optional) connects 'where' and 'whereOr' together, can be either 'and' or 'or', default is 'and'
      * 
      * @returns {{success: boolean, insertID?: number, error?: object }} execution success acknowledgement along with either 'insertID' (inserted index) or 'error' object
@@ -165,15 +145,10 @@ class UnSQL_Legacy {
     /**
      * Generates 'delete' query
      * @method del
-     * 
      * @param {object} delParam
-     * 
      * @param {string} [delParam.alias] (optional) local reference name for the database table
-     * 
      * @param {Array<Array<string|number|boolean>>} [delParam.where] (optional) array of array containing conditions to filter the record in the database that needs to be 'deleted', each condition is joined using 'and' clause 
-     * 
      * @param {Array<Array<string|number|boolean>>} [delParam.whereOr] (optional) same as 'where' property, only difference is the conditions are connected using 'or' clause
-     * 
      * @param {'and'|'or'} [delParam.junction] (optional) connects 'where' and 'whereOr' together, can be either 'and' or 'or', default is 'and'
      * 
      * @returns {{success: boolean, result?: *, error?: object }}

@@ -1,14 +1,15 @@
+const { UnSQL } = require("../unsql")
 const { colors } = require("./console.helper")
 const { checkConstants, dataTypes, aggregateFunctions } = require("./constants.helper")
 const { prepName } = require("./name.helper")
 const { prepPlaceholder } = require("./placeholder.helper")
 
-const junctions = {
+const junctions = Object.freeze({
     and: ' AND ',
-    or: ' OR ',
-}
+    or: ' OR '
+})
 
-const conditions = {
+const conditions = Object.freeze({
     eq: ' = ',
     gt: ' > ',
     lt: ' < ',
@@ -16,6 +17,7 @@ const conditions = {
     ltEq: ' <= ',
     notEq: ' != ',
     isNull: ' IS NULL',
+    isNotNull: ' IS NOT NULL',
     like: ' LIKE ',
     startLike: ' LIKE ',
     endLike: ' LIKE ',
@@ -24,24 +26,22 @@ const conditions = {
     notLike: ' NOT LIKE ',
     in: ' IN ',
     notIn: ' NOT IN '
-}
+})
 
-const joinTypes = {
+const joinTypes = Object.freeze({
     left: 'LEFT',
     right: 'RIGHT',
-    inner: 'INNER',
-    outer: 'OUTER',
-    cross: 'CROSS'
-}
+    inner: 'INNER'
+})
 
 /**
  * prepares select query using various 
  * @function prepSelect
- * @param {object} selectParam
+ * @param {Object} selectParam
  * @param {string} [selectParam.alias] (optional) local reference name of the table
  * @param {import("../defs/types").SelectObject} selectParam.select array of columns / values / wrapper methods
  * @param {import("../defs/types").EncryptionConfig} [selectParam.encryption] (optional) query level encryption configuration
- * @param {object} [selectParam.ctx] (optional) context reference of the parent model class
+ * @param {*} [selectParam.ctx] (optional) context reference of the parent model class
  * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
  */
 const prepSelect = ({ alias, select = [], encryption = undefined, ctx = undefined }) => {
@@ -133,7 +133,7 @@ const prepSelect = ({ alias, select = [], encryption = undefined, ctx = undefine
 /**
  * prepares where statement
  * @function prepWhere
- * @param {object} whereParam
+ * @param {Object} whereParam
  * @param {string} [whereParam.alias] (optional) local reference name of the table
  * @param {import("../defs/types").WhereObject|import("../defs/types").HavingObject} [whereParam.where] (optional) allows to filter records using various conditions
  * @param {'and'|'or'} [whereParam.junction] (optional) clause used to connect multiple where conditions
@@ -315,7 +315,7 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', encrypt
 
                 sql += conditions[key]
 
-                if (key === 'isNull') break
+                if (key === 'isNull' || key === 'isNotNull') break
 
                 if (key === 'in') sql += '('
                 else if (key === 'like' || key === 'notLike' || key === 'endLike' || key === 'notEndLike') sql += 'CONCAT("%", '
@@ -372,8 +372,8 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', encrypt
                 sql += keyPlaceholder
                 if (!checkConstants(key)) values.push(keyName)
 
-                if (val === 'isNull') {
-                    sql += ' ' + conditions.isNull
+                if (val === 'isNull' || val === 'isNotNull') {
+                    sql += conditions[val]
                     break
                 }
 
@@ -417,7 +417,7 @@ const prepJoin = ({ alias, join = [], encryption = undefined, ctx = undefined })
 
     const resp = join.map(joinable => {
 
-        const { type = null, select = [], table, alias: joinAlias = null, join: nestedJoin = [], where = {}, junction = 'and', using = [], as = null } = joinable
+        const { type = null, select = [], table, alias: joinAlias = null, join: nestedJoin = [], where = {}, groupBy = [], having = {}, orderBy = {}, junction = 'and', using = [], as = null } = joinable
 
         if (!table) {
             console.error(colors.red, 'Table name is missing inside join', colors.reset)
@@ -438,11 +438,15 @@ const prepJoin = ({ alias, join = [], encryption = undefined, ctx = undefined })
             sql += selectResp.sql
             values.push(...selectResp.values)
 
-            sql += ' FROM ?? ?? '
-            if (!joinAlias) {
-                console.error(colors.red, 'Missing "alias" property when using selective join association', colors.reset)
-                throw new Error('Missing "alias" property with selective join association', { cause: "Missing 'alias' property inside join object with 'select' property" })
+            sql += ' FROM ??'
+            if (joinAlias) {
+                sql += ' ??'
+                values.push(joinAlias)
             }
+            // if (!joinAlias) {
+            //     console.error(colors.red, 'Missing "alias" property when using selective join association', colors.reset)
+            //     throw new Error('Missing "alias" property with selective join association', { cause: "Missing 'alias' property inside join object with 'select' property" })
+            // }
             values.push(table, joinAlias)
 
             if (nestedJoin.length) {
@@ -456,6 +460,38 @@ const prepJoin = ({ alias, join = [], encryption = undefined, ctx = undefined })
                 const whereResp = prepWhere({ alias: joinAlias, where, junction, encryption, ctx })
                 sql += whereResp.sql
                 values.push(...whereResp.values)
+            }
+
+            if (groupBy.length) {
+                sql += ' GROUP BY '
+                sql += groupBy.map(gb => {
+                    values.push(gb.includes('.') ? gb : ((alias && (alias + '.')) + gb))
+                    return '??'
+                }).join(', ')
+            }
+
+            if (Object.keys(having).length) {
+                sql += ' HAVING '
+                const havingResp = prepWhere({ alias: joinAlias, having, junction, encryption, ctx })
+                sql += havingResp.sql
+                values.push(...havingResp.values)
+            }
+
+            if (Object.keys(orderBy).length) {
+                sql += ' ORDER BY '
+                const orderResp = prepOrders({ alias, orderBy })
+                sql += orderResp.sql
+                values.push(...orderResp.values)
+            }
+
+            if (typeof limit === 'number') {
+                sql += ' LIMIT ? '
+                values.push(limit)
+            }
+
+            if (typeof offset === 'number') {
+                sql += ' OFFSET ? '
+                values.push(offset)
             }
 
             if (!as) {
@@ -513,20 +549,20 @@ const prepJoin = ({ alias, join = [], encryption = undefined, ctx = undefined })
 /**
  * prepares sub query that generates json object / array with aggregate wrapper (optional)
  * @function prepJson
- * @param jsonObj object with different properties that help generate a json object / array
- * @param {'json'|'array'} [jsonObj.key] (optional) alias reference for the table name
- * @param {{value:(object|Array), from?:string, alias?:string, where?:object, as?:string}} jsonObj.val accepts values related to sub-query
- * @param {{mode?:import("../defs/types").EncryptionModes, secret?:string, iv?:string, sha?:EncryptionSHAs}} [numObj.encryption] (optional) inherits encryption config from its parent level
- * @param {*} [numObj.ctx] context reference to parent class
+ * @param {Object} jsonParam object with different properties that help generate a json object / array
+ * @param {'json'|'array'} [jsonParam.key] (optional) alias reference for the table name
+ * @param {import("../defs/types").BaseJson} jsonParam.val accepts values related to sub-query
+ * @param {import("../defs/types").EncryptionConfig} [jsonParam.encryption] (optional) inherits encryption config from its parent level
+ * @param {*} [jsonParam.ctx] context reference to parent class
  * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
  */
 const prepJson = ({ key, val, encryption = undefined, ctx = undefined }) => {
     let sql = ''
     const values = []
 
-    const { value, table = null, alias = null, where = {}, as = null } = val
+    const { value, table = null, alias = null, join = [], where = {}, groupBy = [], having = {}, orderBy = {}, as = null } = val
 
-    if (table) sql += '(SELECT '
+    if (table || Object.keys(where).length || Object.keys(having).length) sql += '(SELECT '
 
     if (key === 'array' && !Array.isArray(value)) sql += 'JSON_ARRAYAGG('
     if (key === 'array' && Array.isArray(value)) sql += 'JSON_ARRAY('
@@ -555,6 +591,12 @@ const prepJson = ({ key, val, encryption = undefined, ctx = undefined }) => {
         }
     }
 
+    if (join.length) {
+        const joinResp = prepJoin({ alias, join, encryption, ctx })
+        sql += joinResp.sql
+        values.push(...joinResp.values)
+    }
+
     if (Object.keys(where).length) {
         sql += ' WHERE '
         const whereResp = prepWhere({ alias, where, junction: 'and', encryption, ctx })
@@ -562,7 +604,39 @@ const prepJson = ({ key, val, encryption = undefined, ctx = undefined }) => {
         values.push(...whereResp.values)
     }
 
-    if (table) sql += ')'
+    if (groupBy.length) {
+        sql += ' GROUP BY '
+        sql += groupBy.map(gb => {
+            values.push(gb.includes('.') ? gb : ((alias && (alias + '.')) + gb))
+            return '??'
+        }).join(', ')
+    }
+
+    if (Object.keys(where).length) {
+        sql += ' HAVING '
+        const whereResp = prepWhere({ alias, where, junction: 'and', encryption, ctx })
+        sql += whereResp.sql
+        values.push(...whereResp.values)
+    }
+
+    if (Object.keys(orderBy).length) {
+        sql += ' ORDER BY '
+        const orderResp = prepOrders({ alias, orderBy })
+        sql += orderResp.sql
+        values.push(...orderResp.values)
+    }
+
+    if (typeof limit === 'number') {
+        sql += ' LIMIT ? '
+        values.push(limit)
+    }
+
+    if (typeof offset === 'number') {
+        sql += ' OFFSET ? '
+        values.push(offset)
+    }
+
+    if (table || Object.keys(where).length || Object.keys(having).length) sql += ')'
 
     sql += ' AS ?'
     values.push(as || key)
@@ -574,10 +648,10 @@ const prepJson = ({ key, val, encryption = undefined, ctx = undefined }) => {
 /**
  * prepares aggregate functions
  * @function prepAggregate
- * @param {object} aggParam object with different properties that help generate aggregate method
+ * @param {Object} aggParam object with different properties that help generate aggregate method
  * @param {string} [aggParam.alias] (optional) local reference name of the table
  * @param {string} aggParam.key refers the name of the aggregate method, viz. 'sum', 'avg', 'min', 'max' etc.
- * @param {{value:(import("../defs/types").ValuesObject), distinct?:boolean, cast?: import("../defs/types").CastingTypes, compare?:import("../defs/types").WhereObject, as?:string}} aggParam.val accepts values related to aggregate method
+ * @param {import("../defs/types").BaseAggregate} aggParam.val accepts values related to aggregate method
  * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
  */
 const prepAggregate = ({ alias, key, val, parent = null, junction = 'and', encryption = undefined, ctx = undefined }) => {
@@ -626,25 +700,13 @@ const prepAggregate = ({ alias, key, val, parent = null, junction = 'and', encry
 /**
  * prepares sub query
  * @function prepRefer
- * @param {object} fromParam object with different properties that help generate aggregate method
- * @param {{
- * select:import("../defs/types").SelectObject, 
- * table:string, 
- * join:import("../defs/types").JoinObject, 
- * where?:import("../defs/types").WhereObject, 
- * junction?:('and'|'or'), 
- * groupBy?:string[], 
- * having?:import("../defs/types").HavingObject, 
- * orderBy?:object, 
- * limit?:number, 
- * offset?:number, 
- * as?:string
- * }} jsonObj.val accepts values related to aggregate method
+ * @param {Object} referParam object with different properties that help generate aggregate method
+ * @param {import("../defs/types").BaseQuery} referParam.val accepts values related to aggregate method
  * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
  */
 const prepRefer = ({ val, parent = null, encryption = undefined, ctx = undefined }) => {
 
-    const { select = ['*'], table, alias = null, join = [], where = {}, junction = 'and', groupBy = [], having = [], orderBy = {}, limit = null, offset = null, as = null } = val
+    const { select = ['*'], table, alias = null, join = [], where = {}, junction = 'and', groupBy = [], having = {}, orderBy = {}, limit = null, offset = null, as = null } = val
 
     let sql = ''
 
@@ -686,8 +748,8 @@ const prepRefer = ({ val, parent = null, encryption = undefined, ctx = undefined
         }).join(', ')
     }
 
-    if (having.length) {
-        sql += 'HAVING '
+    if (Object.keys(having).length) {
+        sql += ' HAVING '
         const havingResp = prepWhere({ alias, where: having, junction, encryption, ctx })
         sql += havingResp.sql
         values.push(...havingResp.values)
@@ -724,17 +786,12 @@ const prepRefer = ({ val, parent = null, encryption = undefined, ctx = undefined
 /**
  * prepares if else condition
  * @function prepIf
- * @param {object} ifParam
+ * @param {Object} ifParam
  * @param {string} [ifParam.alias] (optional) local reference name of the table
- * @param {{
- * check:*,
- * trueValue: *,
- * falseValue: *,
- * as?: string
- * }} ifParam.val
+ * @param {import("../defs/types").IfObject} ifParam.val
  * @param {'and'|'or'}  [ifParam.junction] (optional) clause used to join conditions
  * @param {import("../defs/types").EncryptionConfig} [ifParam.encryption] (optional) inherits encryption config from its parent level
- * @param {*} [caseParam.ctx] context reference to parent class
+ * @param {*} [ifParam.ctx] context reference to parent class
  * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
  */
 const prepIf = ({ alias, val, junction = 'and', encryption = undefined, ctx = undefined }) => {
@@ -795,7 +852,7 @@ const prepIf = ({ alias, val, junction = 'and', encryption = undefined, ctx = un
  *@function prepCase
  @param caseParam
  @param {string} [caseParam.alias] (optional) local reference to table name
- @param {{check: Array, else: *, as?: string}} caseParam.val
+ @param {import("../defs/types").SwitchObject} caseParam.val
  @param {'and'|'or'} [caseParam.junction] (optional) clause used to join conditions
  @param {import("../defs/types").EncryptionConfig} [caseParam.encryption] (optional) inherits encryption config from its parent level
  @param {*} [caseParam.ctx] context reference to parent class
@@ -859,20 +916,16 @@ const prepCase = ({ alias, val, junction = 'and', encryption = undefined, ctx = 
 /**
  * concat values
  * @function prepConcat
- * @param {object} concatParam
+ * @param {Object} concatParam
  * @param {string} [concatParam.alias] (optional) local reference to table name
- * @param {{
- * value: (import("../defs/types").ValuesObject|import("../defs/types").WrapperMethods)[]>,
- * pattern: (string|number|boolean),
- * compare?: import("../defs/types").WhereObject,
- * as?: string}} concatParam.val
+ * @param {import("../defs/types").ConcatObject} concatParam.val
  * @param {import("../defs/types").EncryptionConfig} [concatParam.encryption] (optional) inherits encryption config from its parent level
  * @param {*} [concatParam.ctx] context reference to parent class
  * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
  */
 const prepConcat = ({ alias, val, junction = 'and', encryption = undefined, ctx = undefined }) => {
 
-    const { value = [], pattern = '', as = null } = val
+    const { value = [], pattern = '', as = null, compare = {} } = val
 
     const values = []
     let sql = 'CONCAT_WS('
@@ -916,11 +969,11 @@ const prepConcat = ({ alias, val, junction = 'and', encryption = undefined, ctx 
 /**
  * performs various string based operations on the 'value' property
  * @function prepString
- * @param {object} strObj
- * @param {string} [strObj.alias] (optional) alias reference for the table name
- * @param {import("../defs/types").stringObject} strObj.val object that holds values for different properties
- * @param {import("../defs/types").EncryptionConfig} [strObj.encryption] (optional) inherits encryption config from its parent level
- * @param {*} [strObj.ctx]
+ * @param {Object} strParam
+ * @param {string} [strParam.alias] (optional) alias reference for the table name
+ * @param {import("../defs/types").StringObject} strParam.val object that holds values for different properties
+ * @param {import("../defs/types").EncryptionConfig} [strParam.encryption] (optional) inherits encryption config from its parent level
+ * @param {*} [strParam.ctx]
  * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
  */
 const prepString = ({ alias, val, junction = 'and', encryption = undefined, ctx = undefined }) => {
@@ -1072,7 +1125,7 @@ const prepString = ({ alias, val, junction = 'and', encryption = undefined, ctx 
 
 }
 
-const dateUnits = {
+const dateUnits = Object.freeze({
     f: 'MICROSECOND',
     s: 'SECOND',
     i: 'MINUTE',
@@ -1093,7 +1146,7 @@ const dateUnits = {
     dm: 'DAY_MINUTE',
     dh: 'DAY_HOUR',
     yM: 'YEAR_MONTH',
-}
+})
 
 
 /**
@@ -1118,10 +1171,10 @@ const dateUnits = {
 /**
  * performs various date operation(s) on the value attribute
  * @function prepDate
- * @param {object} dateObj
+ * @param {Object} dateObj
  * @param {string} [dateObj.alias] (optional) local reference for the table name
  * @param {'and'|'or'} [dateObj.junction]
- * @param {import("../defs/types").dateObject} dateObj.val object that holds values for different properties
+ * @param {import("../defs/types").DateObject} dateObj.val object that holds values for different properties
  * @param {import("../defs/types").EncryptionConfig} [dateObj.encryption] (optional) inherits encryption config from its parent level
  * @param {*} [dateObj.ctx] (optional) inherits class context reference from its parent level
  * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
@@ -1250,10 +1303,10 @@ const prepDate = ({ alias, val, junction = 'and', encryption = undefined, ctx = 
 /**
  * performs numeric operations on the 'value' property
  * @function prepNumeric
- * @param {object} numObj
+ * @param {Object} numObj
  * @param {string} [numObj.alias] (optional) alias reference for the table name
  * @param {'and'|'or'} [numObj.junction]
- * @param {import("../defs/types").numericObject} numObj.val
+ * @param {import("../defs/types").NumericObject} numObj.val
 * 
 * @param {import("../defs/types").EncryptionConfig} [numObj.encryption] (optional) inherits encryption config from its parent level
 * 
@@ -1423,4 +1476,18 @@ const prepDecrypt = ({ decrypt, encryption, ctx }) => {
     return { sql, values }
 }
 
-module.exports = { prepSelect, prepWhere, prepJoin }
+const orderDirections = Object.freeze({ asc: 'ASC', desc: 'DESC' })
+
+const prepOrders = ({ alias, orderBy }) => {
+    const values = []
+    const sql = Object.entries(orderBy).map(([col, dir]) => {
+        const name = prepName({ alias, value: col })
+        const sql = ' ?? ' + orderDirections[dir]
+        if (!checkConstants(col)) values.push(name)
+        return sql
+    }).join(', ')
+
+    return { sql, values }
+}
+
+module.exports = { prepSelect, prepWhere, prepJoin, prepOrders }

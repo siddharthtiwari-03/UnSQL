@@ -16,11 +16,28 @@
  */
 
 /**
+ * debug types
+ * @typedef {'query'|'error'|'benchmark'|'benchmark-query'|'benchmark-error'|boolean} DebugTypes
+ */
+
+/**
+ * set configuration for Encryption/Decryption
  * @typedef {Object} EncryptionConfig
- * @prop {EncryptionModes} [mode]
- * @prop {string} [secret]
- * @prop {string} [iv]
- * @prop {EncryptionSHAs} [sha]
+ * @prop {EncryptionModes} [mode] (optional) set encryption mode
+ * @prop {string} [secret] (optional) set default 'secret' to be used
+ * @prop {string} [iv] (optional) set initialization vector 'iv' (used only with 'cbc' modes)
+ * @prop {EncryptionSHAs} [sha] (optional) set SHA
+ */
+
+/**
+ * UnSQL config
+ * @typedef {Object} ConfigObject
+ * @prop {string} table name of the table to be mapped with this model class
+ * @prop {boolean} safeMode protects accidental execution of 'delete-all'
+ * @prop {boolean} [devMode=false] prevents 'reset' of data, enables Export/Import of records
+ * @prop {Object} [connection] mysql 'connection' object
+ * @prop {Object} [pool] mysql connection 'pool' object
+ * @prop {EncryptionConfig} [encryption] defines Encryption/Decryption config for this model
  */
 
 /**
@@ -90,14 +107,14 @@
  * @prop {string} [format]
  * @prop {number|string} [sub]
  * @prop {number|string} [add]
- * @prop {Object} [compare]
+ * @prop {{[key:string]:ComparatorObjects|BetweenWrapper}} [compare]
  * @prop {string} [as]
  */
 
 /**
  * if object
  * @typedef {Object} IfObject
- * @prop {Object} check
+ * @prop {boolean|WhereObject} check
  * @prop {*} trueValue
  * @prop {*} falseValue
  * @prop {string} [as]
@@ -106,16 +123,16 @@
 /**
  * concat object
  * @typedef {Object} ConcatObject
- * @prop {Array} value
- * @prop {string|number} pattern
- * @prop {{secret?:string, iv?:string, sha?:EncryptionSHAs}} [decrypt]
+ * @prop {SelectObject} value
+ * @prop {string|number|boolean} pattern
+ * @prop {WhereObject} [compare]
  * @prop {string} [as]
  */
 
 /**
  * when then object
  * @typedef {Object} WhenThenCondition
- * @prop {boolean|Object} when
+ * @prop {boolean|WhereObject} when
  * @prop {string|number|boolean} then
  */
 
@@ -148,11 +165,10 @@
  * @prop {string} [table]
  * @prop {string} [alias]
  * @prop {JoinObject} [join]
- * @prop {Object} [where]
+ * @prop {WhereObject} [where]
  * @prop {string[]} [groupBy]
- * @prop {Object} [having]
+ * @prop {HavingObject} [having]
  * @prop {{[key:string]:'asc'|'desc'}[]} [orderBy]
- * @prop {CastingTypes} [cast]
  * @prop {string} [as]
  */
 

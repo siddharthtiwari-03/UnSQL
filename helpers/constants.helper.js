@@ -1,16 +1,17 @@
-const checkConstants = value => value.toString().includes('*') || 'pi' === value || 'now' === value || 'currentDate' === value || 'currentTime' === value || 'currentTimestamp' === value || 'localTime' === value || 'localTimestamp' === value
+const checkConstants = value => value.toString().includes('*') || 'pi' === value || 'now' === value || 'currentDate' === value || 'currentTime' === value || 'currentTimestamp' === value || 'localTime' === value || 'localTimestamp' === value || 'utcTimestamp' === value
 
-const constantFunctions = {
+const constantFunctions = Object.freeze({
     now: 'NOW',
     currentDate: 'CURDATE',
     currentTime: 'CURRENT_TIME',
     currentTimestamp: 'CURRENT_TIMESTAMP',
+    utcTimestamp: 'UTC_TIMESTAMP',
     localTime: 'LOCALTIME',
     localTimestamp: 'LOCALTIMESTAMP',
     pi: 'PI'
-}
+})
 
-const dataTypes = {
+const dataTypes = Object.freeze({
     date: 'DATE',
     dateTime: 'DATETIME',
     time: 'TIME',
@@ -20,14 +21,14 @@ const dataTypes = {
     signed: 'SIGNED',
     unsigned: 'UNSIGNED',
     binary: 'BINARY',
-}
+})
 
-const aggregateFunctions = {
+const aggregateFunctions = Object.freeze({
     sum: 'SUM',
     avg: 'AVG',
     count: 'COUNT',
     max: 'MAX',
     min: 'MIN',
-}
+})
 
 module.exports = { checkConstants, dataTypes, constantFunctions, aggregateFunctions }

@@ -1,6 +1,10 @@
 # UnSQL
+![NPM Version](https://img.shields.io/npm/v/unsql "latest (on npm)")
+[![GitHub package.json version](https://img.shields.io/github/package-json/v/siddharthtiwari-03/unsql "latest (unstable)")](https://www.github.com/siddharthtiwari-03/unsql)
+[![GitHub Release](https://img.shields.io/github/v/release/siddharthtiwari-03/unsql?include_prereleases "latest (release)")](https://github.com/siddharthtiwari-03/UnSQL/releases)
+![NPM License](https://img.shields.io/npm/l/unsql "UnSQL License")
 
-UnSQL is an open-source JavaScript library that provides schemaless, class based, clean and modern interface to interact with structured Database (`MySQL`), through dynamic query generation. `UnSQL` is compatible with JavaScript based runtimes like Node.js and Next.js.
+**UnSQL** is an open-source, lightweight JavaScript library that provides schemaless, class based, clean and modern interface to interact with structured Database (`MySQL`), through dynamic query generation. `UnSQL` is compatible with JavaScript based runtimes like Node.js and Next.js.
 
 ## Table of Contents
 1. [Overview](#overview)
@@ -14,11 +18,12 @@ UnSQL is an open-source JavaScript library that provides schemaless, class based
    - [How UnSQL Works?](#how-unsql-works)
    - [Model Class (Example)](#model-class-example)
    - [What is config inside model class?](#what-is-config-inside-unsql-model-class)
-7. [What are the built-in methods in UnSQ?](#what-are-the-built-in-methods-in-unsql)
+7. [What are the built-in methods in UnSQL?](#what-are-the-built-in-methods-in-unsql)
    - [Find method](#find-method)
    - [Save method](#save-method)
    - [Delete method](#delete-method)
    - [Export method](#export-method)
+   - [Reset method](#reset-method)
 8. [Examples](#examples)
    - [How to find (read/retrieve) record(s) using UnSQL?](#how-to-find-readretrieve-records-using-unsql)
    - [How to save (insert/update/upsert) data using UnSQL?](#how-to-save-insertupdateupsert-data-using-unsql)
@@ -26,10 +31,11 @@ UnSQL is an open-source JavaScript library that provides schemaless, class based
 9. [FAQs](#faqs)
    - [How to import UnSQL in model class](#how-to-import-unsql-in-model-class)
    - [How does UnSQL differentiates between column name and string value?](#how-does-unsql-differentiates-a-column-name-and-string-value)
+   - [What are Reserved Constants in UnSQL?](#what-are-reserved-constants-in-unsql)
 
 ## Overview
 
-UnSQL simplifies working with MySQL databases by dynamically generating queries under the hood while offering developers a flexible and intuitive interface. This library eliminates boilerplate code, enhances security, and improves productivity in database management.
+**UnSQL** simplifies working with structured (MySQL) databases by dynamically generating queries under the hood while offering developers a flexible and intuitive interface. This library eliminates boilerplate code, enhances security, and improves productivity in database management.
 
 ## Breaking Changes
 
@@ -46,6 +52,8 @@ const { UnSQL } = require('unsql')
 // or
 import { UnSQL } from 'unsql'
 ```
+
+> **Please note:** [**Documentation for version v1.x**](https://github.com/siddharthtiwari-03/UnSQL/tree/legacy "Open v1.x documentation") is available on **GitHub**
 
 ## What's New?
 
@@ -133,7 +141,8 @@ class User extends UnSQL {
     static config = {
         table: 'test_user', // (mandatory) replace this with your table name
         pool, // replace 'pool' with 'connection' if you wish to use single connection instead of connection pool
-        safeMode: true
+        safeMode: true,
+        devMode: false
     }
 
 }
@@ -161,7 +170,8 @@ export class User extends UnSQL {
     static config = {
         table: 'test_user', // (mandatory) replace this with your table name
         pool, // replace 'pool' with 'connection' if you wish to use single connection instead of connection pool
-        safeMode: true
+        safeMode: true,
+        devMode: false
     }
 
 }
@@ -181,13 +191,13 @@ export class User extends UnSQL {
 
 `UnSQL` provides five (05) *static* methods to perform the **CRUD** operations via. model class as mentioned below:
 
-| Method   | Description                                                                           |
-| -------- | ------------------------------------------------------------------------------------- |
-| `find`   | fetch record(s) from the database table                                               |
-| `save`   | insert / update / upsert record(s) in the database table                              |
-| `delete` | remove record(s) from the database table                                              |
-| `export` | export record(s) from the database table into a 'json' file                           |
-| `reset`  | remove all records from database table, also reset `'auto increment'` IDs to zero (0) |
+| Method   | Description                                                                                                                       |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `find`   | fetch record(s) from the database table                                                                                           |
+| `save`   | insert / update / upsert record(s) in the database table                                                                          |
+| `delete` | remove record(s) from the database table                                                                                          |
+| `export` | export record(s) to a dynamically generated '.json' file or migrate data into another table mapped to a valid `UnSQL` model class |
+| `reset`  | remove all records from database table (resets `'auto increment'` IDs to zero (0))                                                |
 
 ### Find method
 
@@ -232,7 +242,7 @@ const result = await User.find({ alias: 't1' })
 
 #### select
 
-**`select`** accepts an array of values like column name(s), string value, boolean, number, wrapper methods (See [wrapper methods](#what-are-wrapper-methods-in-unsql)). This property restricts the columns that needs to be fetched from the database table. By default, it is set to select all the columns. Below is the example of `select` property:
+**`select`** accepts an array of values like column name(s), string value, boolean, number, wrapper methods (See [wrapper methods](#what-are-wrapper-methods-in-unsql)). This property restricts the columns that needs to be fetched from the database table. By default, it is set to select all the columns. Below is a sample of `select` property:
 
 ```javascript
 const result = await User.find({
@@ -251,7 +261,7 @@ const result = await User.find({
 })
 ```
 
-> **Explanation:** In the above code block, `'userId'`, `'lastName'` and `'lastName'` are the column names in the database table, and at the end starting with `#` is a static string value
+> **Explanation:** In the above sample block, `'userId'`, `'lastName'` and `'lastName'` are the column names in the database table, and at the end starting with `#` is a static string value
 
 #### join
 
@@ -262,7 +272,7 @@ const result = await User.find({
     join: [
         {
             select: ['*'],
-            table: 'name_of_the_associating_table',
+            table: 'some_table',
             type: null,
             alias: null,
             join: [],
@@ -283,7 +293,7 @@ Properties defined inside each join object are context sensitive and will work i
 
 `table` (required) accepts name of the table that is being associated as a child
 
-type (optional) defines the type of the association these two tables will have. Can have any one of the values `'left'` | `'right'` | `'inner'`
+`type` (optional) defines the type of the association these two tables will have. Can have any one of the values `'left'` | `'right'` | `'inner'`
 - `'left'` considers all records from the parent table and only the matching record(s) from the child table
 - `'right'` considers all records from the child table and only the matching record(s) from the parent table
 - `'inner'` considers only the overlapping records from the two table and ignores all the other records
@@ -689,6 +699,7 @@ await User.export({
     select: ['*'],
     where: {},
     mode: 'append',
+    exportTo: 'file',
     debug: false
 })
 ```
@@ -704,6 +715,8 @@ Each of these properties is explained below:
 `where` (optional) filter record(d) that will be considered for exporting (see [where](#where) for details)
 
 `mode` (optional) defines the behavior of export, `'append'` will recursively add data if invoked multiple times, `'override'` as the name suggests will override the dynamically generated file if invoked multiple times
+
+`target` (optional) defines the target for the record(s) to be exported to. By default points to the `'filename'`
 
 `debug` (optional) enables various debug modes (see [Debug](#debug) for details)
 
@@ -721,23 +734,24 @@ await User.reset({ debug: false })
 
 `UnSQL` provides various *built-in* methods to interact with data and perform specific tasks, each of these wrapper methods belong a certain *type*. All of the wrapper methods have object like interface (`key: value` pair) to interact with them, where `key` can be any one of the specially reserved keywords that represents its respective wrapper method. Below is the list of wrapper methods along with their respective keywords available inside `UnSQL`:
 
-| Keyword | Wrapper Type | Description                                                                               |
-| :-----: | :----------: | ----------------------------------------------------------------------------------------- |
-|  `str`  |    string    | performs string value related operations                                                  |
-|  `num`  |   numeric    | performs numeric value related operations                                                 |
-| `date`  |     date     | performs date value related operations                                                    |
-|  `and`  |   junction   | performs junction override inside the `where` and `having`                                |
-|  `or`   |   junction   | performs junction override inside the `where` and `having`                                |
-|  `if`   | conditional  | checks **condition** and returns respective value (used with `select`, `where`, `having`) |
-| `case`  | conditional  | checks **condition** and returns respective value (used with `select`, `where`, `having`) |
-|  `sum`  |  aggregate   | calculates 'total' from set of values                                                     |
-|  `avg`  |  aggregate   | calculates 'average' from set of values                                                   |
-| `count` |  aggregate   | performs 'count' operation on set of values                                               |
-|  `min`  |  aggregate   | determines 'lowest' value among the provided values                                       |
-|  `max`  |  aggregate   | determines 'highest' value among the provided values                                      |
-| `json`  |  sub-query   | creates a json object at the position it is invoked                                       |
-| `array` |  sub-query   | creates a json array at the position it is invoked                                        |
-| `refer` |  sub-query   | fetch a column from another table at the position it is invoked                           |
+| Keyword  | Wrapper Type | Description                                                                               |
+| :------: | :----------: | ----------------------------------------------------------------------------------------- |
+|  `str`   |    string    | performs string value related operations                                                  |
+|  `num`   |   numeric    | performs numeric value related operations                                                 |
+|  `date`  |     date     | performs date value related operations                                                    |
+|  `and`   |   junction   | performs junction override inside the `where` and `having`                                |
+|   `or`   |   junction   | performs junction override inside the `where` and `having`                                |
+|   `if`   | conditional  | checks **condition** and returns respective value (used with `select`, `where`, `having`) |
+|  `case`  | conditional  | checks **condition** and returns respective value (used with `select`, `where`, `having`) |
+|  `sum`   |  aggregate   | calculates 'total' from set of values                                                     |
+|  `avg`   |  aggregate   | calculates 'average' from set of values                                                   |
+| `count`  |  aggregate   | performs 'count' operation on set of values                                               |
+|  `min`   |  aggregate   | determines 'lowest' value among the provided values                                       |
+|  `max`   |  aggregate   | determines 'highest' value among the provided values                                      |
+|  `json`  |  sub-query   | creates a json object at the position it is invoked                                       |
+| `array`  |  sub-query   | creates a json array at the position it is invoked                                        |
+| `refer`  |  sub-query   | fetch a column from another table at the position it is invoked                           |
+| `concat` |    merge     | combines multiple values into one                                                         |
 
 > **Please note:** 
 > 1. *junction* type wrapper methods can only be used inside `where` and `having` property
@@ -779,7 +793,8 @@ const result = await User.find({
                 trim: false,
                 cast: null,
                 decrypt: null,
-                as: null
+                as: null,
+                compare: {}
             }
         }
     ]
@@ -810,6 +825,8 @@ Each of these properties of **string wrapper** method are explained below:
 
 `as` (optional) renames/provides local reference name to the `value` property
 
+`compare` (optional) used to compare the value returned by this wrapper method using `comparators`
+
 #### Numeric wrapper
 
 **Numeric wrapper** (keyword `num`) is used to perform mathematical operations on the numeric data, it can be used / nested inside `select`, `where`, `having` clause as a `value`. All the operations are executed sequentially, in order that follows **BODMAS** rule. Below is the interface for this wrapper method along with the default values for each of its properties:
@@ -817,18 +834,20 @@ Each of these properties of **string wrapper** method are explained below:
 ```javascript
 const result = await User.find({
     select: [
-        { num: {
-            value: 'column containing number' || number,
-            decimal: null,
-            mod: null,
-            sub: 0,
-            add: 0,
-            multiplyBy: null,
-            divideBy: null,
-            power: null,
-            cast: null,
-            decrypt: null,
-            as: null
+        { 
+            num: {
+                value: 'column containing number' || number,
+                decimal: null,
+                mod: null,
+                sub: 0,
+                add: 0,
+                multiplyBy: null,
+                divideBy: null,
+                power: null,
+                cast: null,
+                decrypt: null,
+                as: null,
+                compare: {}
             } 
         }
     ]
@@ -861,6 +880,8 @@ Each of these properties of **numeric wrapper** method are explained below:
 
 `as` (optional) renames/provides local reference name to the `value` property
 
+`compare` (optional) used to compare the value returned by this wrapper method using `comparators`
+
 #### Date wrapper
 
 **Date wrapper** (keyword `date`) is used to perform date related operations on `value` property, it can be used nested inside `select`, `where`, `having` clause as a `value`. Below is the interface for this wrapper method along with the default values for each of its properties:
@@ -868,15 +889,17 @@ Each of these properties of **numeric wrapper** method are explained below:
 ```javascript
 const result = await User.find({
     select: [
-        { date: {
-            value: 'column containing date' || date,
-            add: 0,
-            sub: 0,
-            fromPattern: null,
-            cast: null,
-            decrypt: null,
-            format: null,
-            as: null
+        { 
+            date: { 
+                value: 'column containing date' || date,
+                add: 0,
+                sub: 0,
+                fromPattern: null,
+                cast: null,
+                decrypt: null,
+                format: null,
+                as: null,
+                compare: {}
             } 
         }
     ]
@@ -936,6 +959,8 @@ const result = await User.find({
 
 `as` (optional) renames/provides local reference name to the `value` property
 
+`compare` (optional) used to compare the value returned by this wrapper method using `comparators`
+
 #### Date Time Patterns
 
 Date Time Patterns can be used with `format` and `fromPattern` properties of `date` wrapper but not with `add` and `sub` property. Below mentioned *date time patterns* (in any desired combination), along with white space `' '` or allowed special characters (`'$'`, `'@'`, `'#'`, `','`, `'-'`, `'_'`, `'/'`) can be used to:
@@ -980,7 +1005,7 @@ Date Time Patterns can be used with `format` and `fromPattern` properties of `da
 
 Below **date time units** are only usable with `add` and `sub` property of `date` wrapper method and not with `format` and `fromPattern` property
 
-| keyword | unit               |
+| Keyword | Unit               |
 | :-----: | ------------------ |
 |   `f`   | MICROSECOND        |
 |   `s`   | SECOND             |
@@ -1295,6 +1320,8 @@ const result = await User.find({
             refer: {
                 select: ['*'],
                 table: 'table_name',
+                alias: null,
+                join: [],
                 where: null, 
                 groupBy = [], 
                 having = [], 
@@ -1316,6 +1343,8 @@ Each of the properties is explained below:
 
 `alias` (optional) provides local reference to the child table, see [alias](#alias) for details
 
+`join` (optional) defines association of another table (as child), see [join](#join) for details
+
 `where` (optional) used to filter records, see [where](#where) for details
 
 `groupBy` (optional) used to group records, see [groupBy](#groupby) for details
@@ -1332,11 +1361,40 @@ Each of the properties is explained below:
 
 > **Please note:** This wrapper method is very important as it similar to actual `find` method inside `UnSQL`
 
+#### Concat Wrapper
+
+**Concat wrapper** (Keyword `concat`) is used to merge/combine multiple value(s)/columns together into one value. Accepts an array of value(s)/wrapper methods and merges them as one value using `pattern` property as the separator between these values. Below is the interface for this wrapper method along with the default values for each of its properties:
+
+```javascript
+const result = await User.find({
+    select: [
+        {
+            concat: { 
+                value: [],
+                pattern: '',
+                as: null,
+                compare: null
+            }
+        }
+    ]
+})
+```
+
+Each of the properties is explained below:
+
+`value` accepts an array of values, these values are similar to `select` (see [select](#select)) property of `find` method (see [find](#find-method))
+
+`pattern` used to connect values in the `value` property. Default is `''`
+
+`as` (optional) is used to provide local reference name to the value returned by this wrapper method
+
+`compare` (optional) used to compare the value returned by this wrapper method using `comparators`
+
 ### What are comparators in UnSQL?
 
 **comparator** as the name suggests are used to compare two values. They have a layer of nested object `key: { comparator: value }` pair format like interface where the `key` is compared with the `value` based on the `comparator` used. `key` and `value` can be either string value or column name or number or boolean or any of the built-in wrapper methods. `UnSQL` provides various types of `comparator` as mentioned below:
 
-| comparator     | expression       | description                                                                            |
+| Comparator     | Expression       | Description                                                                            |
 | -------------- | ---------------- | -------------------------------------------------------------------------------------- |
 | `eq`           | `=`              | compares if `key` **is equal** to `value`                                              |
 | `notEq`        | `!=`             | compares if `key` **is not equal** to `value`                                          |
@@ -1516,12 +1574,11 @@ router.delete('/users/:userId(\\d+)', async (req, res)=> {
             {
                 date: {
                     value: 'joiningDate',
-                    format: '',
                     compare: {
                         eq: {
                             date: {
                                 value: 'currentDate',
-
+                                sub: '6m'
                             }
                         }
                     }
@@ -1532,6 +1589,8 @@ router.delete('/users/:userId(\\d+)', async (req, res)=> {
 
 })
 ```
+
+> **Explanation:** This will remove all record(s) in the `'salesInterns'` and `'marketInterns'` `'department'` having `'joiningDate'` 6 months (represented by `'6m'`) earlier to this date.
 
 ## FAQs
 
@@ -1563,19 +1622,30 @@ const result = await User.find({
 ```
 > **Explanation:** In the above example, `'userId'`, `'firstName'` and `'lastName'` are the column names hence does not start with `#` on the other hand `'test'` and `'Siddharth'` are the string values hence contains `#` as prefix to differentiate them with column names.
 
-### What are UnSQL Reserved Constants?
+### What are Reserved Constants in UnSQL?
 
-`UnSQL` has various **built-in reserved constants** as mentioned below:
+Apart from built-in methods, `UnSQL` also has various built-in **reserved constants** (supported by MySQL database) as mentioned below:
 
-| constant           | description                                                         |
-| ------------------ | ------------------------------------------------------------------- |
-| `currentDate`      | represents reference of current date and time                       |
-| `now`              | same as `currentDate` represents reference of current date and time |
-| `currentTime`      | same as `currentDate` represents reference of current date and time |
-| `currentTimestamp` | same as `currentDate` represents reference of current date and time |
-| `localTime`        | same as `currentDate` represents reference of current date and time |
-| `localTimestamp`   | same as `currentDate` represents reference of current date and time |
-| `pi`               | same as `currentDate` represents reference of current date and time |
+| Constant           | Description                                                                                        |
+| ------------------ | -------------------------------------------------------------------------------------------------- |
+| `currentDate`      | provides only current **date** in `YYYY-MM-DD` format                                              |
+| `currentTime`      | provides only current **time** in `hh:mm:ss` format                                                |
+| `now`              | provides both, current **date and time** in `YYYY-MM-DD hh:mm:ss` format, with configured timezone |
+| `currentTimestamp` | synonym for `now`                                                                                  |
+| `localTimestamp`   | similar to `now` or `timestamp` but in **reference to local timezone**                             |
+| `localTime`        | exactly same as `localTimestamp`                                                                   |
+| `utcTimestamp`     | provides `currentTimestamp` **in UTC format**                                                      |
+| `pi`               | provides value of mathematical constant **pi** i.e. **approx. `3.141593`**                         |
+| `isNull`           | provides MySQL compatible `IS NULL` value                                                          |
+| `isNotNull`        | provides MySQL compatible `IS NOT NULL` value                                                      |
+
+
+![npm](https://img.shields.io/badge/npm-CB3837?style=for-the-badge&logo=npm&logoColor=white) 
+![Yarn](https://img.shields.io/badge/yarn-%232C8EBB.svg?style=for-the-badge&logo=yarn&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-005C84?style=for-the-badge&logo=mysql&logoColor=white)
+![JavaScript](https://img.shields.io/badge/javascript-%23323330.svg?style=for-the-badge&logo=javascript&logoColor=%23F7DF1E)
+![NodeJs](https://img.shields.io/badge/Node%20js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
+![NextJs](https://img.shields.io/badge/next%20js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)
 
 ## Author
 
