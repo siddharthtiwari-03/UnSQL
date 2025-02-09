@@ -474,6 +474,7 @@ const result = await User.find({
 > **Please note:** 
 > 1. All the configurations inside `encryption` property are optional and can be used to either set or override any (or all) of global configuration(s) for local execution.
 > 2. `iv` works only with 'cbc' mode and hence will be ignore (if set) in 'ecb' mode
+> 3. **When setting encryption `mode`, it is required to set `multipleStatements: true` inside your `createConnection` or `createPool` configuration.**
 
 #### debug
 
