@@ -1,8 +1,10 @@
 # UnSQL
-![NPM Version](https://img.shields.io/npm/v/unsql "latest (on npm)")
+![NPM Version](https://img.shields.io/npm/v/unsql "production (stable)")
 [![GitHub package.json version](https://img.shields.io/github/package-json/v/siddharthtiwari-03/unsql "latest (unstable)")](https://www.github.com/siddharthtiwari-03/unsql)
-[![GitHub Release](https://img.shields.io/github/v/release/siddharthtiwari-03/unsql?include_prereleases "latest (release)")](https://github.com/siddharthtiwari-03/UnSQL/releases)
+[![GitHub Release](https://img.shields.io/github/v/release/siddharthtiwari-03/unsql?include_prereleases "latest (LTS)")](https://github.com/siddharthtiwari-03/UnSQL/releases)
+![NPM Downloads](https://img.shields.io/npm/dm/unsql)
 ![NPM License](https://img.shields.io/npm/l/unsql "UnSQL License")
+
 
 **UnSQL** is an open-source, lightweight JavaScript library that provides schemaless, class based, clean and modern interface to interact with structured Database (`MySQL`), through dynamic query generation. `UnSQL` is compatible with JavaScript based runtimes like Node.js and Next.js.
 
@@ -695,29 +697,42 @@ Below are the explanations for each of these properties:
 
 ```javascript
 await User.export({
-    filename: 'test_user',
+    target: User.config.table,
     directory: 'exports_unsql',
     select: ['*'],
+    join: [],
     where: {},
+    groupBy: [],
+    having: {},
+    orderBy: [],
+    limit: undefined,
+    offset: undefined,
     mode: 'append',
-    exportTo: 'file',
     debug: false
 })
 ```
 
 Each of these properties is explained below:
 
-`filename` (optional) used to change the default name (without file extension) of the dynamically generated file
+`target` (optional) defines the target, *filename* for the dynamically generated **.json** file or valid `UnSQL` model class, to export record(d) into. Defaults to the `name` of the `table` property of this model class
 
 `directory` (optional) used to change the default name of the dynamically generated directory that contains all exported `.json` files
 
 `select` (optional) limits the columns that will be considered while exporting records, can also be used to manipulate record(s) of selected columns while exporting (see [select](#select) for details)
 
-`where` (optional) filter record(d) that will be considered for exporting (see [where](#where) for details)
+`where` (optional) filter record(d) based on condition(s) for exporting (see [where](#where) for details)
+
+`groupBy` (optional) groups record(s) by column name(s) to be exported (see [group by](#groupby))
+
+`having` (optional) filter record(s) based on condition(s)/aggregate methods (See [having](#having) for details)
+
+`orderBy` (optional) re-order record(s) by column name(s) to be exported (see [group by](#groupby))
+
+`limit` (optional) limits the record(s) to be extracted
+
+`limit` (optional) sets the starting index of record(s) to be extracted
 
 `mode` (optional) defines the behavior of export, `'append'` will recursively add data if invoked multiple times, `'override'` as the name suggests will override the dynamically generated file if invoked multiple times
-
-`target` (optional) defines the target for the record(s) to be exported to. By default points to the `'filename'`
 
 `debug` (optional) enables various debug modes (see [Debug](#debug) for details)
 
