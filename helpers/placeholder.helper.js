@@ -15,6 +15,9 @@ const prepPlaceholder = value => {
     else if (checkConstants(value)) {
         return constantFunctions[value] + '()'
     }
+    else if (value === null || value === 'null' || value === 'NULL') {
+        return NULL
+    }
     else if (Date.parse(value) || parseInt(value) || parseFloat(value) || typeof value === 'boolean' || value?.toString()?.startsWith('#')) {
         return '?'
     }

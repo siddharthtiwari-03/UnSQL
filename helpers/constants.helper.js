@@ -1,4 +1,4 @@
-const checkConstants = value => value.toString().includes('*') || 'pi' === value || 'now' === value || 'currentDate' === value || 'currentTime' === value || 'currentTimestamp' === value || 'localTime' === value || 'localTimestamp' === value || 'utcTimestamp' === value
+const checkConstants = value => (value != null && value.toString().includes('*')) || 'pi' === value || 'now' === value || 'currentDate' === value || 'currentTime' === value || 'currentTimestamp' === value || 'localTime' === value || 'localTimestamp' === value || 'utcTimestamp' === value || 'null' === value || 'NULL' === value || null === value
 
 const constantFunctions = Object.freeze({
     now: 'NOW',

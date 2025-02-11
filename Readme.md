@@ -979,7 +979,7 @@ const result = await User.find({
 
 #### Date Time Patterns
 
-Date Time Patterns can be used with `format` and `fromPattern` properties of `date` wrapper but not with `add` and `sub` property. Below mentioned *date time patterns* (in any desired combination), along with white space `' '` or allowed special characters (`'$'`, `'@'`, `'#'`, `','`, `'-'`, `'_'`, `'/'`) can be used to:
+**Date Time Patterns** can be used with `format` and `fromPattern` properties of `date` wrapper but not with `add` and `sub` property. Below mentioned *date time patterns* (in any desired combination), along with white space `' '` or allowed special characters (`'$'`, `'@'`, `'#'`, `','`, `'-'`, `'_'`, `'/'`) can be used to:
 - Recognize parts of date within a regular string inside `value` property of `date` wrapper and can generate a valid date from it
 - Reformat the date inside the `value` property of the `date` wrapper into any desired format
 
@@ -1250,7 +1250,7 @@ const result = await User.find({
 
 #### Json wrapper
 
-**Json wrapper** (keyword `json`) is used to create 'json object' either directly or from another table (via. 'sub-query') by providing in `key: value` pair(s) to `value` property. It can be used / nested only inside `select` and `where` parameters as a `value`. Here `key` is always a string value and `value` can be anything from string value to a number or even a nested object. Below is the interface for this wrapper method along with the default values for each of its properties:
+**Json wrapper** (keyword `json`) can be used to **extract specific value from json Object** (using `extract` property) or **create/attach json Object to record(s)** by passing Object/Array in `value` property, or even both. Below is the interface for this wrapper method along with the default values for each of its properties:
 
 ```javascript
 const result = await User.find({
@@ -1261,8 +1261,16 @@ const result = await User.find({
                 value: {},
                 table: null,
                 alias: null,
+                join: [],
                 where: {}
-                as: 'json'
+                groupBy: [],
+                having: {},
+                orderBy: {},
+                limit: undefined,
+                offset: undefined,
+                as: null, // Defaults to 'json' (only inside select property) if no 'where' or 'having' property is set
+                extract: null,
+                compare: {}
             }
         }
     ]
@@ -1275,11 +1283,27 @@ Each of the properties is explained below:
 
 `table` (optional) reference to the child table from which the columns needs to be fetched
 
-`alias` (optional) provides local reference to the child table, see [alias](#alias) for details
+`alias` (optional) provides local reference to the child table, see [alias](#alias)
 
-`where` (optional) used to filter records, see [where](#where) for details
+`join` (optional) used to associate another table, see [join](#join)
+
+`where` (optional) used to filter records, see [where](#where)
+
+`groupBy` (optional) groups record(s), see [group by](#groupby)
+
+`having` (optional) used to filter records, see [having](#having)
+
+`orderBy` (optional) re-orders record(s), see [order by](#orderby)
+
+`limit` (optional) limit record(s), see [limit](#limit)
+
+`offset` (optional) set starting index for record(s), see [offset](#offset)
 
 `as` (optional) is used to rename the json object name, if not provided defaults to 'json'
+
+`extract` (optional) available when **column name** containing valid **json object** is passed in `value` property, is used to extract a specified value from this json object. In order to extract any value inside nested json object, keys can be concatenated using `.` symbol
+
+`compare` (optional) used to compare the value returned by this wrapper method using `comparators`
 
 
 > **Please note:** 
@@ -1289,7 +1313,7 @@ Each of the properties is explained below:
 
 #### Array wrapper
 
-**Array wrapper** (keyword `array`) is used to create 'json array' of values (string, number, json object) either directly or from another table (via. 'sub-query') by providing in. It can be used / nested only inside `select` clause as a `value`. This wrapper method is almost similar to `json` wrapper, only difference is that `json` is useful if only 1 object is required however, `array` wrapper is helpful when there are multiple child records that are required to be patched in a one-to-many relation. Below is the interface for this wrapper method along with the default values for each of its properties:
+**Array wrapper** (keyword `array`) can be used to **extract specific value from json Array** (using `extract` property) or **create/attach json Array to record(s)** by passing Object/Array in `value` property, or even both. This is similar to `json` wrapper however, it can also be used to create an array with multiple json objects. Below is the interface for this wrapper method along with the default values for each of its properties:
 
 ```javascript
 const result = await User.find({
@@ -1299,9 +1323,17 @@ const result = await User.find({
             array: {
                 value: [] || {},
                 table: null,
-                alias:
-                where: {}
-                as: 'array'
+                alias: null,
+                join: [],
+                where: {},
+                groupBy: [],
+                having: {},
+                orderBy: {},
+                limit: undefined,
+                offset: undefined,
+                as: null, // Defaults to 'array' (only inside select property) if no 'where' or 'having' property is set
+                extract: null,
+                compare: {}
             }
         }
     ]
@@ -1314,19 +1346,34 @@ Each of the properties is explained below:
 
 `table` (optional) reference to the child table from which the columns needs to be fetched
 
-`alias` (optional) provides local reference to the child table, see [alias](#alias) for details
+`alias` (optional) provides local reference to the child table, see [alias](#alias)
 
-`where` (optional) used to filter records, see [where](#where) for details
+`join` (optional) used to associate another table, see [join](#join)
 
-`as` (optional) is used to rename the json array name, if not provided defaults to 'array'
+`where` (optional) used to filter records, see [where](#where)
 
+`groupBy` (optional) groups record(s), see [group by](#groupby)
+
+`having` (optional) used to filter records, see [having](#having)
+
+`orderBy` (optional) re-orders record(s), see [order by](#orderby)
+
+`limit` (optional) limit record(s), see [limit](#limit)
+
+`offset` (optional) set starting index for record(s), see [offset](#offset)
+
+`as` (optional) is used to rename the json object name, if not provided defaults to 'json'
+
+`extract` (optional) available when **column name** containing valid **json object** is passed in `value` property, is used to extract a specified value from this json object. In order to extract any value inside nested json object, keys can be concatenated using `.` symbol
+
+`compare` (optional) used to compare the value returned by this wrapper method using `comparators`
 
 > **Please note:** 
 > 1. Using alias is always a good practice but, if the column names inside the two referenced tables are not ambiguous then alias can be excluded
 
 #### Refer wrapper
 
-**Refer wrapper** (keyword `refer`) is used to run 'sub-query' to fetch 'single' field from any specific record from another `table`. It can be used / nested only inside `select`, `where` and `having` clause as a `value`. This method is helpful to fetch 1 record in a one-to-one relation. Below is the interface for this wrapper method along with the default values for each of its properties:
+**Refer wrapper** (keyword `refer`) is used to run `'sub-query'` to fetch **single field** from any specific record from another `table`. It can be used / nested only inside `select`, `where` and `having` clause as a `value`. This method is helpful to fetch 1 record in a one-to-one relation. Below is the interface for this wrapper method along with the default values for each of its properties:
 
 ```javascript
 const result = await User.find({
@@ -1339,11 +1386,11 @@ const result = await User.find({
                 alias: null,
                 join: [],
                 where: null, 
-                groupBy = [], 
-                having = [], 
-                orderBy = {}, 
-                limit = null, 
-                offset = null,
+                groupBy: [], 
+                having: [], 
+                orderBy: {}, 
+                limit: undefined, 
+                offset: undefined,
                 as: null
             }
         }
@@ -1526,6 +1573,100 @@ router.post('/users/login', async (req, res)=> {
 
 > **Explanation:** Here, `'userId'`, `'userEmail'`, `'firstName'`, `'lastName'`, `'userPassword'` are the column in the database table. `str` wrapper is used to **Decrypt** `'userEmail'` column using the `secret` and `iv` properties. **Encryption mode** is set to `'aes-256-cbc'` inside `encryption` property. After Decrypting `'userEmail'`, its value is then compared with the `loginId` received in the **request body**. Since `secret` `iv` and `loginId` are regular strings and not column names hence, they are prefixed with `#`.
 
+#### Fetch all users along with the list of recent 5 orders
+
+```javascript
+router.get('/users', async (req, res) => {
+
+    const result = await User.find({
+        select: ['userId', 'firstName',
+            {
+                array: {
+                    value: {
+                        orderId: 'orderId',
+                        placedOn: 'createdOn',
+                        amount: 'amount'
+                    },
+                    table: 'orders_placed',
+                    where: {
+                        userId: 'userId'
+                    },
+                    limit: 5,
+                    orderBy: { createdOn: 'desc' },
+                    as: 'order_history'
+                }
+            }
+        ]
+    })
+
+})
+```
+
+#### Extract value from a Json Array of values
+
+```javascript
+router.get('/users', async (req, res) => {
+
+    const result = await User.find({
+        select: ['userId', 'firstName',
+            {
+                array: {
+                    value: ['#Jabalpur', '#Delhi', '#Pune'],
+                    extract: 0
+                    as: 'city'
+                }
+            }
+        ]
+    })
+
+})
+
+// Output: city: 'Jabalpur'
+```
+
+#### Extract city (at any (*) index value) from a Json Array of Objects
+
+```javascript
+router.get('/users', async (req, res) => {
+
+    const result = await User.find({
+        select: ['userId', 'firstName',
+            {
+                array: {
+                    value: ...,
+                    extract: '[*].city'
+                    as: 'city'
+                }
+            }
+        ]
+    })
+
+})
+```
+
+> **Explanation:** In the above sample, `city` will be extracted from all objects in the array
+>
+> **Please note:** `*` can be replace by a number to fetch city name from a record at that specific index number, else it will return `null` if value is not found or no object is found at that index
+
+#### Extract value from Json Object
+
+```javascript
+router.get('/users', async (req, res) => {
+
+    const result = await User.find({
+        select: ['userId', 'firstName',
+            {
+                json: {
+                    value: { ..., address: { city: '#Jabalpur', state: '#Madhya Pradesh' } },
+                    extract: 'address.city'
+                    as: 'city'
+                }
+            }
+        ]
+    })
+
+})
+```
 ### How to save (insert/update/upsert) data using UnSQL?
 
 #### insert data
@@ -1655,6 +1796,9 @@ Apart from built-in methods, `UnSQL` also has various built-in **reserved consta
 | `isNull`           | provides MySQL compatible `IS NULL` value                                                          |
 | `isNotNull`        | provides MySQL compatible `IS NOT NULL` value                                                      |
 
+### Does UnSQL support MySQL Json datatype?
+
+Yes UnSQL provides `json` and `array` wrappers to interact with **MySQL json datatype**. `save` method supports insertion of `data` containing **json Object/Array** into MySQL **json datatype** column, UnSQL internally *stringify* the json data data before saving it.
 
 ### Support
 ![npm](https://img.shields.io/badge/npm-CB3837?style=for-the-badge&logo=npm&logoColor=white) 

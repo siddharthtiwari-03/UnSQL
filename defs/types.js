@@ -169,15 +169,19 @@
  * @prop {string[]} [groupBy]
  * @prop {HavingObject} [having]
  * @prop {{[key:string]:'asc'|'desc'}[]} [orderBy]
+ * @prop {number} [limit]
+ * @prop {number} [offset]
  * @prop {string} [as]
  */
 
 /**
  * json base object
  * @typedef {Object} JsonObject
- * @prop {{[key:string]: ValuesObject}|Array} value
+ * @prop {string|{[key:string]: ValuesObject}|Array} value
+ * @prop {string} [extract]
+ * @prop {ComparatorObjects} [compare]
  * @typedef {PartialQuery & JsonObject} BaseJson
- */
+*/
 
 /**
  * sub-query object

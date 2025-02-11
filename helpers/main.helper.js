@@ -78,6 +78,7 @@ const prepSelect = ({ alias, select = [], encryption = undefined, ctx = undefine
 
                 case key === 'json':
                 case key === 'array': {
+                    val.as = val.as || key
                     const resp = prepJson({ alias, key, val, encryption, ctx })
                     values.push(...resp?.values)
                     return resp?.sql
@@ -302,6 +303,14 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', encrypt
                 const resp = prepNumeric({ alias, val, encryption, ctx })
                 sql += resp?.sql
                 values.push(...resp?.values)
+                break
+            }
+
+            case key === 'json':
+            case key === 'array': {
+                const jsonResp = prepJson({ key, val, encryption, ctx })
+                sql += jsonResp.sql
+                values.push(...jsonResp.values)
                 break
             }
 
@@ -556,31 +565,44 @@ const prepJoin = ({ alias, join = [], encryption = undefined, ctx = undefined })
  * @param {*} [jsonParam.ctx] context reference to parent class
  * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
  */
-const prepJson = ({ key, val, encryption = undefined, ctx = undefined }) => {
+const prepJson = ({ key, val, encryption = undefined, junction = 'and', ctx = undefined }) => {
     let sql = ''
     const values = []
 
-    const { value, table = null, alias = null, join = [], where = {}, groupBy = [], having = {}, orderBy = {}, as = null } = val
+    const { value, table = null, alias = null, join = [], where = {}, groupBy = [], having = {}, orderBy = {}, as = null, extract = null, compare = {} } = val
 
     if (table || Object.keys(where).length || Object.keys(having).length) sql += '(SELECT '
 
-    if (key === 'array' && !Array.isArray(value)) sql += 'JSON_ARRAYAGG('
-    if (key === 'array' && Array.isArray(value)) sql += 'JSON_ARRAY('
-    if (key === 'json' || !Array.isArray(value)) sql += 'JSON_OBJECT('
+    if (extract != null) sql += 'JSON_EXTRACT('
 
-    sql += Object.entries(value).map(([k, v]) => {
-        const vPlaceholder = prepPlaceholder(v)
-        const vName = prepName({ alias, value: v })
+    if (typeof value === 'string') {
+        sql += prepPlaceholder(value)
+        const jsName = prepName({ alias, value })
+        if (!checkConstants(value)) values.push(jsName)
+    } else {
+        if (key === 'array' && !Array.isArray(value)) sql += 'JSON_ARRAYAGG('
+        if (key === 'array' && Array.isArray(value)) sql += 'JSON_ARRAY('
+        if ((key === 'json' || !Array.isArray(value)) && typeof value != 'string') sql += 'JSON_OBJECT('
+        sql += Object.entries(value).map(([k, v]) => {
+            const vPlaceholder = prepPlaceholder(v)
+            const vName = prepName({ alias, value: v })
 
-        if (!Array.isArray(value)) values.push(k)
-        if (!checkConstants(v)) values.push(vName)
+            if (!Array.isArray(value)) values.push(k)
+            if (!checkConstants(v)) values.push(vName)
 
-        return (!Array.isArray(value) ? '?, ' : '') + vPlaceholder
-    }).join(', ')
+            return (!Array.isArray(value) ? '?, ' : '') + vPlaceholder
+        }).join(', ')
+        if ((key === 'json' || !Array.isArray(value)) && typeof value != 'string') sql += ')'
+        if (key === 'array' && Array.isArray(value)) sql += ')'
+        if (key === 'array' && !Array.isArray(value)) sql += ')'
+    }
 
-    if (key === 'json' || !Array.isArray(value)) sql += ')'
-    if (key === 'array' && Array.isArray(value)) sql += ')'
-    if (key === 'array' && !Array.isArray(value)) sql += ')'
+    if (extract != null) {
+        sql += ', ?)'
+        if (typeof extract === 'number') values.push(`$[${extract}]`)
+        else if (typeof extract === 'string' && extract.startsWith('[')) values.push(`$${extract}`)
+        else values.push('$.' + extract)
+    }
 
     if (table) {
         sql += ' FROM ??'
@@ -638,8 +660,16 @@ const prepJson = ({ key, val, encryption = undefined, ctx = undefined }) => {
 
     if (table || Object.keys(where).length || Object.keys(having).length) sql += ')'
 
-    sql += ' AS ?'
-    values.push(as || key)
+    if (as) {
+        sql += ' AS ?'
+        values.push(as)
+    }
+
+    if (Object.keys(compare).length) {
+        const compareResp = prepWhere({ alias, where: compare, junction, encryption, ctx })
+        sql += compareResp.sql
+        values.push(...compareResp.values)
+    }
 
     return { sql, values }
 
@@ -1027,7 +1057,7 @@ const prepString = ({ alias, val, junction = 'and', encryption = undefined, ctx 
 
         const decryptResp = prepDecrypt({ decrypt, encryption, ctx })
 
-        sql += decryptResp.sql
+        sql += decryptResp.sql + ')'
 
         values.push(...decryptResp.values)
 
@@ -1228,7 +1258,7 @@ const prepDate = ({ alias, val, junction = 'and', encryption = undefined, ctx = 
 
         const decryptResp = prepDecrypt({ decrypt, encryption, ctx })
 
-        sql += decryptResp.sql
+        sql += decryptResp.sql + ')'
 
         values.push(...decryptResp.values)
 
@@ -1311,7 +1341,6 @@ const prepDate = ({ alias, val, junction = 'and', encryption = undefined, ctx = 
 * @param {import("../defs/types").EncryptionConfig} [numObj.encryption] (optional) inherits encryption config from its parent level
 * 
 * @param {*} [numObj.ctx]
-* 
 * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
 */
 const prepNumeric = ({ alias, val, junction = 'and', encryption, ctx }) => {
@@ -1364,7 +1393,7 @@ const prepNumeric = ({ alias, val, junction = 'and', encryption, ctx }) => {
 
         const decryptResp = prepDecrypt({ decrypt, encryption, ctx })
 
-        sql += decryptResp.sql
+        sql += decryptResp.sql + ')'
 
         values.push(...decryptResp.values)
 
@@ -1445,6 +1474,14 @@ const prepNumeric = ({ alias, val, junction = 'and', encryption, ctx }) => {
     return { sql, values }
 }
 
+/**
+ * prepares decrypt extras
+ * @param {Object} decryptParam
+ * @param {{secret?:string, iv?:string, sha?:import("../defs/types").EncryptionSHAs}} decryptParam.decrypt
+ * @param {import("../defs/types").EncryptionConfig} [decryptParam.encryption]
+ * @param {*} [decryptParam.ctx]
+ * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
+ */
 const prepDecrypt = ({ decrypt, encryption, ctx }) => {
 
     if (!decrypt?.secret && encryption?.secret && ctx?.config?.encryption?.secret) {
@@ -1459,7 +1496,7 @@ const prepDecrypt = ({ decrypt, encryption, ctx }) => {
         sql += ', ?'
     }
 
-    sql += ', UNHEX(SHA2(?, ?)))'
+    sql += ', UNHEX(SHA2(?, ?))'
 
     values.push(decrypt?.secret || encryption?.secret || ctx?.config?.encryption?.secret)
 

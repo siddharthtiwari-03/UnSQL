@@ -1,5 +1,6 @@
 // @ts-check
 const { colors, handleError, handleQueryDebug } = require("./helpers/console.helper")
+const { checkConstants } = require("./helpers/constants.helper")
 const { prepSelect, prepWhere, prepJoin, prepOrders } = require("./helpers/main.helper")
 
 /**
@@ -288,14 +289,24 @@ class UnSQL {
 
                         let rowSql = ''
 
+                        // handle if encryption is not required
                         if (!data[i][insertColumns[j]] || data[i][insertColumns[j]] === 'null' || !encrypt[insertColumns[j]]) {
-                            rowSql += '?'
-                            values.push(data[i][insertColumns[j]] || null)
+                            if (typeof data[i][insertColumns[j]] === 'object') {
+                                values.push(JSON.stringify(data[i][insertColumns[j]]))
+                            } else {
+                                values.push(data[i][insertColumns[j]])
+                            }
                             rows.push(rowSql)
                             continue
                         }
-                        rowSql += 'AES_ENCRYPT(?'
-                        values.push(data[i][insertColumns[j]] || null)
+                        // handle if encryption is required
+                        rowSql += 'AES_ENCRYPT('
+                        if (typeof data[i][insertColumns[j]] === 'object') {
+                            rowSql += '?'
+                            values.push(JSON.stringify(data[i][insertColumns[j]]))
+                        } else {
+                            values.push(data[i][insertColumns[j]])
+                        }
 
                         if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && this?.config?.encryption?.mode?.includes('-cbc'))) {
                             rowSql += ', ?'
@@ -338,8 +349,19 @@ class UnSQL {
 
                     // check if encryption is required
                     if (encrypt[col]) {
-                        rowSql += 'AES_ENCRYPT(?'
-                        values.push(val)
+                        rowSql += 'AES_ENCRYPT('
+                        if (typeof val === 'object' && !!val) {
+                            if (Object.keys(where).length > 0 || Object.keys(having).length > 0) {
+                                rowSql += 'JSON_MERGE_PATCH(??, ?)'
+                                values.push(col)
+                            } else {
+                                rowSql += '?'
+                            }
+                            values.push(!checkConstants(val) ? JSON.stringify(val) : val)
+                        } else {
+                            rowSql += '?'
+                            values.push(val)
+                        }
 
                         if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && this?.config?.encryption?.mode?.includes('-cbc'))) {
                             rowSql += ', ?'
@@ -356,8 +378,18 @@ class UnSQL {
                         values.push(encrypt[col]?.sha || encryption?.sha || this?.config?.encryption?.sha || 512)
 
                     } else {
-                        rowSql += '?'
-                        values.push(val)
+                        if (typeof val === 'object' && !!val) {
+                            if (Object.keys(where).length > 0 || Object.keys(having).length > 0) {
+                                rowSql += 'JSON_MERGE_PATCH(??, ?)'
+                                values.push(col)
+                            } else {
+                                rowSql += '?'
+                            }
+                            values.push(!checkConstants(val) ? JSON.stringify(val) : val)
+                        } else {
+                            rowSql += '?'
+                            values.push(val)
+                        }
                     }
 
                     return rowSql
