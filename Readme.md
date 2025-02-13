@@ -119,8 +119,6 @@ UnSQL requires MySQL `connection` or connection `pool` to connect to the MySQL d
 import mysql from 'mysql2/promise'
 
 const pool = mysql.createPool({
-    host:...,
-    user:...,
     ...,
     multipleStatements: true // required
 })
@@ -1556,12 +1554,12 @@ Each of the properties is explained below:
 
 `SessionManager` is a class that can be used to create an instance of a `session` object, which provides various *asynchronous* methods (as an interface) to manage the lifecycle of a persistent (reusable) instance of a MySQL `transaction` across multiple query executions. `SessionManager` becomes extremely important in cases where multiple inter-linked queries are executed in a chained fashion, one after the other and a mechanism to control all transactions at once if any one of them fails is required. Each lifecycle method is explained below:
 
-| Method     | Description                                            |
-| ---------- | ------------------------------------------------------ |
-| `init`     | initializes `transaction`                              |
-| `rollback` | undo all (un-committed) changes to their initial state |
-| `commit`   | finalizes all changes (cannot be undone)               |
-| `close`    | ends the transaction and closes the session            |
+| Method     | Description                                                     |
+| ---------- | --------------------------------------------------------------- |
+| `init`     | initializes session (`transaction`)                             |
+| `rollback` | undo all (un-committed) changes, reverting to the initial state |
+| `commit`   | finalizes all changes, making them permanent (cannot be undone) |
+| `close`    | ends the transaction and closes the session                     |
 
 ## Examples
 
