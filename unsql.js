@@ -23,7 +23,8 @@ class UnSQL {
      */
     static config = {
         table: '',
-        safeMode: true
+        safeMode: true,
+        devMode: false
     }
 
     /**
@@ -44,13 +45,16 @@ class UnSQL {
      * @param {number} [findParam.offset] (optional) sets the starting index for records to be fetched
      * @param {import("./defs/types").EncryptionConfig} [findParam.encryption] (optional) defines query level encryption configurations
      * @param {import("./defs/types").DebugTypes} [findParam.debug] (optional) enables different debug modes
+     * @param {Object} [findParam.session] (optional)
      * 
      * @returns {Promise<{success:boolean, error?:object, result?:object[]}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
      * 
      * @static
      * @memberof UnSQL
      */
-    static async find({ alias = undefined, select = [], join = [], where = {}, junction = 'and', groupBy = [], having = {}, orderBy = {}, limit = undefined, offset = undefined, encryption = {}, debug = false } = {}) {
+    static async find({ alias = undefined, select = [], join = [], where = {}, junction = 'and', groupBy = [], having = {}, orderBy = {}, limit = undefined, offset = undefined, encryption = {}, debug = false, session = undefined } = {}) {
+
+        console.log('config', this.config)
 
         if (!this.config && ('TABLE_NAME' in this) && ('POOL' in this)) {
             console.warn(colors.yellow, `[UnSQL Version Conflict]: '${this.name}' model class is using 'v1.x' class configuration with 'v2.x' to continue with 'v1.x' kindly switch the 'unsql' import to 'unsql/legacy'`, colors.reset)
@@ -140,11 +144,11 @@ class UnSQL {
                 values.push(offset)
             }
 
-            const conn = await (this?.config?.pool?.getConnection() || this?.config?.connection)
-
+            const conn = await (session?.conn || this?.config?.pool?.getConnection() || this?.config?.connection)
 
             try {
-                await conn.beginTransaction()
+                if (!session?.conn) await conn?.beginTransaction()
+
                 if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.time(colors.blue + 'UnSQL benchmark: ' + colors.reset + colors.cyan + `Fetched records in` + colors.reset)
 
                 const prepared = conn.format(sql, values)
@@ -153,27 +157,25 @@ class UnSQL {
 
                 const [rows] = await conn.query(prepared)
 
-                await conn.commit()
+                if (!session?.conn) await conn?.commit()
+
                 if (debug === true) console.info(colors.green, 'Find query executed successfully!', colors.reset)
                 if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.timeEnd(colors.blue + 'UnSQL benchmark: ' + colors.reset + colors.cyan + `Fetched records in` + colors.reset)
                 if (debug === true) console.info('\n')
-                return { success: true, result: (encryption?.mode || this?.config?.encryption?.mode ? rows[1] : rows) }
+                return { success: true, result: ((encryption?.mode || this?.config?.encryption?.mode) ? rows.pop() : rows) }
 
             } catch (error) {
                 handleError(debug, error)
-                if (conn) await conn.rollback()
+                if (conn && !session?.conn) await conn?.rollback()
                 return { success: false, error }
             } finally {
-                if (this?.config?.pool) {
-                    await conn.release()
-                }
+                if (this?.config?.pool && !session?.conn) await conn?.release()
             }
 
         } catch (error) {
             return { success: false, error: error.sqlMessage || error.message || error }
         }
     }
-
 
     /**
      * @method save 
@@ -190,13 +192,14 @@ class UnSQL {
      * @param {{[column:string]:{secret?:string, iv?:string, sha?:import("./defs/types").EncryptionSHAs} }} [saveParam.encrypt] (optional) define encryption overrides for column(s)
      * @param {import("./defs/types").EncryptionConfig} [saveParam.encryption] (optional) defines query level encryption configurations
      * @param {import("./defs/types").DebugTypes} [saveParam.debug] (optional) enables various debug mode
+     * @param {Object} [saveParam.session] (optional) enables various debug mode
      * 
      * @returns {Promise<{success:boolean, error?:object, result?:object}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
      * 
      * @static
      * @memberof UnSQL
      */
-    static async save({ alias = undefined, data = [], where = {}, junction = 'and', groupBy = [], having = {}, upsert = {}, encrypt = {}, encryption = {}, debug = false }) {
+    static async save({ alias = undefined, data = [], where = {}, junction = 'and', groupBy = [], having = {}, upsert = {}, encrypt = {}, encryption = {}, debug = false, session = undefined }) {
 
         if (!this.config && ('TABLE_NAME' in this) && ('POOL' in this)) {
             console.warn(colors.yellow, `[UnSQL Version Conflict]: '${this.name}' model class is using 'v1.x' class configuration with 'v2.x' to continue with 'v1.x' kindly switch the 'unsql' import to 'unsql/legacy'`, colors.reset)
@@ -232,13 +235,13 @@ class UnSQL {
 
         const values = []
 
-        let sql = ''
+        let sql = 'SET AUTOCOMMIT = 0;\n'
 
         if (encryption?.mode) {
-            sql += `SET block_encryption_mode = ?;\n `
+            sql += 'SET block_encryption_mode = ?;\n '
             values.push(encryption?.mode)
         } else if (this?.config?.encryption?.mode) {
-            sql += `SET block_encryption_mode = ?;\n `
+            sql += 'SET block_encryption_mode = ?;\n '
             values.push(this?.config?.encryption?.mode)
         }
 
@@ -263,12 +266,8 @@ class UnSQL {
 
                     // extract keys from each object
                     Object.keys(data[i]).forEach(col => {
-
                         // track if col not already tracked
-                        if (!insertColumns.includes(col)) {
-                            insertColumns.push(col)
-                        }
-
+                        if (!insertColumns.includes(col)) insertColumns.push(col)
                     })
 
                 }
@@ -289,42 +288,33 @@ class UnSQL {
 
                         let rowSql = ''
 
-                        // handle if encryption is not required
-                        if (!data[i][insertColumns[j]] || data[i][insertColumns[j]] === 'null' || !encrypt[insertColumns[j]]) {
+                        // handle if encryption required
+                        if (data[i][insertColumns[j]] && encrypt[insertColumns[j]]) {
                             if (typeof data[i][insertColumns[j]] === 'object') {
-                                values.push(JSON.stringify(data[i][insertColumns[j]]))
-                            } else {
-                                values.push(data[i][insertColumns[j]])
+                                return { success: false, error: `Cannot encrypt '${insertColumns[j]}' (json datatype)` }
                             }
-                            rows.push(rowSql)
-                            continue
-                        }
-                        // handle if encryption is required
-                        rowSql += 'AES_ENCRYPT('
-                        if (typeof data[i][insertColumns[j]] === 'object') {
+                            rowSql += `AES_ENCRYPT(?,${encryption?.mode?.includes('-cbc') || (!encryption?.mode && this?.config?.encryption?.mode?.includes('-cbc')) ? ' ?,' : ''} UNHEX(SHA2(?, ?)))`
+                        } else { // handle if encryption not required
                             rowSql += '?'
+                        }
+
+                        if (typeof data[i][insertColumns[j]] === 'object') {
                             values.push(JSON.stringify(data[i][insertColumns[j]]))
                         } else {
                             values.push(data[i][insertColumns[j]])
                         }
 
-                        if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && this?.config?.encryption?.mode?.includes('-cbc'))) {
-                            rowSql += ', ?'
+                        if (encrypt[insertColumns[j]]) {
+                            values.push(encrypt[insertColumns[j]]?.secret || encryption?.secret || this?.config?.encryption?.secret)
+                            if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && this?.config?.encryption?.mode?.includes('-cbc'))) {
+                                values.push(encrypt[insertColumns[j]]?.iv || encryption?.iv || this?.config?.encryption?.iv)
+                            }
+                            values.push(encrypt[insertColumns[j]]?.sha || encryption?.sha || this?.config?.encryption?.sha || 512)
                         }
-
-                        rowSql += ', UNHEX(SHA2(?, ?)))'
-
-                        values.push(encrypt[insertColumns[j]]?.secret || encryption?.secret || this?.config?.encryption?.secret)
-
-                        if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && this?.config?.encryption?.mode?.includes('-cbc'))) {
-                            values.push(encrypt[insertColumns[j]]?.iv || encryption?.iv || this?.config?.encryption?.iv)
-                        }
-
-                        values.push(encrypt[insertColumns[j]]?.sha || encryption?.sha || this?.config?.encryption?.sha || 512)
 
                         rows.push(rowSql)
 
-                    }
+                    } // loop for columns ended
 
                     // this was pushing values to insertValues
                     if (i != 0) sql += ', '
@@ -334,7 +324,7 @@ class UnSQL {
 
                 // loop for values ended
                 values.push(...insertValues)
-                console.info(colors.cyan, `Query generated, inserting records`, colors.reset)
+                if (debug === true || debug === 'query' || debug === 'benchmark' || debug === 'benchmark-query') console.info(colors.cyan, `Query generated, inserting records`, colors.reset)
                 break
             }
 
@@ -347,55 +337,42 @@ class UnSQL {
 
                     values.push(col)
 
-                    // check if encryption is required
-                    if (encrypt[col]) {
-                        rowSql += 'AES_ENCRYPT('
+                    if (encrypt[col]) { // if encryption required
                         if (typeof val === 'object' && !!val) {
-                            if (Object.keys(where).length > 0 || Object.keys(having).length > 0) {
-                                rowSql += 'JSON_MERGE_PATCH(??, ?)'
-                                values.push(col)
-                            } else {
-                                rowSql += '?'
-                            }
-                            values.push(!checkConstants(val) ? JSON.stringify(val) : val)
-                        } else {
-                            rowSql += '?'
-                            values.push(val)
+                            return { success: false, error: `Cannot encrypt '${col}' (json datatype)` }
                         }
-
-                        if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && this?.config?.encryption?.mode?.includes('-cbc'))) {
-                            rowSql += ', ?'
-                        }
-
+                        rowSql += 'AES_ENCRYPT(?'
+                        rowSql += (encryption?.mode?.includes('-cbc') || (!encryption?.mode && this?.config?.encryption?.mode?.includes('-cbc'))) ? ', ?' : ''
                         rowSql += ', UNHEX(SHA2(?, ?)))'
+                        values.push(val)
 
                         values.push(encrypt[col]?.secret || encryption?.secret || this?.config?.encryption?.secret)
 
                         if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && this?.config?.encryption?.mode?.includes('-cbc'))) {
                             values.push(encrypt[col]?.iv || encryption?.iv || this?.config?.encryption?.iv)
                         }
-
                         values.push(encrypt[col]?.sha || encryption?.sha || this?.config?.encryption?.sha || 512)
 
-                    } else {
-                        if (typeof val === 'object' && !!val) {
+                    } else { // if encryption not required
+                        if (typeof val === 'object' && !!val) { // if val is json datatype
                             if (Object.keys(where).length > 0 || Object.keys(having).length > 0) {
                                 rowSql += 'JSON_MERGE_PATCH(??, ?)'
                                 values.push(col)
-                            } else {
+                            } else { // if no where or having clause
                                 rowSql += '?'
                             }
                             values.push(!checkConstants(val) ? JSON.stringify(val) : val)
-                        } else {
+                        }
+                        else { // if val is not json datatype
                             rowSql += '?'
                             values.push(val)
                         }
                     }
 
                     return rowSql
-                }).join(', ')
+                }).join(', ') // loop for data object ended
 
-                if (Object.keys(upsert).length) {
+                if (Object.keys(upsert).length) { // if upsert object is provided
                     sql += ' ON DUPLICATE KEY UPDATE '
 
                     sql += Object.entries(upsert).map(([col, val]) => {
@@ -404,34 +381,40 @@ class UnSQL {
 
                         values.push(col)
 
-                        // check if encryption is required
-                        if (encrypt[col]) {
-                            rowSql += 'AES_ENCRYPT(?'
-                            values.push(val)
-
-                            if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && this?.config?.encryption?.mode?.includes('-cbc'))) {
-                                rowSql += ', ?'
+                        if (encrypt[col]) { // if encryption required
+                            if (typeof val === 'object' && !!val) {
+                                return { success: false, error: `Cannot encrypt '${col}' (json datatype)` }
                             }
-
+                            rowSql += 'AES_ENCRYPT(?'
+                            rowSql += (encryption?.mode?.includes('-cbc') || (!encryption?.mode && this?.config?.encryption?.mode?.includes('-cbc'))) ? ', ?' : ''
                             rowSql += ', UNHEX(SHA2(?, ?)))'
+                            values.push(val)
 
                             values.push(encrypt[col]?.secret || encryption?.secret || this?.config?.encryption?.secret)
 
                             if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && this?.config?.encryption?.mode?.includes('-cbc'))) {
                                 values.push(encrypt[col]?.iv || encryption?.iv || this?.config?.encryption?.iv)
                             }
-
                             values.push(encrypt[col]?.sha || encryption?.sha || this?.config?.encryption?.sha || 512)
 
-                            rowSql += ')'
-
-                        } else {
-                            rowSql += '?'
-                            values.push(val)
+                        } else { // if encryption not required
+                            if (typeof val === 'object' && !!val) {
+                                if (Object.keys(where).length > 0 || Object.keys(having).length > 0) { // if where or having clause
+                                    rowSql += 'JSON_MERGE_PATCH(??, ?)'
+                                    values.push(col)
+                                } else { // if no where or having clause
+                                    rowSql += '?'
+                                }
+                                values.push(!checkConstants(val) ? JSON.stringify(val) : val)
+                            }
+                            else { // if val is not json datatype
+                                rowSql += '?'
+                                values.push(val)
+                            }
                         }
 
                         return rowSql
-                    }).join(', ')
+                    }).join(', ') // upsert loop ended
                 }
 
                 if (Object.keys(where).length) {
@@ -465,29 +448,32 @@ class UnSQL {
 
         }
 
-        const conn = await (this?.config?.pool?.getConnection() || this?.config?.connection)
+        const conn = await (session?.conn || this?.config?.pool?.getConnection() || this?.config?.connection)
 
         try {
-            await conn.beginTransaction()
+            if (!session?.conn) {
+                console.info(colors.cyan, `transaction begin inside 'save' '${this?.name}'`, !session?.conn, colors.reset)
+                await conn?.beginTransaction()
+            }
             if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.time(colors.blue + 'UnSQL benchmark: ' + colors.reset + colors.cyan + `${Object.keys(where).length || Object.keys(having).length ? 'Updated' : 'Inserted'} ${data.length} records in` + colors.reset)
             const prepared = conn.format(sql, values)
 
             handleQueryDebug(debug, sql, values, prepared)
 
-            const [result, row, err] = await conn.query(sql, values)
+            const [result] = await conn.query(sql, values)
 
-            await conn.commit()
+            if (!session?.conn) {
+                await conn?.commit()
+            }
             if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.timeEnd(colors.blue + 'UnSQL benchmark: ' + colors.reset + colors.cyan + `${Object.keys(where).length || Object.keys(having).length ? 'Updated' : 'Inserted'} ${data.length} records in` + colors.reset)
-            return { success: true, ...(encryption?.mode || this?.config?.encryption?.mode ? result[1] : result) }
+            return { success: true, ...result.pop() }
 
         } catch (error) {
             handleError(debug, error)
-            if (conn) await conn.rollback()
+            if (conn && !session?.conn) await conn?.rollback()
             return { success: false, error }
         } finally {
-            if (this?.config?.pool) {
-                await conn.release()
-            }
+            if (this?.config?.pool && !session?.conn) await conn?.release()
         }
 
 
@@ -505,13 +491,14 @@ class UnSQL {
      * @param {import("./defs/types").HavingObject} [deleteParam.having] (optional) allows to perform comparison on the group of records, accepts nested conditions as object along with aggregate method wrappers viz. {sum:...}, {avg:...}, {min:...}, {max:...} etc
      * @param {import("./defs/types").EncryptionConfig} [deleteParam.encryption] (optional) defines query level encryption configurations
      * @param {import("./defs/types").DebugTypes} [deleteParam.debug] (optional) enables various debug mode
+     * @param {Object} [deleteParam.session] (optional) global session reference for transactions and rollback
      * 
      * @returns {Promise<{success:boolean, error?:object, result?:object}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
      * 
      * @static
      * @memberof UnSQL
      */
-    static async delete({ alias = undefined, where = {}, junction = 'and', groupBy = [], having = {}, debug = false, encryption = undefined } = {}) {
+    static async delete({ alias = undefined, where = {}, junction = 'and', groupBy = [], having = {}, debug = false, encryption = undefined, session = undefined } = {}) {
 
         if (!this.config && ('TABLE_NAME' in this) && ('POOL' in this)) {
             console.warn(colors.yellow, `[UnSQL Version Conflict]: '${this.name}' model class is using 'v1.x' class configuration with 'v2.x' to continue with 'v1.x' kindly switch the 'unsql' import to 'unsql/legacy'`, colors.reset)
@@ -541,8 +528,17 @@ class UnSQL {
         }
 
         const values = []
+        let sql = 'SET AUTOCOMMIT = 0;\n'
 
-        let sql = 'DELETE FROM ??'
+        if (encryption?.mode) {
+            sql += 'SET block_encryption_mode = ?;\n '
+            values.push(encryption?.mode)
+        } else if (this?.config?.encryption?.mode) {
+            sql += 'SET block_encryption_mode = ?;\n '
+            values.push(this?.config?.encryption?.mode)
+        }
+
+        sql += 'DELETE FROM ??'
         values.push(this.config.table)
 
         if (alias) {
@@ -572,28 +568,30 @@ class UnSQL {
             values.push(...havingResp.values)
         }
 
-        const conn = await (this?.config?.pool?.getConnection() || this?.config?.connection)
+        const conn = await (session?.conn || this?.config?.pool?.getConnection() || this?.config?.connection)
 
         try {
-            await conn.beginTransaction()
+            if (!session?.conn) await conn?.beginTransaction()
+
             if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.time(colors.blue + 'UnSQL benchmark: ' + colors.reset + colors.cyan + `Removed records in` + colors.reset)
 
             const prepared = conn.format(sql, values)
 
             handleQueryDebug(debug, sql, values, prepared)
             const [result] = await conn.query(sql, values)
-            await conn.commit()
+            if (!session?.conn) {
+                console.info(colors.blue, `session committed inside 'delete' '${this.name}'`, !session?.conn, colors.reset)
+                await conn?.commit()
+            }
             if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.timeEnd(colors.blue + 'UnSQL benchmark: ' + colors.reset + colors.cyan + `Removed records in` + colors.reset)
-            return { success: true, ...result }
+            return { success: true, ...result.pop() }
 
         } catch (error) {
             handleError(debug, error)
-            if (conn) await conn.rollback()
+            if (conn && !session?.conn) await conn?.rollback()
             return { success: false, error }
         } finally {
-            if (this?.config?.pool) {
-                await conn.release()
-            }
+            if (this?.config?.pool && !session?.conn) await conn?.release()
         }
 
     }
@@ -614,6 +612,7 @@ class UnSQL {
      * @param {{[key:string]:'asc'|'desc'}} [exportParam.orderBy] (optional) 
      * @param {number} [exportParam.limit] (optional) limit record(s) to be extracted
      * @param {number} [exportParam.offset] (optional) set starting index
+     * @param {import("./defs/types").EncryptionConfig} [exportParam.encryption] (optional) set encryption configuration
      * @param {'append'|'override'} [exportParam.mode] (optional) set writing mode
      * @param {import("./defs/types").DebugTypes} [exportParam.debug] (optional) set debug mode
      * 
@@ -622,7 +621,7 @@ class UnSQL {
      * @static
      * @memberof UnSQL
      */
-    static async export({ target = this.config.table, directory = 'exports_unsql', select = ['*'], alias = undefined, join = [], where = {}, groupBy = [], having = {}, orderBy = {}, limit = undefined, offset = undefined, mode = 'append', debug = false } = {}) {
+    static async export({ target = this.config.table, directory = 'exports_unsql', select = ['*'], alias = undefined, join = [], where = {}, groupBy = [], having = {}, orderBy = {}, limit = undefined, offset = undefined, encryption = undefined, mode = 'append', debug = false } = {}) {
 
         if (!this.config && ('TABLE_NAME' in this) && ('POOL' in this)) {
             console.warn(colors.yellow, `[UnSQL Version Conflict]: '${this.name}' model class is using 'v1.x' class configuration with 'v2.x' to continue with 'v1.x' kindly switch the 'unsql' import to 'unsql/legacy'`, colors.reset)
@@ -639,7 +638,7 @@ class UnSQL {
             return { success: false, error: `[Action Denied]: Record(s) can only be exported from '${target['name']}' model if inside 'config', 'devMode' is set to 'true' (currently '${target['config']?.devMode}')` }
         }
 
-        const result = await this.find({ select, join, where, groupBy, having, orderBy, limit, offset, debug })
+        const result = await this.find({ alias, select, join, where, groupBy, having, orderBy, limit, offset, debug, encryption })
 
         if (!result.success) {
             console.error(colors.red, result.error?.sqlMessage || result.error?.message, colors.reset)
@@ -712,7 +711,7 @@ class UnSQL {
         const conn = await (this?.config?.pool?.getConnection() || this?.config?.connection)
 
         try {
-            await conn.beginTransaction()
+            await conn?.beginTransaction()
             if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.time(colors.blue + 'UnSQL benchmark: ' + colors.reset + colors.cyan + `Removed records in` + colors.reset)
 
             const prepared = conn.format(sql, values)
@@ -720,24 +719,88 @@ class UnSQL {
             handleQueryDebug(debug, sql, values, prepared)
 
             const [result] = await conn.query(sql, values)
-            await conn.commit()
+            await conn?.commit()
             if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.timeEnd(colors.blue + 'UnSQL benchmark: ' + colors.reset + colors.cyan + `Removed records in` + colors.reset)
             return { success: true, ...result }
 
         } catch (error) {
             handleError(debug, error)
-            if (conn) await conn.rollback()
+            if (conn) await conn?.rollback()
             return { success: false, error }
         } finally {
-            if (this?.config?.pool) {
-                await conn.release()
-            }
+            if (this?.config?.pool) await conn?.release()
         }
 
     }
 
-
-
 }
 
-module.exports = { UnSQL }
+/**
+ * @class
+ * @description provides various lifecycle methods to manage re-usable MySQL session (transactions)
+ * @alias SessionManager
+ * 
+ * @author Siddharth Tiwari <dev.unsql@gmail.com>
+ */
+class SessionManager {
+
+    /**
+     * @async
+     * @method init
+     * @description initiates transaction
+     * @param {Object} pool
+     * @returns {Promise<{success: boolean, message?: string, error?: Object}>}
+     * @memberof SessionManager
+     */
+    async init(pool) {
+        if (pool == undefined || pool == null) return { success: false, error: `MySQL 'connection' or connection 'pool' is required as parameter` }
+        this.conn = await pool?.getConnection() || pool
+        await this?.conn?.beginTransaction()
+        return { success: true, message: 'Transaction initialized successfully!' }
+    }
+
+    /**
+     * @async
+     * @method rollback
+     * @description rollbacks the changes, if 'false' is passed then session will not be closed
+     * @param {boolean} [close=true]
+     * @returns {Promise<void>}
+     * @memberof SessionManager
+     */
+    async rollback(close = true) {
+        this?.conn?.rollback()
+        if (close) await this.close()
+    }
+
+    /**
+     * @async
+     * @method commit
+     * @description commits the changes, if 'false' is passed then session will not be closed
+     * @param {boolean} [close=true]
+     * @returns {Promise<void>}
+     * @memberof SessionManager
+     */
+    async commit(close = true) {
+        try {
+            await this?.conn?.commit()
+        } catch (error) {
+            this.rollback()
+        } finally {
+            if (close) await this.close()
+        }
+    }
+
+    /**
+     * @async
+     * @method close
+     * @description terminates the session and releases the connection
+     * @returns {Promise<void>}
+     * @memberof SessionManager
+     */
+    async close() {
+        if (typeof this?.conn?.release === 'function') await this.conn?.release()
+        delete this.conn
+    }
+}
+
+module.exports = { UnSQL, SessionManager }

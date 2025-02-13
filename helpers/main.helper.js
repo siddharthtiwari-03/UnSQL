@@ -1,4 +1,3 @@
-const { UnSQL } = require("../unsql")
 const { colors } = require("./console.helper")
 const { checkConstants, dataTypes, aggregateFunctions } = require("./constants.helper")
 const { prepName } = require("./name.helper")

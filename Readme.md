@@ -26,14 +26,17 @@
    - [Delete method](#delete-method)
    - [Export method](#export-method)
    - [Reset method](#reset-method)
-8. [Examples](#examples)
+8. [What is Session Manager in UnSQL?](#what-is-session-manager-in-unsql)
+9. [Examples](#examples)
    - [How to find (read/retrieve) record(s) using UnSQL?](#how-to-find-readretrieve-records-using-unsql)
    - [How to save (insert/update/upsert) data using UnSQL?](#how-to-save-insertupdateupsert-data-using-unsql)
    - [How to delete (remove) record(s) using UnSQL?](#how-to-delete-remove-records-using-unsql)
-9. [FAQs](#faqs)
+   - [How to use Session Manager?](#how-to-use-session-manager)
+10. [FAQs](#faqs)
    - [How to import UnSQL in model class](#how-to-import-unsql-in-model-class)
    - [How does UnSQL differentiates between column name and string value?](#how-does-unsql-differentiates-a-column-name-and-string-value)
    - [What are Reserved Constants in UnSQL?](#what-are-reserved-constants-in-unsql)
+   - [Does UnSQL support MySQL Json Datatype](#does-unsql-support-mysql-json-datatype)
 
 ## Overview
 
@@ -110,7 +113,18 @@ yarn add unsql
 
 ### Prerequisite
 
-UnSQL requires MySQL `connection` or connection `pool` to connect to the MySQL database. `mysql2` is the most commonly used package for this purpose
+UnSQL requires MySQL `connection` or connection `pool` to connect to the MySQL database. `mysql2` is the most commonly used package for this purpose. Make sure to **add** `multipleStatements: true` into your `mysql2` `createPool` or `createConnection` method as shown below:
+
+```javascript
+import mysql from 'mysql2/promise'
+
+const pool = mysql.createPool({
+    host:...,
+    user:...,
+    ...,
+    multipleStatements: true // required
+})
+```
 
 ## Basics
 
@@ -181,11 +195,12 @@ export class User extends UnSQL {
 
 ## What is config inside UnSQL model class?
 
-`config` is a _static_ object that is used to define the configurations related to that specific model class. Below are the list of properties `config` accepts:
+`config` is a *static* object that is used to define **global level configurations** that are specific for all references of this model class. Below are the list of properties `config` accepts:
 - **table**: (mandatory) accepts name of the table in the database,
 - **pool**: (optional) accepts mysql connection `pool` object,
-- **connection**: (optional) accepts mysql `connection` object
-- **safeMode**: accepts `boolean` value, helps avoiding accidental *delete all* due to missing `where` and (or) `having` property in `delete` method
+- **connection**: (optional) accepts mysql `connection` object,
+- **safeMode**: accepts `boolean` value, helps avoiding accidental *delete all* due to missing `where` and (or) `having` property in `delete` method,
+- **devMode**: accepts `boolean` value, Enables/Disables features like **Export to/Import from another model**, **reset** database table mapped to model
 
 > **Please note:** Either of the two: `pool` or `connection` property is required. `pool` takes priority over `connection` in case value for both are provided
 
@@ -203,7 +218,7 @@ export class User extends UnSQL {
 
 ### Find method
 
-`find` is a static, asynchronous method. It dynamically generates *select* query, that reads / retrieves record(s) from the database table. It accepts object as its parameter with various properties (optional). `find` method always returns a JSON object (Here referred as `result`) with execution success/failure acknowledgement via. `success` property (being `true` on success and `false` on failure) and `result` (Array of record(s)) or `error` (detailed error object) depending upon query was successful or not. `find` method along with all its parameters with their default values is shown below:
+`find` is a static, asynchronous method. It dynamically generates *select* query, that reads / retrieves record(s) from the database table. It accepts object as its parameter with various properties (optional). `find` method always returns a JSON object (Here referred as `result`) with execution success/failure acknowledgement via. `success` property (being `true` on success and `false` on failure) and `result` (Array of record(s)) or `error` (detailed error object) depending upon query was successful or not. `find` method combines `findAll` and `findOne` into one single method, as `findOne` method (in every other library/ORM) is just a wrapper around `findAll` and grabs the first matching record. `find` method along with all its parameters with their default values is shown below:
 
 ```javascript
 const result = await User.find({
@@ -218,7 +233,8 @@ const result = await User.find({
     limit: undefined,
     offset: undefined,
     encryption: {},
-    debug: false
+    debug: false,
+    session: undefined
 })
 
 /**
@@ -236,7 +252,7 @@ Each of the aforementioned properties / parameters are explained below:
 
 #### alias
 
-**`alias`** is a very important parameter throughout `UnSQL`, it accepts string as value that defines local reference name of the table. It is **context sensitive**, meaning, it always refers to the immediate parent table (Here it refers to the parent model class). It automatically gets associated (unless explicitly another alias is prefixed) to all the column names in the context. This parameter plays an important role as it helps identify the columns being referred to in any property (e.g, `select` or `where` or `having` or `join` etc) when using sub-query type wrappers or `join`.
+`alias` is a very important parameter throughout `UnSQL`, it accepts string as value that defines local reference name of the table. It is **context sensitive**, meaning, it always refers to the immediate parent table (Here it refers to the parent model class). It automatically gets associated (unless explicitly another alias is prefixed) to all the column names in the context. This parameter plays an important role as it helps identify the columns being referred to in any property (e.g, `select` or `where` or `having` or `join` etc) when using sub-query type wrappers or `join`.
 
 ```javascript
 const result = await User.find({ alias: 't1' })
@@ -244,7 +260,7 @@ const result = await User.find({ alias: 't1' })
 
 #### select
 
-**`select`** accepts an array of values like column name(s), string value, boolean, number, wrapper methods (See [wrapper methods](#what-are-wrapper-methods-in-unsql)). This property restricts the columns that needs to be fetched from the database table. By default, it is set to select all the columns. Below is a sample of `select` property:
+`select` accepts an array of values like column name(s), string value, boolean, number, wrapper methods (See [wrapper methods](#what-are-wrapper-methods-in-unsql)). This property restricts the columns that needs to be fetched from the database table. By default, it is set to select all the columns. Below is a sample of `select` property:
 
 ```javascript
 const result = await User.find({
@@ -267,7 +283,7 @@ const result = await User.find({
 
 #### join
 
-**`join`** parameter accepts an array of *join object(s)*. Each *join object* represents an association of a child `table` with the immediate parent table, on the bases of a *common column*, reference of which is provided inside `using` property. Join object along with its default values is explained below:
+`join` parameter accepts an array of *join object(s)*. Each *join object* represents an association of a child `table` with the immediate parent table, on the bases of a *common column*, reference of which is provided inside `using` property. Join object along with its default values is explained below:
 
 ```javascript
 const result = await User.find({
@@ -317,6 +333,7 @@ Properties defined inside each join object are context sensitive and will work i
 `using` (required) accepts array of column name(s) or object(s) in the format of `{ parentColumn: childColumn }` here, `parentColumn` is the column name from the parent table and `childColumn` is the column name from the associated (child) table.
 
 `as` (optional) provides a local reference name to this join object and helps refer column(s) outside this join object context, such as in `select`, `where`, `having` properties of the parent table
+
 
 > **Please note:** 
 > 1. When the name of the columns that connect the two tables is different or when using multiple join objects (even with same connecting column names), it is required to set the value of `using` property in the format of `{ parentColumn: childColumn }`.
@@ -460,7 +477,7 @@ const found = await User.find({ offset: 10 })
 
 #### encryption
 
-`encryption` is one of the most important properties, it is used to define Encryption/Decryption related configurations such as `mode`, `secret`, `iv` and `sha` (each as a `key: value` pair), to for specified column(s). These local level configuration(s) will override global level (if set) encryption configuration(s) set in the `config` property of the model class. These configuration(s) only effect the local level execution and does not impact any other execution(s) or invocation(s) and can vary for each execution call as desired. It can hold any one of the four configurations (or all):
+`encryption` is one of the most important properties, it is used to define **Encryption/Decryption** related configurations such as `mode`, `secret`, `iv` and `sha`. These *local* configuration(s) will override *global* `encryption` property (see [global config](#what-is-config-inside-unsql-model-class)). These configurations are restricted to execution context and can be redefined for each execution as desired. It can hold any one of the four configurations (or all):
 
 ```javascript
 const result = await User.find({ 
@@ -470,7 +487,7 @@ const result = await User.find({
         iv: 'Initialization Vector (required with CBC mode) goes here',
         sha: 512
     }   
-    })
+})
 ```
 
 > **Please note:** 
@@ -480,7 +497,48 @@ const result = await User.find({
 
 #### debug
 
-**debug** parameter controls the debug mode for each execution, and can be set to either `'query'` | `'error'` | `true` |`false`. `debug` parameter plays an important role in understanding the SQL query that is being generated and hence understanding the operation that will be performed in this execution. Debug mode can be controlled specifically for execution, avoiding unnecessary cluttered terminal. By default, `debug` mode is in disable mode hence if no value is set for this parameter, no debugging will be performed.
+**debug** property controls the debug mode for each execution, and can be set to either `'query'` | `'error'` | `true` | `false`  | `'benchmark'` | `'benchmark-query'` | `'benchmark-error'`. `debug` property plays an important role in understanding the SQL query that is being generated and hence understanding the operation that will be performed in this execution. Debug mode can be controlled specifically for execution, avoiding unnecessary cluttered terminal. By default, `debug` mode is in disable mode hence if no value is set for this property, no debugging will be performed.
+
+#### session
+
+**session** (provided by `SessionManager`) enables `UnSQL` to chain multiple query executions and **re-use one transaction** across these queries and **rollback** (in case of error) or **commit** all changes at once using this **session/transaction**
+
+```javascript
+import { SessionManager } from 'unsql'
+import { pool } from '.path/to/your/db/service/'
+
+router.post('/', async (req, res) => {
+
+    const { userInfo, addressInfo } = req.body
+
+    // Create session from Session Manager
+    const session = new SessionManager()
+
+    // invoke transaction by calling transaction lifecycle method provided by session
+    await session.init(pool) // either of MySQL 'connection' or connection 'pool' is required as parameter
+    
+    // your code goes here...
+    const userResponse = await User.save({ data: userInfo, session }) // pass session inside query to chain this query
+
+    addressInfo.userId = userResponse.insertId // patch auto generated 'userId' to addressInfo
+
+    const addressResponse = await Address.save({ data: addressInfo, session }) // pass session inside query to chain this query
+
+    //  handle if error is encountered
+    if(!userInfo.success || !addressInfo.success) {
+        // rollback all prior changes if error is encountered
+        await session.rollback()
+        return
+    }
+
+    // finally commit all changes if no errors encountered
+    await session.commit()
+})
+```
+> **Please note:**
+> 1. Passing `false` as parameter for `rollback` and `commit` methods will allow you to perform their respective actions (at multiple locations) **without closing** the `transaction` and destroying the session
+> 2. `rollback` and `commit` can be called at any position and it will either **rollback/commit** all proceeding changes till that position
+
 
 | Mode                | Description                                                                                                                                                                        |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -502,7 +560,7 @@ const result = await User.find({
 
 ```javascript
 const result = await User.save({
-    alias: null,
+    alias: undefined,
     data,
     where: {},
     junction: 'and',
@@ -510,9 +568,23 @@ const result = await User.save({
     having: {},
     upsert: {},
     encrypt: {},
-    encryption: null,
-    debug: false
+    encryption: {},
+    debug: false,
+    session: undefined
 })
+
+
+/* result = {
+  "success": true,
+  "fieldCount": 0,
+  "affectedRows": 1, // actual number of entries made
+  "insertId": 1, // dynamically generated id for the first entry made in this query
+  "info": "",
+  "serverStatus": 3,
+  "warningStatus": 1,
+  "changedRows": 0
+}
+*/
 ```
 Below are the explanations for each of these properties:
 
@@ -671,8 +743,9 @@ const result = await User.delete({
     junction: 'and',
     groupBy: [],
     having: {},
-    encryption: undefined,
-    debug: false
+    encryption: {},
+    debug: false,
+    session: undefined
 })
 ```
 Below are the explanations for each of these properties:
@@ -690,6 +763,8 @@ Below are the explanations for each of these properties:
 `encryption` (optional) same as explained above (See [encryption](#encryption) for more details)
 
 `debug` (optional) enables various **debug modes** (See [debug](#debug) for more details)
+
+`session` (optional) enables `UnSQL` to **re-use session transaction** provided by `SessionManager` across multiple executions
 
 ### Export method
 
@@ -1475,6 +1550,19 @@ Each of the properties is explained below:
 | `endLike`      | `LIKE '%?'`      | performs a **fuzzy search** if `value` **ends with** `key`                             |
 | `notEndLike`   | `NOT LIKE '%?'`  | performs a **fuzzy search** if `value` **does not ends with** `key`                    |
 
+## What is Session Manager in UnSQL?
+
+### Session Manager
+
+`SessionManager` is a class that can be used to create an instance of a `session` object, which provides various *asynchronous* methods (as an interface) to manage the lifecycle of a persistent (reusable) instance of a MySQL `transaction` across multiple query executions. `SessionManager` becomes extremely important in cases where multiple inter-linked queries are executed in a chained fashion, one after the other and a mechanism to control all transactions at once if any one of them fails is required. Each lifecycle method is explained below:
+
+| Method     | Description                                            |
+| ---------- | ------------------------------------------------------ |
+| `init`     | initializes `transaction`                              |
+| `rollback` | undo all (un-committed) changes to their initial state |
+| `commit`   | finalizes all changes (cannot be undone)               |
+| `close`    | ends the transaction and closes the session            |
+
 ## Examples
 
 ### How to find (read/retrieve) record(s) using UnSQL?
@@ -1633,7 +1721,7 @@ router.get('/users', async (req, res) => {
         select: ['userId', 'firstName',
             {
                 array: {
-                    value: ...,
+                    value: [{...}],
                     extract: '[*].city'
                     as: 'city'
                 }
@@ -1657,7 +1745,7 @@ router.get('/users', async (req, res) => {
         select: ['userId', 'firstName',
             {
                 json: {
-                    value: { ..., address: { city: '#Jabalpur', state: '#Madhya Pradesh' } },
+                    value: { ..., address: { city: ..., state: ... } },
                     extract: 'address.city'
                     as: 'city'
                 }
@@ -1667,6 +1755,7 @@ router.get('/users', async (req, res) => {
 
 })
 ```
+
 ### How to save (insert/update/upsert) data using UnSQL?
 
 #### insert data
@@ -1674,14 +1763,9 @@ router.get('/users', async (req, res) => {
 ```javascript
 router.post('/users', async (req, res)=> {
 
-    const { data } = req.body
+    const data = req.body
 
     const result = await User.save({ data })
-
-    // above code is similar/shorthand for:
-    
-    // const payload = req.body
-    // const result = await User.find({ data: payload })
 
 })
 ```
@@ -1693,12 +1777,26 @@ router.put('/users/:userId(\\d+)', async (req, res)=> {
 
     const { userId } = req.params
 
-    const { data } = req.body
+    const data = req.body
 
-    const result = await User.save({
-        data,
-        where: { userId }
-    })
+    const result = await User.save({ data, where: { userId } })
+
+})
+```
+
+#### upsert data
+
+```javascript
+router.post('/users', async (req, res)=> {
+
+    const { userId } = req.params
+
+    const data = req.body
+
+    // extract conflicting key (here 'userId') out of payload (data) and create a new object (here upsert) that holds remaining fields that needs to be updated on conflict
+    const { userId, ...upsert } = data
+
+    const result = await User.save({ data, upsert })
 
 })
 ```
@@ -1718,6 +1816,7 @@ router.delete('/users/:userId(\\d+)', async (req, res)=> {
 
 })
 ```
+
 #### delete multiple record(s)
 
 ```javascript
@@ -1748,6 +1847,63 @@ router.delete('/users/:userId(\\d+)', async (req, res)=> {
 ```
 
 > **Explanation:** This will remove all record(s) in the `'salesInterns'` and `'marketInterns'` `'department'` having `'joiningDate'` 6 months (represented by `'6m'`) earlier to this date.
+
+### How to use Session Manager?
+
+Let's assume we are creating an order for 'items' inside user 'bucket':
+
+```javascript
+import { SessionManager } from 'unsql'
+import { pool } from './path/to/your/db/service'
+
+// Other imports/initializations and code goes here...
+
+router.post('/orders', async (req,res) => {
+
+    // fetch 'userId' from path params
+    const { userId } = req.params
+
+    // extract 'data' from body inside request object
+    const data = req.body
+
+    // create 'session' instance using 'SessionManager'
+    const session = new SessionManager()
+
+    // initiate MySQL 'transaction' using 'init' lifecycle method
+   const initResp =  await session.init(pool) // 'pool' or 'connection' is required
+
+    // handle if session init failed
+    if (!initResp.success) {
+        return res.status(400).json(initResp)
+    }
+
+    // fetch objects inside bucket, pass 'session' object to the query method
+    const bucketResp = await Bucket.find({ where: { userId }, session })
+
+    // create order using 'data' and pass 'session' object to the query method
+    const orderResp = await Order.save({ data, session })
+
+    // attach 'orderId' to each item
+    const items =  bucketResp.result.map(item => item.orderId = orderResp.insertId )
+
+    // save order 'items' and pass 'session' object to the query method
+    const itemsResp = await OrderItems.save({ data: items, session })
+
+    // clear bucket after successfully creating order and pass 'session' object to the query method
+    const clearBucket = await Bucket.delete({ where: { userId }, session })
+
+    // handle if any (or all) query failed
+    if(!bucketResp.success || !orderResp.success || !itemsResp.success) {
+        // rollback changes
+        await session.rollback()
+        return res.status(400).json({ success: false, message: 'Error while placing order!', error: bucketResp?.error || orderResp?.error || itemsResp?.error })
+    }
+
+    // commit changes if no errors were encountered
+    await session.commit()
+    return res.status(201).json({ success: true, message: 'Order placed successfully!', orderId: orderResp.insertId })
+})
+```
 
 ## FAQs
 
