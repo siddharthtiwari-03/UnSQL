@@ -449,10 +449,8 @@ class UnSQL {
         const conn = await (session?.conn || this?.config?.pool?.getConnection() || this?.config?.connection)
 
         try {
-            if (!session?.conn) {
-                console.info(colors.cyan, `transaction begin inside 'save' '${this?.name}'`, !session?.conn, colors.reset)
-                await conn?.beginTransaction()
-            }
+            if (!session?.conn) await conn?.beginTransaction()
+
             if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.time(colors.blue + 'UnSQL benchmark: ' + colors.reset + colors.cyan + `${Object.keys(where).length || Object.keys(having).length ? 'Updated' : 'Inserted'} ${data.length} records in` + colors.reset)
             const prepared = conn.format(sql, values)
 
@@ -577,10 +575,9 @@ class UnSQL {
 
             handleQueryDebug(debug, sql, values, prepared)
             const [result] = await conn.query(sql, values)
-            if (!session?.conn) {
-                console.info(colors.blue, `session committed inside 'delete' '${this.name}'`, !session?.conn, colors.reset)
-                await conn?.commit()
-            }
+            
+            if (!session?.conn)await conn?.commit()
+
             if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.timeEnd(colors.blue + 'UnSQL benchmark: ' + colors.reset + colors.cyan + `Removed records in` + colors.reset)
             return { success: true, ...result.pop() }
 
