@@ -54,8 +54,6 @@ class UnSQL {
      */
     static async find({ alias = undefined, select = [], join = [], where = {}, junction = 'and', groupBy = [], having = {}, orderBy = {}, limit = undefined, offset = undefined, encryption = {}, debug = false, session = undefined } = {}) {
 
-        console.log('config', this.config)
-
         if (!this.config && ('TABLE_NAME' in this) && ('POOL' in this)) {
             console.warn(colors.yellow, `[UnSQL Version Conflict]: '${this.name}' model class is using 'v1.x' class configuration with 'v2.x' to continue with 'v1.x' kindly switch the 'unsql' import to 'unsql/legacy'`, colors.reset)
             return { success: false, error: `[UnSQL Version Conflict]: '${this.name}' model class is using 'v1.x' class configuration with 'v2.x' to continue with 'v1.x' kindly switch the 'unsql' import to 'unsql/legacy'` }
