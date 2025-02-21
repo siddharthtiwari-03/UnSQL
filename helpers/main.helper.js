@@ -555,7 +555,7 @@ const prepJson = ({ key, val, encryption = undefined, junction = 'and', ctx = un
         } else { // handle json if dialect is 'mysql'
             jsonSql = Object.entries(value).map(([k, v]) => {
 
-                console.dir(v, { depth: 100 })
+                // console.dir(v, { depth: 100 })
                 const kPlaceholder = '?'
                 if (!Array.isArray(value)) values.push(k)
 
