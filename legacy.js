@@ -106,11 +106,12 @@ class UnSQL_Legacy {
         let sql = ''
         const params = []
         if (where != null || whereOr != null) {
-            sql = `UPDATE ${this.TABLE_NAME + (alias ? ' ' + alias : '')} SET ` +
-                + Object.entries(data).map(([k, v]) => {
-                    params.push(k, v)
-                    return '?? = ?'
-                }).join(', ') + ` WHERE`
+            sql = `UPDATE ${this.TABLE_NAME + (alias ? ' ' + alias : '')} SET `
+            sql += Object.entries(data).map(([k, v]) => {
+                params.push(k, v)
+                return '?? = ?'
+            }).join(', ')
+            sql += ` WHERE`
             if (where) sql += ` (${where && where.map(condition => condition.join(' ')).join(' AND ')}) `
             if (where && whereOr) sql += ` ${junction || 'AND'} `
             if (whereOr) sql += ` (${whereOr && whereOr.map(condition => condition.join(' ')).join(' OR ')}) `
