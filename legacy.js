@@ -104,17 +104,22 @@ class UnSQL_Legacy {
         if (!this.POOL) return { success: false, error: { message: 'Connection pool not defined! Please assign a mysql connection pool variable as a \'static POOL="your_mysql_connection_pool"\' inside model class.' } }
         if (!this.TABLE_NAME) return { success: false, error: { message: 'Database table name not mapped! Please assign a mysql table name variable as a \'static TABLE_NAME="db_table_name"\' inside model class.' } }
         let sql = ''
-
+        const params = []
         if (where != null || whereOr != null) {
             sql = `UPDATE ${this.TABLE_NAME + (alias ? ' ' + alias : '')} SET ? WHERE`
             if (where) sql += ` (${where && where.map(condition => condition.join(' ')).join(' AND ')}) `
             if (where && whereOr) sql += ` ${junction || 'AND'} `
             if (whereOr) sql += ` (${whereOr && whereOr.map(condition => condition.join(' ')).join(' OR ')}) `
         } else {
-            sql = `INSERT INTO ${this.TABLE_NAME + (alias ? ' ' + alias : '')} SET ? `
+            sql = `INSERT INTO ${this.TABLE_NAME + (alias ? ' ' + alias : '')} SET ` + Object.entries(data).map(([k, v]) => {
+                params.push(k, v)
+                return '?? = ?'
+            }).join(', ')
 
-            if (updateObj) sql += ' ON DUPLICATE KEY UPDATE ? '
-            if (updateObj != null) data = [data, updateObj]
+            if (updateObj) sql += ' ON DUPLICATE KEY UPDATE ' + Object.entries(data).map(([k, v]) => {
+                params.push(k, v)
+                return '?? = ?'
+            }).join(', ')
 
         }
 
@@ -122,9 +127,9 @@ class UnSQL_Legacy {
             const connection = await this.POOL.getConnection()
 
             await connection.beginTransaction()
-
+            console.log('sql', sql)
             try {
-                const [result] = await connection.query(sql, data)
+                const [result] = await connection.query(sql, params)
 
                 await connection.commit()
                 return { success: true, insertID: result.insertId }
@@ -188,4 +193,5 @@ class UnSQL_Legacy {
 
 }
 
-exports = module.exports = UnSQL_Legacy
+// exports = module.exports = UnSQL_Legacy
+module.exports = UnSQL_Legacy

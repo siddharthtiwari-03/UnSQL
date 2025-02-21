@@ -8,7 +8,7 @@ const colors = Object.freeze({
 })
 
 
-const handleQueryDebug = (debug, sql, values, prepared) => {
+const handleQueryDebug = (debug, sql, values, prepared = null) => {
     if (debug === true || debug === 'benchmark-query' || debug == 'query') {
         console.info('\n')
         console.info(colors.blue, '******************************************************************', colors.reset)
@@ -19,12 +19,13 @@ const handleQueryDebug = (debug, sql, values, prepared) => {
         console.info('\n')
         console.info(colors.cyan, 'Placeholder Values:', colors.reset, values)
         console.info('\n')
-        console.info(colors.cyan, 'Prepared Query:', colors.reset, prepared)
-        console.info('\n')
+        if (prepared) {
+            console.info(colors.cyan, 'Prepared Query:', colors.reset, prepared)
+            console.info('\n')
+        }
         console.info(colors.blue, '------------------------------------------------------------------', colors.reset)
         console.info(colors.cyan, '                       UnSQL Debug Query Ends', colors.reset)
         console.info(colors.blue, '******************************************************************', colors.reset)
-        console.info('\n')
     }
 }
 
@@ -45,7 +46,6 @@ const handleError = (debug, error) => {
         console.error(colors.red, '------------------------------------------------------------------', colors.reset)
         console.error(colors.yellow, '                       UnSQL Debug Error Ends', colors.reset)
         console.error(colors.red, '******************************************************************', colors.reset)
-        console.error('\n')
     }
 }
 

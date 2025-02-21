@@ -1,5 +1,5 @@
 const { colors } = require("./console.helper")
-const { checkConstants, dataTypes, aggregateFunctions } = require("./constants.helper")
+const { checkConstants, dataTypes, aggregateFunctions, constantFunctions } = require("./constants.helper")
 const { prepName } = require("./name.helper")
 const { prepPlaceholder } = require("./placeholder.helper")
 
@@ -117,11 +117,13 @@ const prepSelect = ({ alias, select = [], encryption = undefined, ctx = undefine
 
         }
 
-        const placeholder = prepPlaceholder(selectable)
+        let placeholder = prepPlaceholder({ value: selectable, ctx })
 
-        const name = prepName({ alias, value: selectable })
-
-        if (!checkConstants(selectable)) values.push(name)
+        if (isVariable(placeholder)) {
+            const name = prepName({ alias, value: selectable })
+            values.push(name)
+            if (placeholder?.startsWith('$')) placeholder += ' AS ' + name
+        }
 
         return placeholder
     }).join(', ')
@@ -166,10 +168,12 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', encrypt
             case key === 'between': {
                 const { gt, lt } = val
                 if (parent && !(parent in conditions)) {
-                    const parentPlaceholder = prepPlaceholder(parent)
-                    const parentName = prepName({ alias, value: parent })
+                    const parentPlaceholder = prepPlaceholder({ value: parent, alias, ctx })
                     sql += parentPlaceholder
-                    if (!checkConstants(parent)) values.push(parentName)
+                    if (isVariable(parentPlaceholder)) {
+                        const parentName = prepName({ alias, value: parent })
+                        values.push(parentName)
+                    }
                 }
 
                 sql += ' BETWEEN '
@@ -179,10 +183,12 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', encrypt
                     sql += gtResp.sql
                     values.push(...gtResp.values)
                 } else {
-                    const gtPlaceholder = prepPlaceholder(gt)
-                    const gtName = prepName({ alias, value: gt })
+                    const gtPlaceholder = prepPlaceholder({ value: gt, alias, ctx })
                     sql += gtPlaceholder
-                    if (!checkConstants(gt)) values.push(gtName)
+                    if (isVariable(gtPlaceholder)) {
+                        const gtName = prepName({ alias, value: gt })
+                        values.push(gtName)
+                    }
                 }
 
                 sql += ' AND '
@@ -192,68 +198,24 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', encrypt
                     sql += ltResp.sql
                     values.push(...ltResp.values)
                 } else {
-                    const ltPlaceholder = prepPlaceholder(lt)
-                    const ltName = prepName({ alias, value: lt })
+                    const ltPlaceholder = prepPlaceholder({ value: lt, alias, ctx })
                     sql += ltPlaceholder
-                    if (!checkConstants(lt)) values.push(ltName)
-                }
-                break
-            }
-
-            case key === 'decrypt': {
-                const { value, compare, secret, iv, sha, cast = 'char' } = val
-
-                if (parent && !(parent in conditions)) {
-                    const parentPlaceholder = prepPlaceholder(parent)
-                    const parentName = prepName({ alias, value: parent })
-                    sql += parentPlaceholder
-                    if (!checkConstants(parent)) values.push(parentName)
-                    sql += ' = '
-                }
-
-                if (typeof value === 'object') {
-                    const resp = prepWhere({ alias, where: value, parent, junction, encryption, ctx })
-                    sql += resp.sql
-                    values.push(...resp.values)
-                    break
-                }
-
-                sql += 'CAST(AES_DECRYPT(??'
-                values.push(value)
-
-                if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && ctx?.config?.encryption?.mode?.includes('-cbc'))) {
-                    sql += ', ?'
-                }
-
-                sql += `, UNHEX(SHA2(?, ?))) AS ${dataTypes[cast]})` // AES method ends here
-
-                values.push(secret || encryption?.secret || ctx?.config?.encryption?.secret)
-
-                if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && ctx?.config?.encryption?.mode?.includes('-cbc'))) {
-                    if (!iv && !encryption?.iv && !ctx?.config?.encryption?.iv) {
-                        console.error(colors.red, 'Initialization Vector (iv) is required to decrypt', colors.reset)
-                        throw new Error('Initialization Vector (iv) is required to decrypt!', { cause: 'Missing "iv" to decrypt inside date wrapper!' })
+                    if (isVariable(ltPlaceholder)) {
+                        const ltName = prepName({ alias, value: lt })
+                        values.push(ltName)
                     }
-                    values.push(iv || encryption?.iv || ctx?.config?.encryption?.iv)
-                }
-
-                values.push(sha || encryption?.sha || ctx?.config?.encryption?.sha || 512)
-
-                // cascading compare conditions
-                if (compare) {
-                    const resp = prepWhere({ alias, where: compare, junction, encryption, ctx })
-                    values.push(...resp.values)
-                    sql += resp.sql
                 }
                 break
             }
 
             case key === 'refer': {
                 if (parent && !(parent in conditions)) {
-                    const parentPlaceholder = prepPlaceholder(parent)
-                    const parentName = prepName({ alias, value: parent })
+                    const parentPlaceholder = prepPlaceholder({ value: parent, alias, ctx })
                     sql += parentPlaceholder
-                    if (!checkConstants(parent)) values.push(parentName)
+                    if (isVariable(parentPlaceholder)) {
+                        const parentName = prepName({ alias, value: parent })
+                        values.push(parentName)
+                    }
                     sql += ' = '
                 }
 
@@ -315,10 +277,12 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', encrypt
 
             case key in conditions: {
                 if (parent && !(parent in conditions) && parent != 'from') {
-                    const parentPlaceholder = prepPlaceholder(parent)
-                    const parentName = prepName({ alias, value: parent })
+                    const parentPlaceholder = prepPlaceholder({ value: parent, alias, ctx })
                     sql += parentPlaceholder
-                    if (!checkConstants(parent)) values.push(parentName)
+                    if (isVariable(parentPlaceholder)) {
+                        const parentName = prepName({ alias, value: parent })
+                        values.push(parentName)
+                    }
                 }
 
                 sql += conditions[key]
@@ -326,22 +290,23 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', encrypt
                 if (key === 'isNull' || key === 'isNotNull') break
 
                 if (key === 'in') sql += '('
-                else if (key === 'like' || key === 'notLike' || key === 'endLike' || key === 'notEndLike') sql += 'CONCAT("%", '
+                else if (key === 'like' || key === 'notLike' || key === 'endLike' || key === 'notEndLike' || key === 'startLike' || key === 'notStartLike') sql += `CONCAT(${key != 'startLike' && key != 'notStartLike' ? '"%", ' : ''} `
 
                 if (typeof val === 'object') {
                     const resp = prepWhere({ alias, where: val, parent: key, junction, encryption, ctx })
                     sql += resp.sql
                     values.push(...resp.values)
                 } else {
-                    const valPlaceholder = prepPlaceholder(val)
-                    const valName = prepName({ alias, value: val })
+                    const valPlaceholder = prepPlaceholder({ value: val, alias, ctx })
                     sql += valPlaceholder
-                    if (!checkConstants(val)) values.push(valName)
+                    if (isVariable(valPlaceholder)) {
+                        const valName = prepName({ alias, value: val })
+                        values.push(valName)
+                    }
                 }
 
-                if (key === 'like' || key === 'notLike' || key === 'startLike' || key === 'notStartLike') sql += ' ,"%")'
+                if (key === 'like' || key === 'notLike' || key === 'startLike' || key === 'notStartLike' || key === 'endLike' || key === 'notEndLike') sql += `${key != 'endLike' && key != 'notEndLike' ? ' ,"%"' : ''})`
                 else if (key === 'in') sql += ')'
-
                 break
             }
 
@@ -353,17 +318,21 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', encrypt
             }
 
             case Array.isArray(val): {
-                const keyPlaceholder = prepPlaceholder(key)
-                const keyName = prepName({ alias, value: key })
+                const keyPlaceholder = prepPlaceholder({ value: key, alias, ctx })
                 sql += keyPlaceholder
-                if (!checkConstants(key)) values.push(keyName)
+                if (isVariable(keyPlaceholder)) {
+                    const keyName = prepName({ alias, value: key })
+                    values.push(keyName)
+                }
 
                 sql += ' IN ('
 
                 sql += val.map(value => {
-                    const valPlaceholder = prepPlaceholder(value)
-                    const valName = prepName({ alias, value })
-                    if (!checkConstants(value)) values.push(valName)
+                    const valPlaceholder = prepPlaceholder({ value, alias, ctx })
+                    if (isVariable(valPlaceholder)) {
+                        const valName = prepName({ alias, value })
+                        values.push(valName)
+                    }
                     return valPlaceholder
                 }).join(', ')
 
@@ -373,24 +342,24 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', encrypt
 
             case typeof val === 'number':
             case typeof val === 'string': {
-
-                const keyPlaceholder = prepPlaceholder(key)
-                const keyName = prepName({ alias, value: key })
-
+                const keyPlaceholder = prepPlaceholder({ value: key, alias, ctx })
                 sql += keyPlaceholder
-                if (!checkConstants(key)) values.push(keyName)
+                if (isVariable(keyPlaceholder)) {
+                    const keyName = prepName({ alias, value: key })
+                    values.push(keyName)
+                }
 
                 if (val === 'isNull' || val === 'isNotNull') {
                     sql += conditions[val]
                     break
                 }
 
-                const valPlaceholder = prepPlaceholder(val)
-                const valName = prepName({ alias, value: val })
-
+                const valPlaceholder = prepPlaceholder({ value: val, alias, ctx })
                 sql += ' = ' + valPlaceholder
-                if (!checkConstants(val)) values.push(valName)
-
+                if (isVariable(valPlaceholder)) {
+                    const valName = prepName({ alias, value: val })
+                    values.push(valName)
+                }
                 break
             }
 
@@ -407,7 +376,6 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', encrypt
     })
 
     return { sql: entriesResp.join(junctions[junction]), values }
-
 }
 
 /**
@@ -425,10 +393,10 @@ const prepJoin = ({ alias, join = [], encryption = undefined, ctx = undefined })
 
     const resp = join.map(joinable => {
 
-        const { type = null, select = [], table, alias: joinAlias = null, join: nestedJoin = [], where = {}, groupBy = [], having = {}, orderBy = {}, junction = 'and', using = [], as = null } = joinable
+        const { type = null, select = [], table, alias: joinAlias = null, join: nestedJoin = [], where = {}, groupBy = [], having = {}, orderBy = {}, junction = 'and', using = [], limit = undefined, offset = undefined, as = null } = joinable
 
         if (!table) {
-            console.error(colors.red, 'Table name is missing inside join', colors.reset)
+            console.error(colors.red, `[Missing]: property 'table' name is missing inside 'join' clause`, colors.reset)
             throw new Error('Table name to be associated is missing', { cause: "Missing 'table' property inside join object" })
         }
 
@@ -446,16 +414,16 @@ const prepJoin = ({ alias, join = [], encryption = undefined, ctx = undefined })
             sql += selectResp.sql
             values.push(...selectResp.values)
 
-            sql += ' FROM ??'
-            if (joinAlias) {
-                sql += ' ??'
-                values.push(joinAlias)
+            sql += ' FROM ' + (this?.config?.dialect === 'mysql' ? '??' : table)
+            if (this?.config?.dialect === 'mysql') {
+                values.push(table)
+                if (joinAlias) {
+                    sql += ' ??'
+                    values.push(joinAlias)
+                }
+            } else if (joinAlias) {
+                sql += ` ${joinAlias}`
             }
-            // if (!joinAlias) {
-            //     console.error(colors.red, 'Missing "alias" property when using selective join association', colors.reset)
-            //     throw new Error('Missing "alias" property with selective join association', { cause: "Missing 'alias' property inside join object with 'select' property" })
-            // }
-            values.push(table, joinAlias)
 
             if (nestedJoin.length) {
                 const joinResp = prepJoin({ alias, join: nestedJoin, encryption, ctx })
@@ -470,13 +438,9 @@ const prepJoin = ({ alias, join = [], encryption = undefined, ctx = undefined })
                 values.push(...whereResp.values)
             }
 
-            if (groupBy.length) {
-                sql += ' GROUP BY '
-                sql += groupBy.map(gb => {
-                    values.push(gb.includes('.') ? gb : ((alias && (alias + '.')) + gb))
-                    return '??'
-                }).join(', ')
-            }
+            const groupByResp = patchGroupBy({ groupBy, alias, ctx })
+            sql += groupByResp.sql
+            values.push(...groupByResp.values)
 
             if (Object.keys(having).length) {
                 sql += ' HAVING '
@@ -485,22 +449,17 @@ const prepJoin = ({ alias, join = [], encryption = undefined, ctx = undefined })
                 values.push(...havingResp.values)
             }
 
-            if (Object.keys(orderBy).length) {
-                sql += ' ORDER BY '
-                const orderResp = prepOrders({ alias, orderBy })
-                sql += orderResp.sql
-                values.push(...orderResp.values)
-            }
+            const orderResp = prepOrderBy({ alias, orderBy, ctx })
+            sql += orderResp.sql
+            values.push(...orderResp.values)
 
-            if (typeof limit === 'number') {
-                sql += ' LIMIT ? '
-                values.push(limit)
-            }
+            const limitResp = patchLimit(limit, ctx)
+            sql += limitResp.sql
+            values.push(...limitResp.values)
 
-            if (typeof offset === 'number') {
-                sql += ' OFFSET ? '
-                values.push(offset)
-            }
+            const offsetResp = patchLimit(offset, ctx, 'OFFSET')
+            sql += offsetResp.sql
+            values.push(...offsetResp.values)
 
             if (!as) {
                 console.error(colors.red, 'Missing "as" property when using selective join association', colors.reset)
@@ -565,50 +524,90 @@ const prepJoin = ({ alias, join = [], encryption = undefined, ctx = undefined })
  * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
  */
 const prepJson = ({ key, val, encryption = undefined, junction = 'and', ctx = undefined }) => {
+    console.log('prepJson invoked', val)
     let sql = ''
     const values = []
 
-    const { value, table = null, alias = null, join = [], where = {}, groupBy = [], having = {}, orderBy = {}, as = null, extract = null, compare = {} } = val
+    const { value, table = null, alias = null, join = [], where = {}, groupBy = [], having = {}, orderBy = {}, limit = undefined, offset = undefined, as = null, extract = null, contains = null, compare = {} } = val
 
     if (table || Object.keys(where).length || Object.keys(having).length) sql += '(SELECT '
 
-    if (extract != null) sql += 'JSON_EXTRACT('
+    let jsonSql = ''
 
     if (typeof value === 'string') {
-        sql += prepPlaceholder(value)
-        const jsName = prepName({ alias, value })
-        if (!checkConstants(value)) values.push(jsName)
+        const jsPlaceholder = prepPlaceholder({ value, alias, ctx })
+        if (isVariable(jsPlaceholder)) {
+            const jsName = prepName({ alias, value })
+            values.push(jsName)
+        }
+        jsonSql = jsPlaceholder
+        // const jsonResp = prepJsonExtract(jsPlaceholder, extract, ctx)
+        // values.push(...jsonResp.values)
+        // sql += jsonResp.sql
     } else {
-        if (key === 'array' && !Array.isArray(value)) sql += 'JSON_ARRAYAGG('
-        if (key === 'array' && Array.isArray(value)) sql += 'JSON_ARRAY('
-        if ((key === 'json' || !Array.isArray(value)) && typeof value != 'string') sql += 'JSON_OBJECT('
-        sql += Object.entries(value).map(([k, v]) => {
-            const vPlaceholder = prepPlaceholder(v)
-            const vName = prepName({ alias, value: v })
+        if (ctx?.config?.dialect === 'postgresql') {
+            const jsonbResp = generateJsonbObject(value, ctx, key)
+            // const jsonRef = jsonbResp.sql
+            jsonSql = jsonbResp.sql
+            values.push(...jsonbResp.values)
+            // const jsonResp = prepJsonExtract(jsonRef, extract, ctx)
+            // jsonSql = jsonResp.sql
+            // values.push(...jsonResp.values)
+        } else { // handle json if dialect is 'mysql'
+            console.log('val is object', val)
+            jsonSql = Object.entries(value).map(([k, v]) => {
+                console.log('k', k)
+                console.log('v')
+                console.dir(v, { depth: 100 })
+                const kPlaceholder = '?'
+                if (!Array.isArray(value)) values.push(k)
 
-            if (!Array.isArray(value)) values.push(k)
-            if (!checkConstants(v)) values.push(vName)
+                let vPlaceholder
 
-            return (!Array.isArray(value) ? '?, ' : '') + vPlaceholder
-        }).join(', ')
-        if ((key === 'json' || !Array.isArray(value)) && typeof value != 'string') sql += ')'
-        if (key === 'array' && Array.isArray(value)) sql += ')'
-        if (key === 'array' && !Array.isArray(value)) sql += ')'
+                if (typeof v === 'object' && ('str' in v || 'num' in v || 'date' in v || 'concat' in v)) {
+                    console.log('v has wrapper method')
+                    const selectResp = prepSelect({ select: [v], ctx, encryption })
+                    vPlaceholder = selectResp.sql
+                    values.push(...selectResp.values)
+                } else {
+                    console.log('no wrapper method in json object')
+                    vPlaceholder = prepPlaceholder({ value: v, alias, ctx })
+                    if (isVariable(vPlaceholder)) {
+                        const vName = prepName({ alias, value: v })
+                        console.log('vName', vName)
+                        values.push(vName)
+                    }
+                }
+                console.log('vPlaceholder', vPlaceholder)
+                return (!Array.isArray(value) ? `${kPlaceholder}, ` : '') + vPlaceholder
+            }).join(', ')
+            console.log('jsonSql after loop', jsonSql)
+            if ((key === 'json' || !Array.isArray(value))) jsonSql = `JSON_OBJECT(${jsonSql})`
+            else if (key === 'array' && Array.isArray(value)) jsonSql = `JSON_ARRAY(${jsonSql})`
+            else if (key === 'array' && !Array.isArray(value)) jsonSql = `JSON_ARRAYAGG(${jsonSql})`
+        }
     }
 
-    if (extract != null) {
-        sql += ', ?)'
-        if (typeof extract === 'number') values.push(`$[${extract}]`)
-        else if (typeof extract === 'string' && extract.startsWith('[')) values.push(`$${extract}`)
-        else values.push('$.' + extract)
-    }
+    const jsonResp = prepJsonExtract(jsonSql, extract, ctx)
+    values.push(...jsonResp.values)
+    jsonSql = jsonResp.sql
+
+    const jsonContainResp = prepJsonContains(jsonSql, contains, ctx)
+    values.push(...jsonContainResp.values)
+    jsonSql = jsonContainResp.sql
+
+    sql += jsonSql // finally patching jsonSql (with all wrappers and methods) to main sql
 
     if (table) {
-        sql += ' FROM ??'
-        values.push(table)
-        if (alias) {
-            sql += ' ??'
-            values.push(alias)
+        sql += ' FROM ' + (this?.config?.dialect === 'mysql' ? '??' : table)
+        if (this?.config?.dialect === 'mysql') {
+            values.push(table)
+            if (alias) {
+                sql += ' ??'
+                values.push(alias)
+            }
+        } else if (alias) {
+            sql += ` ${alias}`
         }
     }
 
@@ -625,13 +624,9 @@ const prepJson = ({ key, val, encryption = undefined, junction = 'and', ctx = un
         values.push(...whereResp.values)
     }
 
-    if (groupBy.length) {
-        sql += ' GROUP BY '
-        sql += groupBy.map(gb => {
-            values.push(gb.includes('.') ? gb : ((alias && (alias + '.')) + gb))
-            return '??'
-        }).join(', ')
-    }
+    const groupByResp = patchGroupBy({ groupBy, alias, ctx })
+    sql += groupByResp.sql
+    values.push(...groupByResp.values)
 
     if (Object.keys(where).length) {
         sql += ' HAVING '
@@ -640,28 +635,23 @@ const prepJson = ({ key, val, encryption = undefined, junction = 'and', ctx = un
         values.push(...whereResp.values)
     }
 
-    if (Object.keys(orderBy).length) {
-        sql += ' ORDER BY '
-        const orderResp = prepOrders({ alias, orderBy })
-        sql += orderResp.sql
-        values.push(...orderResp.values)
-    }
+    const orderResp = prepOrderBy({ alias, orderBy, ctx })
+    sql += orderResp.sql
+    values.push(...orderResp.values)
 
-    if (typeof limit === 'number') {
-        sql += ' LIMIT ? '
-        values.push(limit)
-    }
+    const limitResp = patchLimit(limit, ctx)
+    sql += limitResp.sql
+    values.push(...limitResp.values)
 
-    if (typeof offset === 'number') {
-        sql += ' OFFSET ? '
-        values.push(offset)
-    }
+    const offsetResp = patchLimit(offset, ctx, 'OFFSET')
+    sql += offsetResp.sql
+    values.push(...offsetResp.values)
 
     if (table || Object.keys(where).length || Object.keys(having).length) sql += ')'
 
     if (as) {
-        sql += ' AS ?'
-        values.push(as)
+        sql += ` AS ${(ctx?.config?.dialect === 'mysql' ? '?' : as)}`
+        if (ctx?.config?.dialect === 'mysql') values.push(as)
     }
 
     if (Object.keys(compare).length) {
@@ -700,10 +690,12 @@ const prepAggregate = ({ alias, key, val, parent = null, junction = 'and', encry
         sql += resp.sql
         values.push(...resp.values)
     } else {
-        const placeholder = prepPlaceholder(value)
-        const name = prepName({ alias, value })
+        const placeholder = prepPlaceholder({ value, alias, ctx })
         sql += placeholder
-        if (!checkConstants(value)) values.push(name)
+        if (isVariable(placeholder)) {
+            const name = prepName({ alias, value })
+            values.push(name)
+        }
     }
 
     sql += ')'
@@ -712,8 +704,8 @@ const prepAggregate = ({ alias, key, val, parent = null, junction = 'and', encry
     if (cast) sql += ` AS ${dataTypes[cast]})`
 
     if (as) {
-        sql += ' AS ??'
-        values.push(as)
+        sql += ' AS ' + (ctx?.config?.dialect === 'mysql' ? '?' : as)
+        if (ctx?.config?.dialect === 'mysql') values.push(as)
     }
 
     if (Object.keys(compare).length) {
@@ -748,8 +740,16 @@ const prepRefer = ({ val, parent = null, encryption = undefined, ctx = undefined
     sql += selectResp.sql
     values.push(...selectResp.values)
 
-    sql += ' FROM ??'
-    values.push(table)
+    sql += ' FROM ' + (this?.config?.dialect === 'mysql' ? '??' : table)
+    if (this?.config?.dialect === 'mysql') {
+        values.push(table)
+        if (alias) {
+            sql += ' ??'
+            values.push(alias)
+        }
+    } else if (alias) {
+        sql += ` ${alias}`
+    }
 
     if (alias) {
         sql += ' ??'
@@ -772,8 +772,8 @@ const prepRefer = ({ val, parent = null, encryption = undefined, ctx = undefined
     if (groupBy.length) {
         sql += ' GROUP BY '
         sql += groupBy.map(gb => {
-            values.push(gb.includes('.') ? gb : ((alias && (alias + '.')) + gb))
-            return '??'
+            if (ctx?.config?.dialect === 'mysql') values.push(gb.includes('.') ? gb : ((alias && (alias + '.')) + gb))
+            return ctx?.config?.dialect === 'mysql' ? '??' : (gb.includes('.') ? gb : ((alias && (alias + '.')) + gb))
         }).join(', ')
     }
 
@@ -784,28 +784,23 @@ const prepRefer = ({ val, parent = null, encryption = undefined, ctx = undefined
         values.push(...havingResp.values)
     }
 
-    if (Object.keys(orderBy).length) {
-        sql += ' ORDER BY '
-        const orderResp = prepOrders({ alias, orderBy })
-        sql += orderResp.sql
-        values.push(...orderResp.values)
-    }
+    const orderResp = prepOrderBy({ alias, orderBy, ctx })
+    sql += orderResp.sql
+    values.push(...orderResp.values)
 
-    if (typeof limit === 'number') {
-        sql += ' LIMIT ? '
-        values.push(limit)
-    }
+    const limitResp = patchLimit(limit, ctx)
+    sql += limitResp.sql
+    values.push(...limitResp.values)
 
-    if (typeof offset === 'number') {
-        sql += ' OFFSET ? '
-        values.push(offset)
-    }
+    const offsetResp = patchLimit(offset, ctx, 'OFFSET')
+    sql += offsetResp.sql
+    values.push(...offsetResp.values)
 
     sql += ')'
 
     if (as) {
-        sql += ' AS ??'
-        values.push(as)
+        sql += ` AS ${ctx?.config?.dialect === 'mysql' ? '?' : as}`
+        if (ctx?.config?.dialect === 'mysql') values.push(as)
     }
 
     return { sql, values }
@@ -835,10 +830,12 @@ const prepIf = ({ alias, val, junction = 'and', encryption = undefined, ctx = un
         sql += resp.sql
         values.push(...resp.values)
     } else {
-        const ifPlaceholder = prepPlaceholder(check)
-        const ifName = prepName({ alias, value: check })
+        const ifPlaceholder = prepPlaceholder({ value: check, alias, ctx })
         sql += ifPlaceholder
-        if (!checkConstants(ifPlaceholder)) values.push(ifName)
+        if (isVariable(ifPlaceholder)) {
+            const ifName = prepName({ alias, value: check })
+            values.push(ifName)
+        }
     }
 
     sql += ', '
@@ -848,11 +845,12 @@ const prepIf = ({ alias, val, junction = 'and', encryption = undefined, ctx = un
         sql += trueResp.sql
         values.push(...trueResp.values)
     } else {
-        const truePlaceholder = prepPlaceholder(trueValue)
-        const trueName = prepName({ alias, value: trueValue })
-
+        const truePlaceholder = prepPlaceholder({ value: trueValue, alias, ctx })
         sql += truePlaceholder
-        if (!checkConstants(trueValue)) values.push(trueName)
+        if (isVariable(truePlaceholder)) {
+            const trueName = prepName({ alias, value: trueValue })
+            values.push(trueName)
+        }
     }
     sql += ', '
 
@@ -861,16 +859,18 @@ const prepIf = ({ alias, val, junction = 'and', encryption = undefined, ctx = un
         sql += falseResp.sql
         values.push(...falseResp.values)
     } else {
-        const falsePlaceholder = prepPlaceholder(falseValue)
-        const falseName = prepName({ alias, value: falseValue })
-
+        const falsePlaceholder = prepPlaceholder({ value: falseValue, alias, ctx })
         sql += falsePlaceholder + ')'
-        if (!checkConstants(falseValue)) values.push(falseName)
+
+        if (isVariable(falsePlaceholder)) {
+            const falseName = prepName({ alias, value: falseValue })
+            values.push(falseName)
+        }
     }
 
     if (as) {
-        sql += ' AS ?'
-        values.push(as)
+        sql += ` AS ${ctx?.config?.dialect === 'mysql' ? '?' : as}`
+        if (ctx?.config?.dialect === 'mysql') values.push(as)
     }
 
     return { sql, values }
@@ -899,45 +899,51 @@ const prepCase = ({ alias, val, junction = 'and', encryption = undefined, ctx = 
 
         const { when, then } = condition
 
-        sql += 'WHEN '
+        let localSQL = 'WHEN '
         if (typeof when === 'object') {
             const whenResp = prepWhere({ alias, where: when, junction, encryption, ctx })
-            sql += whenResp.sql
+            localSQL += whenResp.sql
             values.push(...whenResp.values)
         } else {
-            const whenPlaceholder = prepPlaceholder(when)
-            const whenName = prepName({ alias, value: when })
-            sql += whenPlaceholder
-            if (!checkConstants(when)) values.push(whenName)
+            const whenPlaceholder = prepPlaceholder({ value: when, alias, ctx })
+            localSQL += whenPlaceholder
+            if (isVariable(whenPlaceholder)) {
+                const whenName = prepName({ alias, value: when })
+                values.push(whenName)
+            }
         }
 
-        sql += ' THEN '
+        localSQL += ' THEN '
         if (typeof then === 'object') {
             const thenResp = prepWhere({ alias, where: then, junction, encryption, ctx })
-            sql += thenResp.sql
+            localSQL += thenResp.sql
             values.push(...thenResp.values)
         } else {
-            const thenPlaceholder = prepPlaceholder(then)
-            const thenName = prepName({ alias, value: then })
-            sql += thenPlaceholder
-            if (!checkConstants(then)) values.push(thenName)
+            const thenPlaceholder = prepPlaceholder({ value: then, alias, ctx })
+            localSQL += thenPlaceholder
+            if (isVariable(thenPlaceholder)) {
+                const thenName = prepName({ alias, value: then })
+                values.push(thenName)
+            }
         }
-
+        return localSQL
     }).join(' ')
 
-    sql += 'ELSE '
+    sql += ' ELSE '
 
-    const elsePlaceholder = prepPlaceholder(defaultElse)
-    const elseName = prepName({ alias, value: defaultElse })
-
+    const elsePlaceholder = prepPlaceholder({ value: defaultElse, alias, ctx })
     sql += elsePlaceholder
-    if (!checkConstants(defaultElse)) values.push(elseName)
 
-    sql += 'END'
+    if (isVariable(elsePlaceholder)) {
+        const elseName = prepName({ alias, value: defaultElse })
+        values.push(elseName)
+    }
+
+    sql += ' END'
 
     if (as) {
-        sql += ' AS ?'
-        values.push(as)
+        sql += ` AS ${ctx?.config?.dialect === 'mysql' ? '?' : as}`
+        if (ctx?.config?.dialect === 'mysql') values.push(as)
     }
     return { sql, values }
 }
@@ -957,13 +963,14 @@ const prepConcat = ({ alias, val, junction = 'and', encryption = undefined, ctx 
     const { value = [], pattern = '', as = null, compare = {} } = val
 
     const values = []
-    let sql = 'CONCAT_WS('
 
-    const patternPlaceholder = prepPlaceholder(pattern)
-    const patternName = prepName({ alias, value: pattern })
+    const patternPlaceholder = prepPlaceholder({ value: pattern, alias, ctx })
+    let sql = `CONCAT_WS(${patternPlaceholder}, `
 
-    sql += patternPlaceholder + ', '
-    if (!checkConstants(pattern)) values.push(patternName)
+    if (isVariable(patternPlaceholder)) {
+        const patternName = prepName({ alias, value: pattern })
+        values.push(patternName)
+    }
 
     sql += value.map(v => {
         if (typeof v === 'object') {
@@ -971,9 +978,11 @@ const prepConcat = ({ alias, val, junction = 'and', encryption = undefined, ctx 
             values.push(...resp.values)
             return resp.sql
         } else {
-            const valuePlaceholder = prepPlaceholder(v)
-            const valueName = prepName({ alias, value: v })
-            if (!checkConstants(v)) values.push(valueName)
+            const valuePlaceholder = prepPlaceholder({ value: v, alias, ctx })
+            if (isVariable(valuePlaceholder)) {
+                const valueName = prepName({ alias, value: v })
+                values.push(valueName)
+            }
             return valuePlaceholder
         }
     }).join(', ')
@@ -987,8 +996,8 @@ const prepConcat = ({ alias, val, junction = 'and', encryption = undefined, ctx 
     }
 
     if (!Object.keys(compare).length && as) {
-        sql += ' AS ?'
-        values.push(as)
+        sql += ` AS ${(ctx?.config?.dialect === 'mysql' ? '?' : as)}`
+        if (ctx?.config?.dialect === 'mysql') values.push(as)
     }
 
     return { sql, values }
@@ -1007,136 +1016,106 @@ const prepConcat = ({ alias, val, junction = 'and', encryption = undefined, ctx 
  */
 const prepString = ({ alias, val, junction = 'and', encryption = undefined, ctx = undefined }) => {
 
-    const { value, replace = null, reverse = false, textCase = null, padding = {}, substr = null, trim = false, cast = null, decrypt = null, as = null, compare = {} } = val
+    const { value, replace = null, reverse = false, textCase = null, padding = {}, substr = null, trim = false, cast = null, decrypt = null, encrypt = null, encoding = 'utf8mb4', as = null, compare = {} } = val
 
     let sql = ''
     const values = []
 
-    // replace target content
-    if (replace) sql += 'REPLACE('
-
-    // reverse the output string
-    if (reverse) sql += 'REVERSE('
-
-    // change text case
-    if (textCase === 'lower') sql += 'LOWER('
-    else if (textCase === 'upper') sql += 'UPPER('
-
-    // apply padding
-    if (padding?.left) sql += 'LPAD('
-    if (padding?.right) sql += 'RPAD('
-
-    // substring
-    if (substr) sql += 'SUBSTR('
-
-    // trim whitespace
-    if (trim === 'left') sql += 'LTRIM('
-    else if (trim === 'right') sql += 'RTRIM('
-    else if (trim === true) sql += 'TRIM('
-
-    // apply type casting
-    if (cast || decrypt) sql += 'CAST('
-
-    // patch decryption method if required
-    if (decrypt) sql += 'AES_DECRYPT('
-
     // prepare place holder
-    const placeholder = prepPlaceholder(value)
-
+    const placeholder = prepPlaceholder({ value, alias, ctx })
     // patch placeholder to the sql string
     sql += placeholder
-    // patch value to values array (conditional)
-    if (!checkConstants(value)) {
+    if (isVariable(placeholder)) {
         const name = prepName({ alias, value })
         values.push(name)
     }
 
-    // patch decryption extras if required
-    if (decrypt) {
+    // envelop decrypt
+    const decryptResp = prepDecryption({ placeholder, value, decrypt, encoding, encryption, ctx })
+    console.log('decryptResp', decryptResp)
+    sql = decryptResp.sql
+    values.push(...decryptResp.values)
 
-        const decryptResp = prepDecrypt({ decrypt, encryption, ctx })
+    // const enc = {}
+    // if (encrypt) {
+    //     enc[value] = encrypt
+    //     console.log('encrypt after mutation', enc)
+    // }
+    
+    // const encResp = prepEncryption({ placeholder: decryptResp.sql, col: value, encrypt: enc, ctx, encryption })
+    // console.log('encResp', encResp)
+    // sql = encResp.sql
+    // values.push(...encResp.values)
+    // type casting
+    if (cast) sql = `CAST(${sql} AS ${dataTypes[cast] || 'CHAR'})`
 
-        sql += decryptResp.sql + ')'
-
-        values.push(...decryptResp.values)
-
-    }
-    // decrypt ends here
-
-    // type casting ends here
-    if (cast || decrypt) sql += ' AS ' + (dataTypes[cast] || 'CHAR') + ')'
-
-    // trim ends here
-    if (trim === 'left' || trim === 'right' || trim === true) sql += ')'
+    // trim
+    if (trim === 'left') sql = `LTRIM(${sql})`
+    else if (trim === 'right') sql = `RTRIM(${sql})`
+    else if (trim === true) sql = `TRIM(${sql})`
 
     // substring extras
-    if (substr) {
+    if (!!substr) {
+
         // handle if substr length is missing
         if (!substr?.length) {
-            console.error(colors.red, 'Sub-string length is missing!', colors.reset)
-            throw new Error('Sub-string length is missing!', { cause: "Missing 'length' property inside substr" })
+            throw { message: `[Missing]: Sub-string 'length' is missing!`, cause: "Missing 'length' property inside substr" }
         }
         // handle if substr start index is missing
         if (!substr?.start) {
-            console.error(colors.red, 'Sub-string start index is missing!', colors.reset)
-            throw new Error('Sub-string start index is missing!', { cause: "Missing 'start' property inside substr" })
+            throw { message: `[Missing]: Sub-string 'start' index is missing!`, cause: "Missing 'start' property inside substr" }
         }
 
-        sql += ', ? ,?)'
+        sql = `SUBSTR(${sql}, ${prepPlaceholder({ value: substr?.start, ctx })}, ${prepPlaceholder({ value: substr?.length, ctx })})`
         values.push(substr?.start, substr?.length)
     }
 
     // apply right padding (extras)
     if (padding?.right) {
-        sql += ', ?, ?)'
         // handle if padding length is missing
         if (!padding?.right?.length) {
-            console.error(colors.red, 'Right padding length is missing!', colors.reset)
-            throw new Error('Right padding length is missing!', { cause: "Missing 'length' property inside padding right" })
+            throw { message: `[Missing]: Right padding 'length' is required!`, cause: "Missing 'length' property inside padding right" }
         }
         // handle if padding pattern is missing
         if (!padding?.right?.pattern) {
-            console.error(colors.red, 'Right padding pattern is missing!', colors.reset)
-            throw new Error('Right padding pattern is missing!', { cause: "Missing 'pattern' property inside padding right" })
+            throw { message: `[Missing]: Right padding 'pattern' is required!`, cause: "Missing 'pattern' property inside padding right" }
         }
+        sql = `RPAD(${sql} ${ctx?.config?.dialect === 'postgresql' ? `, $${ctx._variableCount++}, $${ctx._variableCount++}` : ', ?, ?'})`
         values.push(padding?.right?.length, padding?.right?.pattern)
     }
 
     // apply left padding (extras)
     if (padding?.left) {
-        sql += ', ?, ?)'
         // handle if padding length is missing
         if (!padding?.left?.length) {
-            console.error(colors.red, 'Left padding length is missing!', colors.reset)
-            throw new Error('Left padding length is missing!', { cause: "Missing 'length' property inside padding left" })
+            throw { message: `[Missing]: Left padding 'length' is required!`, cause: "Missing 'length' property inside padding left" }
         }
         // handle if padding pattern is missing
         if (!padding?.left?.pattern) {
-            console.error(colors.red, 'Left padding pattern is missing!', colors.reset)
-            throw new Error('Left padding pattern is missing!', { cause: "Missing 'pattern' property inside padding left" })
+            throw { message: `[Missing]: Left padding 'pattern' is required!`, cause: "Missing 'pattern' property inside padding left" }
         }
+        sql = `LPAD(${sql} ${ctx?.config?.dialect === 'postgresql' ? `, $${ctx._variableCount++}, $${ctx._variableCount++}` : ', ?, ?'})`
         values.push(padding?.left?.length, padding?.left?.pattern)
     }
 
     // text case ends here
-    if (textCase === 'lower' || textCase === 'upper') sql += ')'
+    if (textCase === 'lower') sql = `LOWER(${sql})`
+    else if (textCase === 'upper') sql = `UPPER(${sql})`
 
-    // reverse ends here
-    if (reverse) sql += ')'
+    // handle reverse
+    if (reverse) sql = `REVERSE(${sql})`
 
     // replace target content ends here
-    if (replace) {
+    if (replace != null) {
         // handle if padding length is missing
         if (!replace?.target) {
-            console.error(colors.red, 'Replace target is missing!', colors.reset)
-            throw new Error('Replace target is missing!', { cause: "Missing 'target' property inside replace" })
+            throw { message: `[Missing]: Replace 'target' is missing!`, cause: "Missing 'target' property inside replace" }
         }
         // handle if padding pattern is missing
-        if (!padding?.right?.pattern) {
-            console.error(colors.red, 'Replace with string is missing!', colors.reset)
-            throw new Error('Replace with string is missing!', { cause: "Missing 'with' property inside replace" })
+        if (!replace?.with) {
+            throw { message: `[Missing]: Replace 'with' string is missing!`, cause: "Missing 'with' property inside replace" }
         }
-        sql += ', ?, ?)'
+        sql = `REPLACE(${sql} ${ctx?.config?.dialect === 'postgresql' ? `, $${ctx._variableCount++}, $${ctx._variableCount++}` : ', ?, ?'} )`
         values?.push(replace?.target, replace?.with)
     }
 
@@ -1147,11 +1126,10 @@ const prepString = ({ alias, val, junction = 'and', encryption = undefined, ctx 
     }
 
     if (!Object.keys(compare).length && as) {
-        sql += ' AS ?'
-        values.push(as || (value.includes('.') ? value.split('.')[1] : value))
+        sql += ` AS ${ctx?.config?.dialect === 'mysql' ? '?' : (as || (value.includes('.') ? value.split('.')[1] : value))}`
+        if (ctx?.config?.dialect === 'mysql') values.push(as || (value.includes('.') ? value.split('.')[1] : value))
     }
     return { sql, values }
-
 }
 
 const dateUnits = Object.freeze({
@@ -1211,7 +1189,7 @@ const dateUnits = Object.freeze({
 const prepDate = ({ alias, val, junction = 'and', encryption = undefined, ctx = undefined }) => {
 
     // deconstruct different props from the val object
-    const { value, add = 0, sub = 0, format = null, fromPattern = null, cast = null, decrypt = null, as = null, compare = {} } = val
+    const { value, add = 0, sub = 0, format = null, fromPattern = null, cast = null, decrypt = null, encoding = 'utf8mb4', as = null, compare = {} } = val
 
     const addInterval = (add && parseFloat(add)) || null
     const subInterval = (sub && parseFloat(sub)) || null
@@ -1222,93 +1200,61 @@ const prepDate = ({ alias, val, junction = 'and', encryption = undefined, ctx = 
     let sql = ''
     const values = []
 
-    // format date
-    if (format) sql += 'DATE_FORMAT('
-
-    // subtract date / time
-    if (subInterval) sql += 'SUBDATE('
-
-    // add date / time
-    if (addInterval) sql += 'ADDDATE('
-
-    // create date from string pattern
-    if (fromPattern) sql += 'STR_TO_DATE('
-
-    // apply type casting
-    if (cast || decrypt) sql += 'CAST('
-
-    // patch decryption method if required
-    if (decrypt) sql += 'AES_DECRYPT('
-
     // extract placeholder
-    const placeholder = prepPlaceholder(value)
+    const placeholder = prepPlaceholder({ value, alias, ctx })
 
     // patch placeholder to the sql string
     sql += placeholder
     // patch value to values array (conditional)
-    if (!checkConstants(value)) {
+    if (isVariable(placeholder)) {
         // prepare name
         const name = prepName({ alias, value })
         values.push(name)
     }
 
-    // patch decryption extras if required
-    if (decrypt) {
+    // decrypt
+    const decryptResp = prepDecryption({ placeholder, value, decrypt, encryption, encoding, ctx })
+    sql = decryptResp.sql
+    values.push(...decryptResp.values)
 
-        const decryptResp = prepDecrypt({ decrypt, encryption, ctx })
+    // type casting
+    if (cast) sql = `CAST(${sql} AS ${dataTypes[cast] || 'CHAR'})`
 
-        sql += decryptResp.sql + ')'
-
-        values.push(...decryptResp.values)
-
-    }
-    // decrypt ends here
-
-    // type casting ends here
-    if (cast || decrypt) sql += ' AS ' + (dataTypes[cast] || 'CHAR') + ')'
-
-    // patch string to date pattern
+    // create date from string pattern
     if (fromPattern) {
-        sql += ', ?)'
+        sql += `STR_TO_DATE(${sql}, ${ctx?.config?.dialect === 'postgresql' ? `$${ctx._variableCount++}` : '?'})`
         values.push(fromPattern)
     }
 
-    // patching if addInterval is provided
+    // add date/time
     if (addInterval) {
-
+        sql = `ADDDATE(${sql}`
         if (!addUnit) {
-            sql += ', ?)'
+            sql += `, ${ctx?.config?.dialect === 'postgresql' ? `$${ctx._variableCount++}` : '?'})`
         }
         else if (!dateUnits[addUnit]) {
-            console.error(colors.red, 'Invalid date / time unit provided', colors.reset)
-            throw new Error('Invalid date / time unit provided!', { cause: 'Unit value provided is invalid!' })
+            throw { message: 'Invalid date / time unit provided!', cause: 'Unit value provided is invalid!' }
+        } else {
+            sql += `, INTERVAL ${ctx?.config?.dialect === 'postgresql' ? `$${ctx._variableCount++}` : '?'} ${dateUnits[addUnit]})`
         }
-        else {
-            sql += ', INTERVAL ? ' + dateUnits[addUnit] + ')'
-        }
-
         values.push(addInterval)
-
     }
 
-    // patching if subInterval is provided
+    // sub date/time
     if (subInterval) {
-
-        if (!subUnit) sql += ', ?)'
-
-        else if (!dateUnits[subUnit]) {
-            console.error(colors.red, 'Invalid date / time unit provided', colors.reset)
-            throw new Error('Invalid date / time unit provided!', { cause: 'Unit value provided is invalid!' })
+        sql = `SUBDATE(${sql}`
+        if (!subUnit) {
+            sql += `, ${ctx?.config?.dialect === 'postgresql' ? `$${ctx._variableCount++}` : '?'})`
+        } else if (!dateUnits[subUnit]) {
+            throw { message: 'Invalid date / time unit provided!', cause: 'Unit value provided is invalid!' }
+        } else {
+            sql += `, INTERVAL ${ctx?.config?.dialect === 'postgresql' ? `$${ctx._variableCount++}` : '?'} ${dateUnits[subUnit]})`
         }
-
-        else sql += ', INTERVAL ? ' + dateUnits[subUnit] + ')'
-
         values.push(subInterval)
-
     }
 
     if (format) {
-        sql += ', ?)'
+        sql = `DATE_FORMAT(${sql}, ${ctx?.config?.dialect === 'postgresql' ? `$${ctx._variableCount++}` : '?'})`
         values.push(format)
     }
 
@@ -1318,16 +1264,14 @@ const prepDate = ({ alias, val, junction = 'and', encryption = undefined, ctx = 
         values.push(...resp.values)
     }
 
-
     if (!Object.keys(compare).length && as) {
-        sql += ' AS ?'
-        values.push(as || (value.includes('.') ? value.split('.')[1] : value))
+        sql += ' AS ' + (ctx?.config?.dialect === 'mysql' ? '?' : (as || (value.includes('.') ? value.split('.')[1] : value)))
+        if (ctx?.config?.dialect === 'mysql') values.push(as || (value.includes('.') ? value.split('.')[1] : value))
     }
 
     // return result object
     return { sql, values }
 }
-
 
 /**
  * performs numeric operations on the 'value' property
@@ -1336,127 +1280,101 @@ const prepDate = ({ alias, val, junction = 'and', encryption = undefined, ctx = 
  * @param {string} [numObj.alias] (optional) alias reference for the table name
  * @param {'and'|'or'} [numObj.junction]
  * @param {import("../defs/types").NumericObject} numObj.val
-* 
-* @param {import("../defs/types").EncryptionConfig} [numObj.encryption] (optional) inherits encryption config from its parent level
-* 
-* @param {*} [numObj.ctx]
-* @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
+ * @param {import("../defs/types").EncryptionConfig} [numObj.encryption] (optional) inherits encryption config from its parent level
+ * @param {*} [numObj.ctx]
+ * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
 */
-const prepNumeric = ({ alias, val, junction = 'and', encryption, ctx }) => {
+const prepNumeric = ({ alias, val, junction = 'and', encryption, ctx = 0 }) => {
 
     const values = []
     let sql = ''
 
-    const { value, decimals = null, mod = null, sub = 0, add = 0, multiplyBy = null, divideBy = null, power = null, cast = null, decrypt = null, as = null, compare = {} } = val
-
-    if (decimals === 'ceil') sql += 'CEIL('
-    else if (decimals === 'floor') sql += 'FLOOR('
-    else if (decimals === 'round') sql += 'ROUND('
-    else if (typeof decimals === 'number') sql += 'FORMAT('
-
-    // apply subtraction bracket
-    if (sub) sql += '('
-
-    // apply addition bracket
-    if (add) sql += '('
-
-    // apply multiplier bracket
-    if (multiplyBy) sql += '('
-
-    // apply modulus bracket
-    if (mod) sql += '('
-
-    // apply division
-    if (divideBy) sql += '('
-
-    // apply power of
-    if (power) sql += 'POWER('
-
-    // apply type casting
-    if (cast || decrypt) sql += 'CAST('
-
-    // patch decryption method if required
-    if (decrypt) sql += 'AES_DECRYPT('
+    const { value, decimals = null, mod = null, sub = 0, add = 0, multiplyBy = null, divideBy = null, power = null, cast = null, decrypt = null, encoding = 'utf8mb4', as = null, compare = {} } = val
 
     // patch placeholder to the sql string
-    const placeholder = prepPlaceholder(value)
+    const placeholder = prepPlaceholder({ value, alias, ctx })
+    // patch placeholder to the sql string
     sql += placeholder
-    // patch value to values array (conditional)
-    if (!checkConstants(value)) {
+    if (isVariable(placeholder)) {
         const name = prepName({ alias, value })
         values.push(name)
     }
 
-    // patch decryption extras if required
-    if (decrypt) {
+    // envelop decrypt
+    const decryptResp = prepDecryption({ placeholder, value, decrypt, encoding, encryption, ctx })
+    sql = decryptResp.sql
+    values.push(...decryptResp.values)
 
-        const decryptResp = prepDecrypt({ decrypt, encryption, ctx })
+    // type casting
+    if (cast) sql = `CAST(${sql} AS ${dataTypes[cast] || 'CHAR'})`
 
-        sql += decryptResp.sql + ')'
-
-        values.push(...decryptResp.values)
-
-    }
-    // decrypt ends here
-
-    // type casting ends here
-    if (cast || decrypt) sql += ' AS ' + (dataTypes[cast] || 'CHAR') + ')'
-
-    // apply power (extras)
-    if (power) {
-        const powPlaceholder = prepPlaceholder(power)
-        const powName = prepName({ alias, value: power })
-        sql += ', ' + powPlaceholder + ')'
-        if (!checkConstants(power)) values.push(powName)
-    }
-
-    // apply division (extras)
-    if (divideBy) {
-        const divisorPlaceholder = prepPlaceholder(divideBy)
-        const divisorName = prepName({ alias, value: divideBy })
-        sql += ' / ' + divisorPlaceholder + ')'
-        if (!checkConstants(divideBy)) values.push(divisorName)
-    }
-
-    // apply modulus (extras)
-    if (mod) {
-        const modPlaceholder = prepPlaceholder(mod)
-        const modName = prepName({ alias, value: mod })
-        sql += ' MOD ' + modPlaceholder + ')'
-        if (!checkConstants(mod)) values.push(modName)
-    }
-
-    // apply multiplier (extras)
-    if (multiplyBy) {
-        const multiplierPlaceholder = prepPlaceholder(multiplyBy)
-        const multiplierName = prepName({ alias, value: multiplyBy })
-        sql += ' * ' + multiplierPlaceholder + ')'
-        if (!checkConstants(multiplyBy)) values.push(multiplierName)
-    }
-
-    // apply addition (extras)
-    if (add) {
-        const addPlaceholder = prepPlaceholder(add)
-        const addName = prepName({ alias, value: add })
-        sql += ' + ' + addPlaceholder + ')'
-        if (!checkConstants(add)) values.push(addName)
-    }
-
-    // apply subtraction (extras)
-    if (sub) {
-        const subPlaceholder = prepPlaceholder(sub)
-        const subName = prepName({ alias, value: sub })
-        sql += ' - ' + subPlaceholder + ')'
-        if (!checkConstants(sub)) values.push(subName)
-    }
-
-    // apply decimal format (extras)
-    if (decimals) {
-        if (typeof decimals === 'number') {
-            sql += ', ?'
-            values.push(decimals)
+    // apply power
+    if (power != null) {
+        const powPlaceholder = prepPlaceholder({ value: power, alias, ctx })
+        sql = `POWER(${sql}, ${powPlaceholder})`
+        if (isVariable(powPlaceholder)) {
+            const powName = prepName({ alias, value: power })
+            values.push(powName)
         }
-        sql += ')'
+    }
+
+    // apply division
+    if (divideBy != null) {
+        const divisorPlaceholder = prepPlaceholder({ value: divideBy, alias, ctx })
+        sql = `(${sql} / ${divisorPlaceholder})`
+        if (isVariable(divisorPlaceholder)) {
+            const divisorName = prepName({ alias, value: divideBy })
+            values.push(divisorName)
+        }
+    }
+
+    // apply modulus
+    if (mod != null) {
+        const modPlaceholder = prepPlaceholder({ value: mod, alias, ctx })
+        sql = `(${sql} MOD ${modPlaceholder})`
+        if (isVariable(modPlaceholder)) {
+            const modName = prepName({ alias, value: mod })
+            values.push(modName)
+        }
+    }
+
+    // apply multiplier
+    if (multiplyBy != null) {
+        const multiplierPlaceholder = prepPlaceholder({ value: multiplyBy, alias, ctx })
+        sql = `(${sql} * ${multiplierPlaceholder})`
+        if (isVariable(multiplierPlaceholder)) {
+            const multiplierName = prepName({ alias, value: multiplyBy })
+            values.push(multiplierName)
+        }
+    }
+
+    // apply addition
+    if (add != null) {
+        const addPlaceholder = prepPlaceholder({ value: add, alias, ctx })
+        sql = `(${sql} + ${addPlaceholder})`
+        if (isVariable(addPlaceholder)) {
+            const addName = prepName({ alias, value: add })
+            values.push(addName)
+        }
+    }
+
+    // apply subtraction
+    if (sub != null) {
+        const subPlaceholder = prepPlaceholder({ value: sub, alias, ctx })
+        sql = `(${sql} - ${subPlaceholder})`
+        if (isVariable(subPlaceholder)) {
+            const subName = prepName({ alias, value: sub })
+            values.push(subName)
+        }
+    }
+
+    // apply decimal format
+    if (decimals === 'ceil') sql = `CEIL(${sql})`
+    else if (decimals === 'floor') sql = `FLOOR(${sql})`
+    else if (decimals === 'round') sql = `ROUND(${sql})`
+    else if (typeof decimals === 'number') {
+        sql = `FORMAT(${sql}, ${ctx?.config?.dialect === 'postgresql' ? `$${ctx._variableCount++}` : '?'})`
+        values.push(decimals)
     }
 
     if (Object.keys(compare).length) {
@@ -1465,65 +1383,223 @@ const prepNumeric = ({ alias, val, junction = 'and', encryption, ctx }) => {
         values.push(...resp.values)
     }
 
-    if (!Object.keys(compare).length) {
-        sql += ' AS ?'
-        values.push(as || (value.includes('.') ? value.split('.')[1] : value))
+    if (!Object.keys(compare).length && as) {
+        sql += ` AS ${ctx?.config?.dialect === 'mysql' ? '?' : (as || (value.includes('.') ? value.split('.')[1] : value))}`
+        if (ctx?.config?.dialect === 'mysql') values.push(as || (value.includes('.') ? value.split('.')[1] : value))
     }
 
     return { sql, values }
 }
 
 /**
- * prepares decrypt extras
- * @param {Object} decryptParam
- * @param {{secret?:string, iv?:string, sha?:import("../defs/types").EncryptionSHAs}} decryptParam.decrypt
- * @param {import("../defs/types").EncryptionConfig} [decryptParam.encryption]
- * @param {*} [decryptParam.ctx]
- * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
+ * patches group by clause
+ * @function patchGroupBy
+ * @param {Object} options
+ * @param {Array} options.groupBy
+ * @param {string} [options.alias]
+ * @param {*} [options.ctx]
+ * @returns {{sql:string, values:Array}}
  */
-const prepDecrypt = ({ decrypt, encryption, ctx }) => {
-
-    if (!decrypt?.secret && encryption?.secret && ctx?.config?.encryption?.secret) {
-        console.error(colors.red, 'secret is required to decrypt', colors.reset)
-        throw new Error('Secret is required to decrypt!', { cause: 'Missing "secret" to decrypt inside date wrapper!' })
-    }
+const patchGroupBy = ({ groupBy, alias, ctx }) => {
 
     let sql = ''
     const values = []
-
-    if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && ctx?.config?.encryption?.mode?.includes('-cbc'))) {
-        sql += ', ?'
+    if (groupBy?.length) {
+        sql += ' GROUP BY '
+        sql += groupBy.map(gb => {
+            const col = prepName({ value: gb, alias })
+            if (ctx?.config?.dialect === 'mysql') {
+                values.push(col)
+                return '??'
+            }
+            return col
+        }).join(', ')
     }
-
-    sql += ', UNHEX(SHA2(?, ?))'
-
-    values.push(decrypt?.secret || encryption?.secret || ctx?.config?.encryption?.secret)
-
-    if (encryption?.mode?.includes('-cbc') || (!encryption?.mode && ctx?.config?.encryption?.mode?.includes('-cbc'))) {
-        if (!decrypt?.iv && !encryption?.iv && !ctx?.config?.encryption?.iv) {
-            console.error(colors.red, 'Initialization Vector (iv) is required to decrypt', colors.reset)
-            throw new Error('Initialization Vector (iv) is required to decrypt!', { cause: 'Missing "iv" to decrypt inside date wrapper!' })
-        }
-        values.push(decrypt?.iv || encryption?.iv || ctx?.config?.encryption?.iv)
-    }
-
-    values.push(decrypt?.sha || encryption?.sha || ctx?.config?.encryption?.sha || 512)
-
     return { sql, values }
 }
 
 const orderDirections = Object.freeze({ asc: 'ASC', desc: 'DESC' })
 
-const prepOrders = ({ alias, orderBy }) => {
+/**
+ * patches order by clause
+ * @function prepOrderBy
+ * @param {Object} options
+ * @param {{[column:string]:'asc'|'desc'}} options.orderBy
+ * @param {string} [options.alias]
+ * @param {*} [options.ctx]
+ * @returns {{sql:string, values:Array}}
+ */
+const prepOrderBy = ({ alias, orderBy, ctx }) => {
     const values = []
-    const sql = Object.entries(orderBy).map(([col, dir]) => {
+    let sql = ''
+    if (!Object.keys(orderBy).length) return { sql, values }
+    sql = ' ORDER BY ' + Object.entries(orderBy).map(([col, dir]) => {
         const name = prepName({ alias, value: col })
-        const sql = ' ?? ' + orderDirections[dir]
-        if (!checkConstants(col)) values.push(name)
-        return sql
+        const order = orderDirections[dir]
+        if (ctx?.config?.dialect === 'mysql') {
+            values.push(name)
+            return `?? ${order}`
+        }
+        return `${name} ${order}`
     }).join(', ')
 
     return { sql, values }
 }
 
-module.exports = { prepSelect, prepWhere, prepJoin, prepOrders }
+/**
+ * checks if placeholder is variable or not
+ * @function isVariable
+ * @param {*} value 
+ * @returns {boolean}
+ */
+const isVariable = value => (value.startsWith('$') || value.startsWith('#') || value === '?' || value === '??') && !checkConstants(value)
+
+// working but when json_agg, it requires columns to be in group by
+const generateJsonbObject = (value, ctx, keyType = 'json') => {
+    const values = []
+    if (value == null) return { sql: 'NULL', values }
+    if (typeof value === 'function') throw new Error('Invalid value type')
+
+    const wrapPlaceholder = (val, cast) => {
+        values.push(val)
+        return `$${ctx._variableCount++}::${cast}`
+    }
+
+    const processValue = (val) => {
+        if (val == null) return 'NULL'
+        if (typeof val === 'function') throw new Error('Invalid value type')
+        if (typeof val === 'string') return val.startsWith('#') ? wrapPlaceholder(val.slice(1), 'text') : val
+        const typeMap = { number: val => wrapPlaceholder(val, Number.isInteger(val) ? 'int' : 'numeric'), boolean: val => wrapPlaceholder(val, 'boolean') }
+        if (typeMap[typeof val]) return typeMap[typeof val](val)
+        if (Array.isArray(val)) return `jsonb_build_array(${val.map(processValue).join(', ')})`
+        if (typeof val === 'object') return `jsonb_build_object(${Object.entries(val).map(([k, v]) => `'${k}', ${processValue(v)}`).join(', ')})`
+        throw new Error('Unsupported value type')
+    }
+
+    if (keyType === 'array') {
+        if (Array.isArray(value)) return { sql: `jsonb_build_array(${value.map(processValue).join(', ')})`, values }
+        if (typeof value === 'object') return { sql: `json_agg(${processValue(value)})`, values }
+    }
+
+    return { sql: processValue(value), values }
+}
+
+const prepJsonExtract = (jsonRef, extract, ctx) => {
+    const values = []
+    let sql = ''
+    if (!extract) return { sql: jsonRef, values }
+    if (ctx?.config?.dialect === 'postgresql') {
+        sql = `${jsonRef}`
+        extract = extract.replace('[', '.').replace(']', '')
+        if (extract.startsWith('.')) extract = extract.substring(1)
+        if (extract.includes('.')) {
+            sql += `#>$` + ctx._variableCount++
+            values.push(`{${extract.replace('.', ',')}}`)
+        } else {
+            sql += `->$${ctx._variableCount++}`
+            values.push(extract)
+        }
+    } else {
+        sql = `JSON_EXTRACT(${jsonRef}, ?)`
+        if (typeof extract === 'number') values.push(`$[${extract}]`)
+        else if (typeof extract === 'string' && extract.startsWith('[')) values.push(`$${extract}`)
+        else values.push('$.' + extract)
+    }
+    return { sql, values }
+}
+
+const prepJsonContains = (jsonRef, contains, ctx) => {
+    console.log('prepJsonContains invoked')
+    if (!contains) return { sql: jsonRef, values: [] }
+    if (ctx?.config?.dialect === 'mysql')
+        return { sql: `JSON_CONTAINS(${jsonRef}, ?)`, values: [JSON.stringify(contains)] }
+    else if (ctx?.config?.dialect === 'postgresql') {
+        return { sql: `${jsonRef}@>$${ctx._variableCount++}`, values: [JSON.stringify(contains)] }
+    } else {
+        throw { message: `Feature to check if json array 'contains' a 'value' is not supported by '${ctx?.config?.dialect}'`, cause: `Not all Json features are supported by '${ctx?.config?.dialect}'` }
+    }
+}
+
+const prepEncryption = ({ placeholder, col, encrypt = {}, encryption, ctx }) => {
+    let sql = ''
+    const values = []
+
+    if (!encrypt[col]) return { sql: placeholder, values }
+
+    const config = { ...(ctx?.config?.encryption || {}), ...(encryption || {}), ...(encrypt[col] || {}) }
+    console.log('config', config)
+    const modes = ['aes-128-ecb', 'aes-256-cbc']
+
+    // validate encryption mode
+    if (config?.mode && !modes.includes(config?.mode?.toLowerCase())) {
+        throw { message: `[Invalid]: Encryption mode '${config?.mode}' provided for column: '${col}'`, cause: 'Invalid encryption mode' }
+    }
+
+    // check secret exists or not
+    if (!config?.secret) throw { message: `[Missing]: Secret key is required for encryption of column: '${col}'`, cause: 'Secret key is missing' }
+
+    if (ctx?.config?.dialect === 'mysql') {
+        // check iv (in 'cbc' mode) exists or not
+        if (!config.iv && config?.mode.includes('cbc')) throw { message: `[Missing]: Initialization Vector (iv) is required (in '${config?.mode}') for encryption of column: '${col}'`, cause: 'Initialization Vector (iv) is missing' }
+        sql = `AES_ENCRYPT(${placeholder} ${config?.mode?.includes('cbc') ? ', ?' : ''}, UNHEX(SHA2(?, ?)))`
+        values.push(config?.secret)
+        if (config?.mode?.includes('cbc')) values.push(config?.iv)
+        values.push(config?.sha || 512)
+        return { sql, values }
+    } else if (ctx?.config?.dialect === 'postgresql') {
+        sql = `pgp_sym_encrypt(${placeholder}, $${ctx._variableCount++}, $${ctx._variableCount++})`
+        values.push(config?.secret)
+        values.push('compress-algo=1, cipher-algo=' + (config?.mode || 'aes256').toLowerCase().replace('-cbc', '').replace('-', ''))
+        return { sql: result, values }
+    } else {
+        throw { message: `[Invalid]: No built-in AES Encryption support found for '${ctx?.config?.dialect}'`, cause: `AES Encryption not supported by '${ctx?.config?.dialect}'` }
+    }
+}
+
+const prepDecryption = ({ placeholder, value, decrypt, encoding, encryption, ctx }) => {
+
+    let sql = ''
+    const values = []
+
+    if (!decrypt) return { sql: placeholder, values }
+
+    const config = { ...(decrypt || {}), ...(encryption || {}), ...(ctx?.config?.encryption) }
+    const modes = ['aes-128-ecb', 'aes-256-cbc']
+
+    // validate encryption mode
+    if (config?.mode && !modes.includes(config?.mode?.toLowerCase())) {
+        throw { message: `[Invalid]: Encryption mode '${config?.mode}' provided for column: '${value}'`, cause: 'Invalid encryption mode' }
+    }
+
+    // check secret exists or not
+    if (!config?.secret) throw { message: `[Missing]: Secret key is required to decrypt column: '${value}'`, cause: 'Secret key is missing' }
+
+    if (ctx?.config?.dialect === 'mysql') {
+        // check iv (in 'cbc' mode) exists or not
+        if (!config.iv && config?.mode.includes('cbc')) throw { message: `[Missing]: Initialization Vector (iv) is required (in '${config?.mode}') to decrypt column: '${value}'`, cause: 'Initialization Vector (iv) is missing' }
+        sql = `CONVERT(AES_DECRYPT(${placeholder} ${config?.mode?.includes('cbc') ? ', ?' : ''}, UNHEX(SHA2(?, ?))) USING ${encoding})`
+        values.push(config?.secret)
+        if (config?.mode?.includes('cbc')) values.push(config?.iv)
+        values.push(config?.sha || 512)
+        return { sql, values }
+    } else if (ctx?.config?.dialect === 'postgresql') {
+        sql = `COALESCE(NULLIF(pgp_sym_decrypt(${placeholder}, $${ctx._variableCount++}, $${ctx._variableCount++}), ''), '')`;
+        values.push(config?.secret)
+        values.push('compress-algo=1, cipher-algo=' + (config?.mode || 'aes256').toLowerCase().replace('-cbc', '').replace('-', ''))
+        return { sql, values }; // Return the query string
+    } else {
+        throw { message: `[Invalid]: No built-in AES Decryption support found for '${ctx?.config?.dialect}'`, cause: `AES Decryption not supported by '${ctx?.config?.dialect}'` }
+    }
+}
+
+/**
+ * patch limit/offset
+ * @function patchLimit
+ * @param {number} [limit] 
+ * @param {*} ctx 
+ * @param {'LIMIT'|'OFFSET'} [key=LIMIT] 
+ * @returns {{sql:string, values:Array}}
+ */
+const patchLimit = (limit, ctx, key = 'LIMIT') => typeof limit === 'number' ? ({ sql: ` ${key} ` + ctx?.config?.dialect === 'postgresql' ? `$${ctx._variableCount++}` : '?', values: [limit] }) : { sql: '', values: [] }
+
+module.exports = { prepSelect, prepWhere, prepJoin, prepOrderBy, isVariable, patchGroupBy, patchLimit, prepEncryption }

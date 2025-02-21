@@ -1,7 +1,7 @@
 # UnSQL
 ![NPM Version](https://img.shields.io/npm/v/unsql "production (stable)")
 [![GitHub package.json version](https://img.shields.io/github/package-json/v/siddharthtiwari-03/unsql "latest (unstable)")](https://www.github.com/siddharthtiwari-03/unsql)
-[![GitHub Release](https://img.shields.io/github/v/release/siddharthtiwari-03/unsql?include_prereleases "latest (LTS)")](https://github.com/siddharthtiwari-03/UnSQL/releases)
+[![GitHub Release](https://img.shields.io/github/v/release/siddharthtiwari-03/unsql?include_prereleases "latest (release)")](https://github.com/siddharthtiwari-03/UnSQL/releases)
 ![NPM Downloads](https://img.shields.io/npm/dm/unsql)
 ![NPM License](https://img.shields.io/npm/l/unsql "UnSQL License")
 
@@ -24,6 +24,7 @@
    - [Find method](#find-method)
    - [Save method](#save-method)
    - [Delete method](#delete-method)
+   - [Raw Query method](#raw-query-method)
    - [Export method](#export-method)
    - [Reset method](#reset-method)
 8. [What is Session Manager in UnSQL?](#what-is-session-manager-in-unsql)
@@ -33,10 +34,10 @@
    - [How to delete (remove) record(s) using UnSQL?](#how-to-delete-remove-records-using-unsql)
    - [How to use Session Manager?](#how-to-use-session-manager)
 10. [FAQs](#faqs)
-   - [How to import UnSQL in model class](#how-to-import-unsql-in-model-class)
-   - [How does UnSQL differentiates between column name and string value?](#how-does-unsql-differentiates-a-column-name-and-string-value)
-   - [What are Reserved Constants in UnSQL?](#what-are-reserved-constants-in-unsql)
-   - [Does UnSQL support MySQL Json Datatype](#does-unsql-support-mysql-json-datatype)
+    - [How to import UnSQL in model class](#how-to-import-unsql-in-model-class)
+    - [How does UnSQL differentiates between column name and string value?](#how-does-unsql-differentiates-a-column-name-and-string-value)
+    - [What are Reserved Constants in UnSQL?](#what-are-reserved-constants-in-unsql)
+    - [Does UnSQL support MySQL Json Datatype](#does-unsql-support-mysql-json-datatype)
 
 ## Overview
 
@@ -62,7 +63,7 @@ import { UnSQL } from 'unsql'
 
 ## What's New?
 
-With the release of v2.0 `UnSQL` has been completely re-written with a even better engine and newer interface along with addition of new features like:
+With the release of v2.1, following changes are added:
 
 - **Built-in AES Encryption/Decryption modes**: Protect sensitive data natively without any third part package
 - **Dynamic Query Generation**: Prevent SQL injection using placeholders
@@ -70,6 +71,11 @@ With the release of v2.0 `UnSQL` has been completely re-written with a even bett
 - **Built-in Error Handling**: No more try-catch, `result` holds it all
 - **Revamped Interface**: Now uses object based params and properties for interaction
 - **Evolved IntelliSense Support**: JSDoc-compatible type definitions provide better IDE support (Code suggestions) and type checking
+- **Raw Query Method:** For more flexible approach `rawQuery` method is brought back
+- **Enhanced Session Manager** improved query chaining
+- **Support for PostgreSQL (Experimental)** with `dialect` property choose the type of SQL (default is MySQL)
+
+> For full **release notes** please visit [this](https://github.com/siddharthtiwari-03/UnSQL/releases "UnSQL release notes")
 
 ## Key Features
 
@@ -113,16 +119,30 @@ yarn add unsql
 
 ### Prerequisite
 
+1. **MySQL (Stable)**
 UnSQL requires MySQL `connection` or connection `pool` to connect to the MySQL database. `mysql2` is the most commonly used package for this purpose. Make sure to **add** `multipleStatements: true` into your `mysql2` `createPool` or `createConnection` method as shown below:
 
 ```javascript
 import mysql from 'mysql2/promise'
 
-const pool = mysql.createPool({
+export const pool = mysql.createPool({
     ...,
     multipleStatements: true // required
 })
 ```
+
+2. **PostgreSQL (Experimental)**
+With version v2.1.0, experimental support for **postgresql** has been added. `pg` is the most commonly used package for this purpose.
+
+```javascript
+import { Pool } from 'pg'
+
+export const pool = new Pool({...})
+```
+
+> **Please note:** 
+> 1. PostgreSQl is in its early stage, use in production is not recommended at this moment
+> 2. `multipleStatements: true` is only required with `mysql2` and not with `pg`
 
 ## Basics
 
@@ -156,7 +176,8 @@ class User extends UnSQL {
         table: 'test_user', // (mandatory) replace this with your table name
         pool, // replace 'pool' with 'connection' if you wish to use single connection instead of connection pool
         safeMode: true,
-        devMode: false
+        devMode: false,
+        dialect: 'mysql' // experimental support for 'postgresql' added in v2.1.0
     }
 
 }
@@ -169,7 +190,7 @@ module.exports = { User }
 import { UnSQL } from 'unsql'
 
 // get connection pool from your mysql provider service
-import pool from 'path/to/your/mysql/service'
+import { pool } from 'path/to/your/mysql/service'
 
 /**
  * @class User
@@ -185,7 +206,8 @@ export class User extends UnSQL {
         table: 'test_user', // (mandatory) replace this with your table name
         pool, // replace 'pool' with 'connection' if you wish to use single connection instead of connection pool
         safeMode: true,
-        devMode: false
+        devMode: false,
+        dialect: 'mysql' // experimental support for 'postgresql' added in v2.1.0
     }
 
 }
@@ -204,15 +226,16 @@ export class User extends UnSQL {
 
 ## What are the built-in methods in UnSQL?
 
-`UnSQL` provides five (05) *static* methods to perform the **CRUD** operations via. model class as mentioned below:
+`UnSQL` provides six (06) *static* methods to perform the **CRUD** operations via. model class as mentioned below:
 
-| Method   | Description                                                                                                                       |
-| -------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `find`   | fetch record(s) from the database table                                                                                           |
-| `save`   | insert / update / upsert record(s) in the database table                                                                          |
-| `delete` | remove record(s) from the database table                                                                                          |
-| `export` | export record(s) to a dynamically generated '.json' file or migrate data into another table mapped to a valid `UnSQL` model class |
-| `reset`  | remove all records from database table (resets `'auto increment'` IDs to zero (0))                                                |
+| Method     | Description                                                                                                                       |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `find`     | fetch record(s) from the database table                                                                                           |
+| `save`     | insert / update / upsert record(s) in the database table                                                                          |
+| `delete`   | remove record(s) from the database table                                                                                          |
+| `rawQuery` | enables execution of raw queries, supports manually created placeholders                                                          |
+| `export`   | export record(s) to a dynamically generated '.json' file or migrate data into another table mapped to a valid `UnSQL` model class |
+| `reset`    | remove all records from database table (resets `'auto increment'` IDs to zero (0))                                                |
 
 ### Find method
 
@@ -235,13 +258,27 @@ const result = await User.find({
     session: undefined
 })
 
-/**
- * Above code is equivalent to:
- * // 1. Passing empty object as parameter
- * const result = await User.find({ })
- * And
- * // 2. Not passing any parameter at all
- * const result = await User.find()
+/*
+ Above code is equivalent to:
+ // 1. Passing empty object as parameter
+ const result = await User.find({ })
+ And
+ // 2. Not passing any parameter at all
+ const result = await User.find()
+*/
+
+/* 
+1. When successful
+result = {
+    success: true,
+    result: [...] or [] (when no data found),
+}
+
+2. When error is encountered
+result = {
+    success: false,
+    error: ErrorObject (containing error code, message, sql, trace)
+}
 */
 
 ```
@@ -572,15 +609,24 @@ const result = await User.save({
 })
 
 
-/* result = {
-  "success": true,
-  "fieldCount": 0,
-  "affectedRows": 1, // actual number of entries made
-  "insertId": 1, // dynamically generated id for the first entry made in this query
-  "info": "",
-  "serverStatus": 3,
-  "warningStatus": 1,
-  "changedRows": 0
+/* When successful
+1. MySQL returns
+result = {
+    "success": true,
+    "result": {
+        "fieldCount": 0,
+        "affectedRows": 1, // number of records inserted/updated
+        "insertId": 1,  // dynamically generated primary key (only auto_increment id) of the first record inserted in this query, else zero '0'
+        "info": "",
+        "serverStatus": 2,
+        "warningStatus": 0,
+        "changedRows": 0
+    }
+}
+2. PostgreSQL returns
+result = {
+    "success": true,
+    "result": [{...}] // record (with primary key ID) that was recently added
 }
 */
 ```
@@ -763,6 +809,28 @@ Below are the explanations for each of these properties:
 `debug` (optional) enables various **debug modes** (See [debug](#debug) for more details)
 
 `session` (optional) enables `UnSQL` to **re-use session transaction** provided by `SessionManager` across multiple executions
+
+### Raw Query Method
+
+`rawQuery` method allows you to **execute raw SQL queries** directly. This method is useful when you enjoy writing custom SQL queries or require any specific type of query that you are not able to figure out via. built-in methods. This method supports both type of placeholders: **positional placeholders** `??` | `?` and **named placeholders** `:variableName`, along with dynamically **prepared statement**, `debug` modes, and also can be chained with other built-in (or `rawQuery`) methods using `session` (see [`SessionManager`](#what-is-session-manager-in-unsql)). Below are the samples for both type of placeholders:
+
+1. **Positional Placeholders:** Expects `values` to be an array `['tableName', 'columnName', 'value' [, ...]]` that will be used to **prepare statement** by replacing positional placeholders. Here `??` is used for **table/column names** and `?` is used for **value**. The sequence of placeholders and value in `values` array must be same
+```javascript
+const result = await User.rawQuery({
+    query: 'SELECT * FROM ?? WHERE ?? = ?',
+    values: ['users', 'userId', 1],
+    debug: true
+});
+```
+
+1. **Named Placeholders:** Expects `values` to be an object `{ variableName: value [, ...] }` where `variableName` key must match the `:variableName` used in the query, this can be used to replace only the **value(s)** and does not support table/column name. In order to use named placeholders, set `namedPlaceholders: true` inside `createPool` | `createConnection` method configuration
+```javascript
+const result = await User.rawQuery({
+    query: 'SELECT * FROM users WHERE userId = :userId',
+    values: { userId: 1 },
+    debug: true
+});
+```
 
 ### Export method
 
@@ -1561,6 +1629,8 @@ Each of the properties is explained below:
 | `commit`   | finalizes all changes, making them permanent (cannot be undone) |
 | `close`    | ends the transaction and closes the session                     |
 
+> **Please note:** Constructor requires mysql `connection` or `pool` (recommended)
+
 ## Examples
 
 ### How to find (read/retrieve) record(s) using UnSQL?
@@ -1865,10 +1935,10 @@ router.post('/orders', async (req,res) => {
     const data = req.body
 
     // create 'session' instance using 'SessionManager'
-    const session = new SessionManager()
+    const session = new SessionManager(pool) // 'pool' or 'connection' is required
 
     // initiate MySQL 'transaction' using 'init' lifecycle method
-   const initResp =  await session.init(pool) // 'pool' or 'connection' is required
+   const initResp =  await session.init()
 
     // handle if session init failed
     if (!initResp.success) {
@@ -1911,12 +1981,12 @@ router.post('/orders', async (req,res) => {
 
 1. CommonJS import
 ```javascript
-const UnSQL = require('unsql')
+const { UnSQL } = require('unsql')
 ```
 
 2. ES6 Module import
 ```javascript
-import UnSQL from 'unsql'
+import { UnSQL } from 'unsql'
 ```
 
 ### How does UnSQL differentiates between a column name and string value?

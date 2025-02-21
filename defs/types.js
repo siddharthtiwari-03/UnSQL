@@ -33,10 +33,12 @@
  * UnSQL config
  * @typedef {Object} ConfigObject
  * @prop {string} table name of the table to be mapped with this model class
- * @prop {boolean} safeMode protects accidental execution of 'delete-all'
+ * @prop {boolean} [safeMode=true] protects accidental execution of 'delete-all'
  * @prop {boolean} [devMode=false] prevents 'reset' of data, enables Export/Import of records
  * @prop {Object} [connection] mysql 'connection' object
  * @prop {Object} [pool] mysql connection 'pool' object
+ * @prop {'mysql'|'postgresql'|'sqlite'} [dialect='mysql'] dialect to be used
+ * @prop {'unknown'|EncryptionModes} [dbEncryptionMode='unknown'] dialect to be used
  * @prop {EncryptionConfig} [encryption] defines Encryption/Decryption config for this model
  */
 
@@ -67,9 +69,10 @@
 
 /**
  * string object
- * @typedef {Object} stringObject
+ * @typedef {Object} StringObject
  * @prop {string} value
  * @prop {EncryptionConfig} [decrypt]
+ * @prop {EncryptionConfig} [encrypt]
  * @prop {boolean} [reverse]
  * @prop {'upper'|'lower'} [textCase]
  * @prop {{left?:{length:number, pattern:string}, right?:{length:number, pattern:string}}} [padding]
@@ -82,7 +85,7 @@
 
 /**
  * numeric object
- * @typedef {Object} numericObject
+ * @typedef {Object} NumericObject
  * @prop {number|string} value
  * @prop {EncryptionConfig} [decrypt]
  * @prop {EncryptionConfig} [decimals]
@@ -99,7 +102,7 @@
 
 /**
  * date object
- * @typedef {Object} dateObject
+ * @typedef {Object} DateObject
  * @prop {string} value
  * @prop {EncryptionConfig} [decrypt]
  * @prop {CastingTypes} [cast]
@@ -179,6 +182,7 @@
  * @typedef {Object} JsonObject
  * @prop {string|{[key:string]: ValuesObject}|Array} value
  * @prop {string} [extract]
+ * @prop {string|number|boolean|Array<string|number|boolean>} [contains]
  * @prop {ComparatorObjects} [compare]
  * @typedef {PartialQuery & JsonObject} BaseJson
 */
@@ -202,9 +206,9 @@
 /**
  * wrapper methods
  * @typedef {Object} WrapperMethods
- * @prop {stringObject} [str]
- * @prop {numericObject} [num]
- * @prop {dateObject} [date]
+ * @prop {StringObject} [str]
+ * @prop {NumericObject} [num]
+ * @prop {DateObject} [date]
  * @prop {SwitchObject} [case]
  * @prop {IfObject} [if]
  * @prop {BaseJson} [json]
