@@ -221,7 +221,6 @@ class UnSQL {
                     sql += ' VALUES '
                     // loop over each entry (json object) for values
                     for (let i = 0; i < data.length; i++) {
-                        console.log('looping over i:', i, insertColumns[i])
                         const properties = []
                         for (let j = 0; j < insertColumns.length; j++) { // loop over each property
                             let propSql = this?.config?.dialect === 'postgresql' ? `${this._variableCount++}` : '?'
@@ -278,7 +277,6 @@ class UnSQL {
                                 const encResp = prepEncryption({
                                     placeholder: (this?.config?.dialect === 'postgresql' ? `$${this._variableCount++}` : '?'), col, ctx: this, encrypt, encryption
                                 })
-                                console.log('encResp', encResp)
                                 propSql += encResp.sql // replace previous sql with encryption wrapper
                                 values.push(...encResp?.values) // values are patched not replaced
                             } else {
@@ -688,7 +686,6 @@ const executePostgreSQL = async ({ sql, values, debug = false, config, session =
  * @returns {Promise<{success:boolean, result?:Array, insertId?:number, changes?:number, error?:*}>}
  */
 async function executeSqlite({ sql, values, debug = false, config, methodType = 'all', session = undefined }) {
-    console.log('executeSqlite invoked')
     const db = (session?.pool || config?.pool)
 
     return new Promise((resolve, reject) => {
@@ -749,19 +746,19 @@ async function executeSqlite({ sql, values, debug = false, config, methodType = 
  */
 const patchDefaults = ctx => {
     if (!('devMode' in ctx.config)) {
-        console.log('devMode not found in config, default patched')
+        console.warn(`'devMode' not found in 'config', default patched`)
         ctx.config.devMode = false
     }
     if (!('safeMode' in ctx.config)) {
-        console.log('safeMode not found in config, default patched')
+        console.warn(`'safeMode' not found in 'config', default patched`)
         ctx.config.safeMode = true
     }
     if (!('dialect' in ctx.config)) {
-        console.log('dialect not found in config, default patched')
+        console.warn(`'dialect' not found in 'config', default patched`)
         ctx.config.dialect = 'mysql'
     }
     if (!('dbEncryptionMode' in ctx.config)) {
-        console.log('dbEncryptionMode not found in config, default patched')
+        console.warn(`'dbEncryptionMode' not found in 'config', default patched`)
         ctx.config.dbEncryptionMode = 'unknown'
     }
 

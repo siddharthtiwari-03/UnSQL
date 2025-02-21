@@ -524,7 +524,6 @@ const prepJoin = ({ alias, join = [], encryption = undefined, ctx = undefined })
  * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
  */
 const prepJson = ({ key, val, encryption = undefined, junction = 'and', ctx = undefined }) => {
-    console.log('prepJson invoked', val)
     let sql = ''
     const values = []
 
@@ -554,34 +553,25 @@ const prepJson = ({ key, val, encryption = undefined, junction = 'and', ctx = un
             // jsonSql = jsonResp.sql
             // values.push(...jsonResp.values)
         } else { // handle json if dialect is 'mysql'
-            console.log('val is object', val)
             jsonSql = Object.entries(value).map(([k, v]) => {
-                console.log('k', k)
-                console.log('v')
+
                 console.dir(v, { depth: 100 })
                 const kPlaceholder = '?'
                 if (!Array.isArray(value)) values.push(k)
 
-                let vPlaceholder
-
-                if (typeof v === 'object' && ('str' in v || 'num' in v || 'date' in v || 'concat' in v)) {
-                    console.log('v has wrapper method')
-                    const selectResp = prepSelect({ select: [v], ctx, encryption })
-                    vPlaceholder = selectResp.sql
-                    values.push(...selectResp.values)
-                } else {
-                    console.log('no wrapper method in json object')
-                    vPlaceholder = prepPlaceholder({ value: v, alias, ctx })
-                    if (isVariable(vPlaceholder)) {
-                        const vName = prepName({ alias, value: v })
-                        console.log('vName', vName)
-                        values.push(vName)
-                    }
+                // if (typeof v === 'object' && ('str' in v || 'num' in v || 'date' in v || 'concat' in v)) {
+                //     const selectResp = prepSelect({ select: [v], ctx, encryption })
+                //     vPlaceholder = selectResp.sql
+                //     values.push(...selectResp.values)
+                // } else {
+                const vPlaceholder = prepPlaceholder({ value: v, alias, ctx })
+                if (isVariable(vPlaceholder)) {
+                    const vName = prepName({ alias, value: v })
+                    values.push(vName)
                 }
-                console.log('vPlaceholder', vPlaceholder)
+                // }
                 return (!Array.isArray(value) ? `${kPlaceholder}, ` : '') + vPlaceholder
             }).join(', ')
-            console.log('jsonSql after loop', jsonSql)
             if ((key === 'json' || !Array.isArray(value))) jsonSql = `JSON_OBJECT(${jsonSql})`
             else if (key === 'array' && Array.isArray(value)) jsonSql = `JSON_ARRAY(${jsonSql})`
             else if (key === 'array' && !Array.isArray(value)) jsonSql = `JSON_ARRAYAGG(${jsonSql})`
@@ -1032,7 +1022,6 @@ const prepString = ({ alias, val, junction = 'and', encryption = undefined, ctx 
 
     // envelop decrypt
     const decryptResp = prepDecryption({ placeholder, value, decrypt, encoding, encryption, ctx })
-    console.log('decryptResp', decryptResp)
     sql = decryptResp.sql
     values.push(...decryptResp.values)
 
@@ -1041,7 +1030,7 @@ const prepString = ({ alias, val, junction = 'and', encryption = undefined, ctx 
     //     enc[value] = encrypt
     //     console.log('encrypt after mutation', enc)
     // }
-    
+
     // const encResp = prepEncryption({ placeholder: decryptResp.sql, col: value, encrypt: enc, ctx, encryption })
     // console.log('encResp', encResp)
     // sql = encResp.sql
@@ -1509,7 +1498,6 @@ const prepJsonExtract = (jsonRef, extract, ctx) => {
 }
 
 const prepJsonContains = (jsonRef, contains, ctx) => {
-    console.log('prepJsonContains invoked')
     if (!contains) return { sql: jsonRef, values: [] }
     if (ctx?.config?.dialect === 'mysql')
         return { sql: `JSON_CONTAINS(${jsonRef}, ?)`, values: [JSON.stringify(contains)] }
@@ -1527,7 +1515,6 @@ const prepEncryption = ({ placeholder, col, encrypt = {}, encryption, ctx }) => 
     if (!encrypt[col]) return { sql: placeholder, values }
 
     const config = { ...(ctx?.config?.encryption || {}), ...(encryption || {}), ...(encrypt[col] || {}) }
-    console.log('config', config)
     const modes = ['aes-128-ecb', 'aes-256-cbc']
 
     // validate encryption mode
