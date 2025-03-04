@@ -6,7 +6,7 @@
 ![NPM License](https://img.shields.io/npm/l/unsql "UnSQL License")
 
 
-**UnSQL** is an open-source, lightweight JavaScript library that provides schemaless, class based, clean and modern interface to interact with structured Database (`MySQL`), through dynamic query generation. `UnSQL` is compatible with JavaScript based runtimes like Node.js and Next.js.
+**UnSQL** is an open-source, lightweight JavaScript library that provides schemaless, class based, clean and modern interface to interact with structured Database (`mysql`/`postgresql`/`sqlite`), through dynamic query generation. `UnSQL` is compatible with JavaScript based runtimes like Node.js and Next.js.
 
 ## Table of Contents
 1. [Overview](#overview)
@@ -37,11 +37,12 @@
     - [How to import UnSQL in model class](#how-to-import-unsql-in-model-class)
     - [How does UnSQL differentiates between column name and string value?](#how-does-unsql-differentiates-a-column-name-and-string-value)
     - [What are Reserved Constants in UnSQL?](#what-are-reserved-constants-in-unsql)
-    - [Does UnSQL support MySQL Json Datatype](#does-unsql-support-mysql-json-datatype)
+    - [Does UnSQL support SQL Json Datatype](#does-unsql-support-mysql-json-datatype)
+    - [How Encryption/Decryption works in UnSQL?](#how-does-encryptiondecryption-works-in-unsql)
 
 ## Overview
 
-**UnSQL** simplifies working with structured (MySQL) databases by dynamically generating queries under the hood while offering developers a flexible and intuitive interface. This library eliminates boilerplate code, enhances security, and improves productivity in database management.
+**UnSQL** simplifies working with structured (SQL) databases by dynamically generating queries under the hood while offering developers a flexible and intuitive interface. It eliminates boilerplate code, enhances security, and improves productivity in database management.
 
 ## Breaking Changes
 
@@ -63,17 +64,12 @@ import { UnSQL } from 'unsql'
 
 ## What's New?
 
-With the release of v2.1, following changes are added:
+With the release of: 
 
-- **Built-in AES Encryption/Decryption modes**: Protect sensitive data natively without any third part package
-- **Dynamic Query Generation**: Prevent SQL injection using placeholders
-- **Multiple Debug modes**: Debug the Dynamically generated query or run Execution Benchmark
-- **Built-in Error Handling**: No more try-catch, `result` holds it all
-- **Revamped Interface**: Now uses object based params and properties for interaction
-- **Evolved IntelliSense Support**: JSDoc-compatible type definitions provide better IDE support (Code suggestions) and type checking
-- **Raw Query Method:** For more flexible approach `rawQuery` method is brought back
-- **Enhanced Session Manager** improved query chaining
-- **Support for PostgreSQL (Experimental)** with `dialect` property choose the type of SQL (default is MySQL)
+### version v2.0.4:
+
+- **Minor Bug fixes** code is more stable than before
+- **Performance enhancement** query generation is now faster and more efficient
 
 > For full **release notes** please visit [this](https://github.com/siddharthtiwari-03/UnSQL/releases "UnSQL release notes")
 
@@ -82,14 +78,14 @@ With the release of v2.1, following changes are added:
 - **Promise based** interface with streamlined async/await support
 - **Schemaless** eliminates boilerplate code and hectic to manage migrations
 - **Class-based Models** encapsulates configurations into clean interface
-- **MySQL Support** for single `connection` and connection `pool`
+- **Support connection** `pool` reuses connections
 - **Dynamic query generation** perform CRUDs without writing SQL
 - **JSON as Response** including execution success/failure acknowledgement and `result` or `error`
 - **Transaction** based executions, handles rollbacks on failure
 - **Graceful Error Handling** no try-catch required, returns structured error message
 - **JSDoc-compatible** for type checking and code suggestion
 - **Built-in Debug Modes** (eg.: 'query', 'error', 'benchmarks' etc)
-- **Built-in AES Encryption/Decryption** methods with native support for multiple modes (eg.: ECB, CBC)
+- **Built-in AES Encryption/Decryption** protect sensitive data natively without any third part package
 
 ## Setup Guide
 
@@ -119,20 +115,23 @@ yarn add unsql
 
 ### Prerequisite
 
-1. **MySQL (Stable)**
-UnSQL requires MySQL `connection` or connection `pool` to connect to the MySQL database. `mysql2` is the most commonly used package for this purpose. Make sure to **add** `multipleStatements: true` into your `mysql2` `createPool` or `createConnection` method as shown below:
+1. **MySQL:** `dialect: 'mysql'` (default)
+
+MySQL `connection` or connection `pool` (recommended) is required to connect to the MySQL database. `mysql2` is the most commonly used package for this purpose. Make sure to **add** `multipleStatements: true` into your `mysql2` `createPool` or `createConnection` method as shown below:
 
 ```javascript
 import mysql from 'mysql2/promise'
 
 export const pool = mysql.createPool({
-    ...,
-    multipleStatements: true // required
+    ...
+    namedPlaceholders: true, // (optional) required if using rawQuery with named placeholders
+    multipleStatements: true // (optional) required if using Encryption/Decryption features
 })
 ```
 
-2. **PostgreSQL (Experimental)**
-With version v2.1.0, experimental support for **postgresql** has been added. `pg` is the most commonly used package for this purpose.
+2. **PostgreSQL:** `dialect: 'postgresql'`
+
+With version v2.1.0, support for **postgresql** has been added. `pg` is the most commonly used package to create connection `pool` for **postgresql** databases. Your `db.service.js` file should look like: 
 
 ```javascript
 import { Pool } from 'pg'
@@ -140,9 +139,25 @@ import { Pool } from 'pg'
 export const pool = new Pool({...})
 ```
 
+3. **SQLite:** `dialect: 'sqlite'`
+
+With version v2.1.0, support for **SQLite** has been added. `sqlite` and `sqlite3` are required packages for establishing *connection*. Your `db.service.js` file should look like:
+
+```javascript
+const sqlite3 = require('sqlite3').verbose()
+
+const db = new sqlite3.Database('./databases/test.db', err => {
+    if (err) console.error('error while opening database', err)
+})
+
+module.exports = { db }
+```
+
 > **Please note:** 
-> 1. PostgreSQl is in its early stage, use in production is not recommended at this moment
-> 2. `multipleStatements: true` is only required with `mysql2` and not with `pg`
+> 1. These libraries are required to establish a *connection* with the respected database(s). Configuration inside `db.service.js` for each `dialect` is different (as aforementioned)
+> 2. Common configurations like `host`, `user`, `password`, `database`, `port` are not mentioned above but required by them
+> 3. Although, `sqlite` does not support **connection pool**, the connection `db` established here is used inside `pool` property of `config`
+> 4. `'./databases/test.db'` directory mentioned is just a sample name and no directory will be created automatically
 
 ## Basics
 
@@ -159,8 +174,8 @@ Below is the example for a model class using both CommonJS and ES6 module. Here,
 // @ts-check
 const { UnSQL } = require('unsql')
 
-// get connection pool from your mysql provider service
-const pool = require('path/to/your/mysql/service')
+// get connection pool from your db provider service
+const pool = require('path/to/your/db/service')
 
 /**
  * @class User
@@ -174,10 +189,10 @@ class User extends UnSQL {
      */
     static config = {
         table: 'test_user', // (mandatory) replace this with your table name
-        pool, // replace 'pool' with 'connection' if you wish to use single connection instead of connection pool
+        pool, // provide 'db' instance here in 'sqlite' mode
         safeMode: true,
         devMode: false,
-        dialect: 'mysql' // experimental support for 'postgresql' added in v2.1.0
+        dialect: 'mysql' // (default) or 'postgresql' or 'sqlite'
     }
 
 }
@@ -189,8 +204,8 @@ module.exports = { User }
 // @ts-check
 import { UnSQL } from 'unsql'
 
-// get connection pool from your mysql provider service
-import { pool } from 'path/to/your/mysql/service'
+// get connection pool from your db provider service
+import { pool } from 'path/to/your/db/service'
 
 /**
  * @class User
@@ -204,10 +219,10 @@ export class User extends UnSQL {
      */
     static config = {
         table: 'test_user', // (mandatory) replace this with your table name
-        pool, // replace 'pool' with 'connection' if you wish to use single connection instead of connection pool
+        pool, // provide 'db' instance here in 'sqlite' mode
         safeMode: true,
         devMode: false,
-        dialect: 'mysql' // experimental support for 'postgresql' added in v2.1.0
+        dialect: 'mysql' // (default) or 'postgresql' or 'sqlite'
     }
 
 }
@@ -217,10 +232,11 @@ export class User extends UnSQL {
 
 `config` is a *static* object that is used to define **global level configurations** that are specific for all references of this model class. Below are the list of properties `config` accepts:
 - **table**: (mandatory) accepts name of the table in the database,
-- **pool**: (optional) accepts mysql connection `pool` object,
+- **pool**: (optional) accepts sql connection `pool` (or `sqlite` `db` connection) object,
 - **connection**: (optional) accepts mysql `connection` object,
 - **safeMode**: accepts `boolean` value, helps avoiding accidental *delete all* due to missing `where` and (or) `having` property in `delete` method,
 - **devMode**: accepts `boolean` value, Enables/Disables features like **Export to/Import from another model**, **reset** database table mapped to model
+- **dialect**: defines sql type viz. `'mysql'`, `'postgresql'` or `'sqlite'` (defaults to `'mysql'`)
 
 > **Please note:** Either of the two: `pool` or `connection` property is required. `pool` takes priority over `connection` in case value for both are provided
 
@@ -228,21 +244,21 @@ export class User extends UnSQL {
 
 `UnSQL` provides six (06) *static* methods to perform the **CRUD** operations via. model class as mentioned below:
 
-| Method     | Description                                                                                                                       |
-| ---------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `find`     | fetch record(s) from the database table                                                                                           |
-| `save`     | insert / update / upsert record(s) in the database table                                                                          |
-| `delete`   | remove record(s) from the database table                                                                                          |
-| `rawQuery` | enables execution of raw queries, supports manually created placeholders                                                          |
-| `export`   | export record(s) to a dynamically generated '.json' file or migrate data into another table mapped to a valid `UnSQL` model class |
-| `reset`    | remove all records from database table (resets `'auto increment'` IDs to zero (0))                                                |
+| Method                          | Description                                                                                                                       |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| [`find`](#find-method)          | fetch record(s) from the database table                                                                                           |
+| [`save`](#save-method)          | insert / update / upsert record(s) in the database table                                                                          |
+| [`delete`](#delete-method)      | remove record(s) from the database table                                                                                          |
+| [`rawQuery`](#raw-query-method) | enables execution of raw queries, supports manually created placeholders                                                          |
+| [`export`](#export-method)      | export record(s) to a dynamically generated '.json' file or migrate data into another table mapped to a valid `UnSQL` model class |
+| [`reset`](#reset-method)        | remove all records from database table (resets `'auto increment'` IDs to zero (0))                                                |
 
 ### Find method
 
-`find` is a static, asynchronous method. It dynamically generates *select* query, that reads / retrieves record(s) from the database table. It accepts object as its parameter with various properties (optional). `find` method always returns a JSON object (Here referred as `result`) with execution success/failure acknowledgement via. `success` property (being `true` on success and `false` on failure) and `result` (Array of record(s)) or `error` (detailed error object) depending upon query was successful or not. `find` method combines `findAll` and `findOne` into one single method, as `findOne` method (in every other library/ORM) is just a wrapper around `findAll` and grabs the first matching record. `find` method along with all its parameters with their default values is shown below:
+`find` is a static, asynchronous method, that dynamically generates *select query*, to read/retrieve record(s) from the mapped database table. It accepts object (optional) as its parameter with various properties (optional). `find` method always returns a JSON object with execution success/failure acknowledgement via. `success` property (being `true` on success and `false` on failure) and `result` (Array of record(s)) or `error` (detailed error object) depending upon query was successful or not. `find` method combines `findAll` and `findOne` into one single method, as `findOne` method (in every other library/ORM) is just a wrapper around `findAll` and grabs the first matching record. `find` method along with all its parameters with their default values is shown below:
 
 ```javascript
-const result = await User.find({
+const response = await User.find({
     alias: undefined,
     select: ['*'],
     join: [],
@@ -261,36 +277,35 @@ const result = await User.find({
 /*
  Above code is equivalent to:
  // 1. Passing empty object as parameter
- const result = await User.find({ })
+ const response = await User.find({ })
  And
  // 2. Not passing any parameter at all
- const result = await User.find()
+ const response = await User.find()
 */
 
 /* 
 1. When successful
-result = {
+response = {
     success: true,
     result: [...] or [] (when no data found),
 }
 
 2. When error is encountered
-result = {
+response = {
     success: false,
     error: ErrorObject (containing error code, message, sql, trace)
 }
 */
-
 ```
 
-Each of the aforementioned properties / parameters are explained below:
+Each of the aforementioned properties / parameters are explained below: [selector](#selector)
 
 #### alias
 
-`alias` is a very important parameter throughout `UnSQL`, it accepts string as value that defines local reference name of the table. It is **context sensitive**, meaning, it always refers to the immediate parent table (Here it refers to the parent model class). It automatically gets associated (unless explicitly another alias is prefixed) to all the column names in the context. This parameter plays an important role as it helps identify the columns being referred to in any property (e.g, `select` or `where` or `having` or `join` etc) when using sub-query type wrappers or `join`.
+`alias` is an important parameter throughout `UnSQL`, it accepts string as value that defines local reference name of the table. It is **context sensitive**, meaning, it always refers to the immediate parent table (Here it refers to the parent model class). This parameter plays an important role as it helps identify the columns being referred to in any property (e.g, `select` or `where` or `having` or `join` etc) when using sub-query type wrappers or `join`.
 
 ```javascript
-const result = await User.find({ alias: 't1' })
+const response = await User.find({ alias: 't1' })
 ```
 
 #### select
@@ -298,7 +313,7 @@ const result = await User.find({ alias: 't1' })
 `select` accepts an array of values like column name(s), string value, boolean, number, wrapper methods (See [wrapper methods](#what-are-wrapper-methods-in-unsql)). This property restricts the columns that needs to be fetched from the database table. By default, it is set to select all the columns. Below is a sample of `select` property:
 
 ```javascript
-const result = await User.find({
+const response = await User.find({
     select: [
         'userId',
         { 
@@ -321,7 +336,7 @@ const result = await User.find({
 `join` parameter accepts an array of *join object(s)*. Each *join object* represents an association of a child `table` with the immediate parent table, on the bases of a *common column*, reference of which is provided inside `using` property. Join object along with its default values is explained below:
 
 ```javascript
-const result = await User.find({
+const response = await User.find({
     join: [
         {
             select: ['*'],
@@ -380,7 +395,7 @@ Properties defined inside each join object are context sensitive and will work i
 `where` parameter accepts object (simple or nested) as value, it is used to filter record(s) in the database based on the condition(s). Each object is in a `key: value` pair format, where `key` and `value` can be a either be a string or boolean or number or a wrapper method, on the other hand value can also accept array of values (each can be of any type: string, number, boolean or wrapper method) (see [wrapper methods](#what-are-wrapper-methods-in-unsql)). Sample where property is show below:
 
 ```javascript
-const result = await User.find({
+const response = await User.find({
     where: {
         or: [
             { userId: { between: { gt: 1, lt: 30 } } },
@@ -398,7 +413,7 @@ const result = await User.find({
 `junction` can have any one of the two string values `'and'` | `'or'`. This property is used to connect the *conditions* passed inside the `where` | `having` properties. Default value is `'and'`
 
 ```javascript
-const result = await User.find({ where:{...},  junction: 'and' })
+const response = await User.find({ where:{...},  junction: 'and' })
 ```
 
 > **Please note:** `junction` property only works with `where` and `having` parameters, and setting `junction` parameter alone will have no effect.
@@ -457,7 +472,7 @@ const result3 = await User.find({
 `having` property is similar to `where` property, as it also helps *filtering* the record(s) from the database table however, it is significantly different when it comes to the fact how it works. `having` property is capable of performing regular comparisons just like `where` property however, the major difference between that two properties is that `having` property can also perform comparisons using *aggregate methods* such as `sum`, `avg`, `min`, `max` etc. on the **grouped** records (using `groupBy` property), which is not possible with the `where` property. Below is an example of filtering with `having` property and `groupBy` property using `sum` aggregate (wrapper) method
 
 ```javascript
-const result = await User.find({
+const response = await User.find({
     groupBy: 'salary',
     having: { 
         sum: { 
@@ -515,7 +530,7 @@ const found = await User.find({ offset: 10 })
 `encryption` is one of the most important properties, it is used to define **Encryption/Decryption** related configurations such as `mode`, `secret`, `iv` and `sha`. These *local* configuration(s) will override *global* `encryption` property (see [global config](#what-is-config-inside-unsql-model-class)). These configurations are restricted to execution context and can be redefined for each execution as desired. It can hold any one of the four configurations (or all):
 
 ```javascript
-const result = await User.find({ 
+const response = await User.find({ 
     encryption: {
         mode: 'aes-256-cbc',
         secret: 'your_secret_string_goes_here'
@@ -547,10 +562,10 @@ router.post('/', async (req, res) => {
     const { userInfo, addressInfo } = req.body
 
     // Create session from Session Manager
-    const session = new SessionManager()
+    const session = new SessionManager(pool)
 
     // invoke transaction by calling transaction lifecycle method provided by session
-    await session.init(pool) // either of MySQL 'connection' or connection 'pool' is required as parameter
+    await session.init()
     
     // your code goes here...
     const userResponse = await User.save({ data: userInfo, session }) // pass session inside query to chain this query
@@ -571,8 +586,9 @@ router.post('/', async (req, res) => {
 })
 ```
 > **Please note:**
-> 1. Passing `false` as parameter for `rollback` and `commit` methods will allow you to perform their respective actions (at multiple locations) **without closing** the `transaction` and destroying the session
-> 2. `rollback` and `commit` can be called at any position and it will either **rollback/commit** all proceeding changes till that position
+> 1. SessionManager takes in another optional parameter viz. `'mysql'` (default), `'postgresql'` or `'sqlite'`
+> 2. Passing `false` as parameter for `rollback` and `commit` methods will allow you to perform their respective actions (at multiple locations) **without closing** the `transaction` and destroying the session
+> 3. `rollback` and `commit` can be called at any position and it will either **rollback/commit** all proceeding changes till that position
 
 
 | Mode                | Description                                                                                                                                                                        |
@@ -594,7 +610,7 @@ router.post('/', async (req, res) => {
 `save` is a static, asynchronous method. It dynamically generates valid SQL query, that **insert** | **update** | **upsert** data (single or in bulk) into the database table When only `data` property is set, this method **inserts** record(s), when `data` along with `where` or `having` (with `groupBy`) is set, it **updates** record(s), when `data` and `upsert` are set, it **upsert** record. `save` method takes in an object as its parameter with various properties as mentioned below:
 
 ```javascript
-const result = await User.save({
+const response = await User.save({
     alias: undefined,
     data,
     where: {},
@@ -611,9 +627,9 @@ const result = await User.save({
 
 /* When successful
 1. MySQL returns
-result = {
-    "success": true,
-    "result": {
+response = {
+    success: true,
+    result: {
         "fieldCount": 0,
         "affectedRows": 1, // number of records inserted/updated
         "insertId": 1,  // dynamically generated primary key (only auto_increment id) of the first record inserted in this query, else zero '0'
@@ -624,9 +640,15 @@ result = {
     }
 }
 2. PostgreSQL returns
-result = {
+response = {
     "success": true,
     "result": [{...}] // record (with primary key ID) that was recently added
+}
+3. Sqlite returns
+response = {
+    success: true,
+    insertId: 1, // in case of 'save', last 'inserted' ID
+    changes: 1 // in case of 'update'
 }
 */
 ```
@@ -635,14 +657,14 @@ Below are the explanations for each of these properties:
 `alias` (optional) same as in `find` method (See [alias](#alias) for details) 
 
 ```javascript
-const result = await User.save({ data, alias: 'u' })
+const response = await User.save({ data, alias: 'u' })
 ```
 
 `data` (mandatory) is the actual data that will be **inserted** | **updated** | **upsert** into the database table. `data` can either be a single object (supports **insert**, **update** and **upsert**) or an array of objects (supports only **insert** of bulk data).
 
 ```javascript
 // 1. insert single record
-const result = await User.save({ 
+const response = await User.save({ 
     data: { 
         firstName: 'John', 
         userEmail: 'john.doe@example.com'
@@ -650,7 +672,7 @@ const result = await User.save({
  })
 
 // 2. insert bulk records
-const result = await User.save({ 
+const response = await User.save({ 
     data: [
         { 
             firstName: 'John', 
@@ -670,7 +692,7 @@ const result = await User.save({
 
 ```javascript
 // perform update
-const result = await User.save({ 
+const response = await User.save({ 
     data: {...},
     where: {
         userId: 1
@@ -681,7 +703,7 @@ const result = await User.save({
 `junction` (optional) accepts one of the two string values `'and'` | `'or'` (See [junction](#junction) for details)
 
 ```javascript
-const result = await User.save({ 
+const response = await User.save({ 
     data: {...},
     where: {...},
     junction: 'and'
@@ -691,7 +713,7 @@ const result = await User.save({
 `groupBy` (optional) used with `having` property to group records, same as explained above (See [groupBy](#groupby) for details)
 
 ```javascript
-const result = await User.save({ 
+const response = await User.save({ 
     data: {...},
     groupBy: 'userRole',
     having: {...}
@@ -701,7 +723,7 @@ const result = await User.save({
 `having` (optional) similar to `where` property, `having` also helps in **updating** the record(s) in the database (See [having](#having) for more details)
 
 ```javascript
-const result = await User.save({ 
+const response = await User.save({ 
     data: {...},
     groupBy: 'department',
     having: {
@@ -720,7 +742,7 @@ const result = await User.save({
 `upsert` (optional) accepts single object value, when provided, switches `save` method into **upsert mode**. Value of this property is only used in a special case when `'ON DUPLICATE KEY'` error is encountered, in this case, the conflicting record is **updated** using the values provided in this property, else this property is ignored
 
 ```javascript
-const result = await User.save({ 
+const response = await User.save({ 
     data: {...},
     upsert: {
         name: 'john',
@@ -732,7 +754,7 @@ const result = await User.save({
 `encrypt` (optional) holds information regarding the `columns` that needs to be **encrypted** and stored in the database. It accepts object in `key: value` format where each `key` represents the **column name** and `value` again is an object with three as key(s) `secret`, `iv` and `sha`
 
 ```javascript
-const result = await User.save({
+const response = await User.save({
     data: {...},
     encrypt: {
         userEmail: {
@@ -748,7 +770,7 @@ const result = await User.save({
 `encryption` (optional) holds local level configurations such as `mode`, `secret`, `iv` and `sha` that can be used for encrypting columns from the `data` property, that are specified inside the `encrypt` property (See [encryption](#encryption) for more details)
 
 ```javascript
-const result = await User.save({
+const response = await User.save({
     data: {...},
     encrypt: {
         userEmail: {}
@@ -770,7 +792,7 @@ const result = await User.save({
 
 
 ```javascript
-const result = await User.save({
+const response = await User.save({
     data: {...},
     debug: 'query'
 })
@@ -781,7 +803,7 @@ const result = await User.save({
 `delete` is a static, asynchronous method that is used to dynamically generate valid SQL query that removes record(s) from the database table. `delete` method takes in an object as its parameter with various properties as mentioned below:
 
 ```javascript
-const result = await User.delete({
+const response = await User.delete({
     alias: undefined,
     where: {},
     junction: 'and',
@@ -816,7 +838,7 @@ Below are the explanations for each of these properties:
 
 1. **Positional Placeholders:** Expects `values` to be an array `['tableName', 'columnName', 'value' [, ...]]` that will be used to **prepare statement** by replacing positional placeholders. Here `??` is used for **table/column names** and `?` is used for **value**. The sequence of placeholders and value in `values` array must be same
 ```javascript
-const result = await User.rawQuery({
+const response = await User.rawQuery({
     query: 'SELECT * FROM ?? WHERE ?? = ?',
     values: ['users', 'userId', 1],
     debug: true
@@ -825,7 +847,7 @@ const result = await User.rawQuery({
 
 1. **Named Placeholders:** Expects `values` to be an object `{ variableName: value [, ...] }` where `variableName` key must match the `:variableName` used in the query, this can be used to replace only the **value(s)** and does not support table/column name. In order to use named placeholders, set `namedPlaceholders: true` inside `createPool` | `createConnection` method configuration
 ```javascript
-const result = await User.rawQuery({
+const response = await User.rawQuery({
     query: 'SELECT * FROM users WHERE userId = :userId',
     values: { userId: 1 },
     debug: true
@@ -891,24 +913,24 @@ await User.reset({ debug: false })
 
 `UnSQL` provides various *built-in* methods to interact with data and perform specific tasks, each of these wrapper methods belong a certain *type*. All of the wrapper methods have object like interface (`key: value` pair) to interact with them, where `key` can be any one of the specially reserved keywords that represents its respective wrapper method. Below is the list of wrapper methods along with their respective keywords available inside `UnSQL`:
 
-| Keyword  | Wrapper Type | Description                                                                               |
-| :------: | :----------: | ----------------------------------------------------------------------------------------- |
-|  `str`   |    string    | performs string value related operations                                                  |
-|  `num`   |   numeric    | performs numeric value related operations                                                 |
-|  `date`  |     date     | performs date value related operations                                                    |
-|  `and`   |   junction   | performs junction override inside the `where` and `having`                                |
-|   `or`   |   junction   | performs junction override inside the `where` and `having`                                |
-|   `if`   | conditional  | checks **condition** and returns respective value (used with `select`, `where`, `having`) |
-|  `case`  | conditional  | checks **condition** and returns respective value (used with `select`, `where`, `having`) |
-|  `sum`   |  aggregate   | calculates 'total' from set of values                                                     |
-|  `avg`   |  aggregate   | calculates 'average' from set of values                                                   |
-| `count`  |  aggregate   | performs 'count' operation on set of values                                               |
-|  `min`   |  aggregate   | determines 'lowest' value among the provided values                                       |
-|  `max`   |  aggregate   | determines 'highest' value among the provided values                                      |
-|  `json`  |  sub-query   | creates a json object at the position it is invoked                                       |
-| `array`  |  sub-query   | creates a json array at the position it is invoked                                        |
-| `refer`  |  sub-query   | fetch a column from another table at the position it is invoked                           |
-| `concat` |    merge     | combines multiple values into one                                                         |
+|           Keyword           | Wrapper Type | Description                                                                               |
+| :-------------------------: | :----------: | ----------------------------------------------------------------------------------------- |
+|  [`str`](#string-wrapper)   |    string    | performs string value related operations                                                  |
+|  [`num`](#numeric-wrapper)  |   numeric    | performs numeric value related operations                                                 |
+|   [`date`](#date-wrapper)   |     date     | performs date value related operations                                                    |
+|  [`and`](#and--or-wrapper)  |   junction   | performs junction override inside the `where` and `having`                                |
+|  [`or`](#and--or-wrapper)   |   junction   | performs junction override inside the `where` and `having`                                |
+|     [`if`](#if-wrapper)     | conditional  | checks **condition** and returns respective value (used with `select`, `where`, `having`) |
+|   [`case`](#case-wrapper)   | conditional  | checks **condition** and returns respective value (used with `select`, `where`, `having`) |
+|    [`sum`](#sum-wrapper)    |  aggregate   | calculates 'total' from set of values                                                     |
+|  [`avg`](#average-wrapper)  |  aggregate   | calculates 'average' from set of values                                                   |
+|  [`count`](#count-wrapper)  |  aggregate   | performs 'count' operation on set of values                                               |
+|  [`min`](#minimum-wrapper)  |  aggregate   | determines 'lowest' value among the provided values                                       |
+|  [`max`](#maximum-wrapper)  |  aggregate   | determines 'highest' value among the provided values                                      |
+|   [`json`](#json-wrapper)   |  sub-query   | creates a json object at the position it is invoked                                       |
+|  [`array`](#array-wrapper)  |  sub-query   | creates a json array at the position it is invoked                                        |
+|  [`refer`](#refer-wrapper)  |  sub-query   | fetch a column from another table at the position it is invoked                           |
+| [`concat`](#concat-wrapper) |    merge     | combines multiple values into one                                                         |
 
 > **Please note:** 
 > 1. *junction* type wrapper methods can only be used inside `where` and `having` property
@@ -922,7 +944,7 @@ All the aforementioned wrappers are explained below along with their interface:
 **String wrapper** (keyword `str`) is used to perform string/text data related operations, it can be used directly/nested inside `select`, `where`, `having` properties. Below is the interface for string wrapper method along with the default values for each of its properties:
 
 ```javascript
-const result = await User.find({
+const response = await User.find({
     select: [
         { 
             str: {
@@ -976,9 +998,9 @@ Each of these properties of **string wrapper** method are explained below:
 
 `trim` (optional) removes/trims whitespace in `value` property based on the value `'left'` (from the beginning) | `'right'` (from the end) | `true` (both beginning and end)
 
-`cast` (optional) converts/casts `value` property to the specified *type* / *format* using either of the values `'char'`  | `'nchar'` | `'date'` | `'dateTime'` | `'signed'` | `'unsigned'` | `'decimal'` | `'binary'`
+`cast` (optional) converts/casts `value` property to the specified *type* / *format* using either of the values `'char'`  | `'nchar'` | `'date'` | `'dateTime'` | `'signed'` | `'unsigned'` | `'decimal'` | `'binary'` | `'integer'`
 
-`decrypt` (optional) is an object with properties `secret`, `iv` (used with CBC mode) and `sha` used to decrypt `value` property. Overrides configuration(s) provided in local and global `encryption` (see [encryption](#encryption) for details)
+`decrypt` (optional) is an object with properties `secret`, `iv` (used with CBC mode when `dialect: 'mysql'`) and `sha` used to decrypt `value` property. Overrides configuration(s) provided in local and global `encryption` (see [encryption](#encryption) for details)
 
 `as` (optional) renames/provides local reference name to the `value` property
 
@@ -989,7 +1011,7 @@ Each of these properties of **string wrapper** method are explained below:
 **Numeric wrapper** (keyword `num`) is used to perform mathematical operations on the numeric data, it can be used / nested inside `select`, `where`, `having` clause as a `value`. All the operations are executed sequentially, in order that follows **BODMAS** rule. Below is the interface for this wrapper method along with the default values for each of its properties:
 
 ```javascript
-const result = await User.find({
+const response = await User.find({
     select: [
         { 
             num: {
@@ -1044,7 +1066,7 @@ Each of these properties of **numeric wrapper** method are explained below:
 **Date wrapper** (keyword `date`) is used to perform date related operations on `value` property, it can be used nested inside `select`, `where`, `having` clause as a `value`. Below is the interface for this wrapper method along with the default values for each of its properties:
 
 ```javascript
-const result = await User.find({
+const response = await User.find({
     select: [
         { 
             date: { 
@@ -1074,7 +1096,7 @@ Each of these properties of **date wrapper** method are explained below:
 `fromPattern` (optional) accepts combination of `date` | `time` units arranged in a string pattern (see [Date Time Patterns](#date-time-patterns)), used to identify `date` | `time` element(s) in `value` property, this pattern is then used to create `'date'` | `'time'` | `'datetime'`
 
 ```javascript
-const result = await User.find({
+const response = await User.find({
     select: [
         'userId',
         {
@@ -1099,7 +1121,7 @@ const result = await User.find({
 `format` (optional) is used to **format** `date` in `value` property to match the desired combination of date time patterns (see [Date Time Patterns](#date-time-patterns))
 
 ```javascript
-const result = await User.find({
+const response = await User.find({
     select: [
         'userId',
         {
@@ -1190,7 +1212,7 @@ Below **date time units** are only usable with `add` and `sub` property of `date
 **and* wrapper** (keyword `and`) | **or wrapper** (keyword `or`) both are similar in interface as both accepts array of objects. The only difference in the two is that **and** wrapper joins each immediate child condition using 'and' clause (junction) whereas, **or** wrapper joins each immediate child condition using 'or' clause (junction). Both can be used / nested inside `where` and `having` properties only and not (directly) in `select` property
 
 ```javascript
-const result = await User.find({
+const response = await User.find({
     where: { 
         and: [
             { userId: 55 },
@@ -1216,7 +1238,7 @@ const result = await User.find({
 **If wrapper** (keyword `if`) has a `check` property that accepts a conditional object to compare two values and returns either `true` or `false`. If the `check` property returns `true`, the value in `trueValue` property is returned by this wrapper, if `check` is `false` then the value in `falseValue` property is returned. `as` *(optional)* is used to provide a local reference name to the value returned by `if` wrapper method. Below is the interface for the `if` wrapper:
 
 ```javascript
-const result = await User.find({
+const response = await User.find({
     select: [
         { 
             if: {
@@ -1235,7 +1257,7 @@ const result = await User.find({
 **Case wrapper** (keyword `case`) is similar to `if` wrapper as it is also used to check the conditions provided inside `check` property and return respective value. However, a major difference here is that `if` wrapper is used to check **'single condition'** whereas `case` wrapper is used when you have **'multiple condition'** and corresponding value pairs. `check` property accepts an array of object(s), each object consists of exactly two `key: value` pairs, where `key` is `when` property that accepts object to check the condition and `then` property that holds the respective value (for each `when` property) to be returned when the condition is `true`. Below is the interface for the `if` wrapper:
 
 ```javascript
-const result = await User.find({
+const response = await User.find({
     select: [
         { 
             case: {
@@ -1250,7 +1272,7 @@ const result = await User.find({
 
 #### Sum wrapper
 
-**Sum wrapper** (keyword `sum`) is used to calculate 'sum' of a set (group) of records. This is and aggregate method hence it will be applied not to single but group of records. It can be used / nested only inside `select` and `having` parameters, and not with `where` clause as a `value`. Below is the interface for this wrapper method along with the default values for each of its properties:
+**Sum wrapper** (keyword `sum`) is used to calculate 'sum' of a set (group) of records. This is an aggregate method hence it will be applied not to single but group of records. It can be used / nested only inside `select` and `having` parameters, and not with `where` clause as a `value`. Below is the interface for this wrapper method along with the default values for each of its properties:
 
 ```javascript
 {
@@ -1261,7 +1283,7 @@ const result = await User.find({
         as: null
     }
 }
-const result = await User.find({
+const response = await User.find({
     select: [
         { sum: {
             value: 'salary',
@@ -1292,10 +1314,10 @@ const result = await User.find({
 
 #### Average wrapper
 
-**Average wrapper** (keyword `avg`) is used to calculate 'average' of a set (group) of records. This is and aggregate method hence it will be applied not to single but group of records. It can be used / nested only inside `select` and `having` parameters, and not with `where` clause as a `value`. Below is the interface for this wrapper method along with the default values for each of its properties:
+**Average wrapper** (keyword `avg`) is used to calculate 'average' of a set (group) of records. This is an aggregate method hence it will be applied not to single but group of records. It can be used / nested only inside `select` and `having` parameters, and not with `where` clause as a `value`. Below is the interface for this wrapper method along with the default values for each of its properties:
 
 ```javascript
-const result = await User.find({
+const response = await User.find({
     select: [
         { avg: {
             value: 'salary',
@@ -1323,12 +1345,31 @@ const result = await User.find({
 > 2. `as` property is available when this wrapper is used inside `select` and not available when it is being used inside `having` clause
 > 3. `value` can either accept either a column name or number value or an object (simple or nested) as its value
 
-#### Minimum wrapper
+#### Count wrapper
 
-**Minimum wrapper** (keyword `min`) is used to calculate 'minimum' among a set (group) of records. This is and aggregate method hence it will be applied not to single but group of records. It can be used / nested only inside `select` and `having` parameters, and not with `where` clause as a `value`. Below is the interface for this wrapper method along with the default values for each of its properties:
+**Count wrapper** (keyword `count`) is used to calculate 'count' among a set (group) of records. This is an aggregate method hence it will be applied not to single but group of records. It can be used / nested only inside `select` and `having` parameters, and not with `where` clause as a `value`. Below is the interface for this wrapper method along with the default values for each of its properties:
 
 ```javascript
-const result = await User.find({
+const response = await User.find({
+    select: [
+        { 
+            count: {
+                value: {
+                    userStatus: 1
+                },
+                as: 'activeUsers'
+            }
+        }
+    ]
+})
+```
+
+#### Minimum wrapper
+
+**Minimum wrapper** (keyword `min`) is used to calculate 'minimum' among a set (group) of records. This is an aggregate method hence it will be applied not to single but group of records. It can be used / nested only inside `select` and `having` parameters, and not with `where` clause as a `value`. Below is the interface for this wrapper method along with the default values for each of its properties:
+
+```javascript
+const response = await User.find({
     select: [
         { min: {
             value: 'salary'
@@ -1358,10 +1399,10 @@ const result = await User.find({
 
 #### Maximum wrapper
 
-**Maximum wrapper** (keyword `max`) is used to calculate 'maximum' among a set (group) of records. This is and aggregate method hence it will be applied not to single but group of records. It can be used / nested only inside `select` and `having` parameters, and not with `where` clause as a `value`. Below is the interface for this wrapper method along with the default values for each of its properties:
+**Maximum wrapper** (keyword `max`) is used to calculate 'maximum' among a set (group) of records. This is an aggregate method hence it will be applied not to single but group of records. It can be used / nested only inside `select` and `having` parameters, and not with `where` clause as a `value`. Below is the interface for this wrapper method along with the default values for each of its properties:
 
 ```javascript
-const result = await User.find({
+const response = await User.find({
     select: [
         { max: {
             value: 'salary'
@@ -1394,7 +1435,7 @@ const result = await User.find({
 **Json wrapper** (keyword `json`) can be used to **extract specific value from json Object** (using `extract` property) or **create/attach json Object to record(s)** by passing Object/Array in `value` property, or even both. Below is the interface for this wrapper method along with the default values for each of its properties:
 
 ```javascript
-const result = await User.find({
+const response = await User.find({
     alias: 'u',
     select: [
         {
@@ -1457,7 +1498,7 @@ Each of the properties is explained below:
 **Array wrapper** (keyword `array`) can be used to **extract specific value from json Array** (using `extract` property) or **create/attach json Array to record(s)** by passing Object/Array in `value` property, or even both. This is similar to `json` wrapper however, it can also be used to create an array with multiple json objects. Below is the interface for this wrapper method along with the default values for each of its properties:
 
 ```javascript
-const result = await User.find({
+const response = await User.find({
     alias: 'u',
     select: [
         {
@@ -1517,7 +1558,7 @@ Each of the properties is explained below:
 **Refer wrapper** (keyword `refer`) is used to run `'sub-query'` to fetch **single field** from any specific record from another `table`. It can be used / nested only inside `select`, `where` and `having` clause as a `value`. This method is helpful to fetch 1 record in a one-to-one relation. Below is the interface for this wrapper method along with the default values for each of its properties:
 
 ```javascript
-const result = await User.find({
+const response = await User.find({
     alias: 'u',
     select: [
         {
@@ -1570,7 +1611,7 @@ Each of the properties is explained below:
 **Concat wrapper** (Keyword `concat`) is used to merge/combine multiple value(s)/columns together into one value. Accepts an array of value(s)/wrapper methods and merges them as one value using `pattern` property as the separator between these values. Below is the interface for this wrapper method along with the default values for each of its properties:
 
 ```javascript
-const result = await User.find({
+const response = await User.find({
     select: [
         {
             concat: { 
@@ -1620,7 +1661,7 @@ Each of the properties is explained below:
 
 ### Session Manager
 
-`SessionManager` is a class that can be used to create an instance of a `session` object, which provides various *asynchronous* methods (as an interface) to manage the lifecycle of a persistent (reusable) instance of a MySQL `transaction` across multiple query executions. `SessionManager` becomes extremely important in cases where multiple inter-linked queries are executed in a chained fashion, one after the other and a mechanism to control all transactions at once if any one of them fails is required. Each lifecycle method is explained below:
+`SessionManager` is a class that can be used to create an instance of a `session` object, which provides various *asynchronous* methods (as an interface) to manage the lifecycle of a persistent (reusable) instance of a `transaction` across multiple query executions. `SessionManager` becomes extremely important in cases where multiple inter-linked queries are executed in a chained fashion, one after the other and a mechanism to control all transactions at once if any one of them fails is required. Each lifecycle method is explained below:
 
 | Method     | Description                                                     |
 | ---------- | --------------------------------------------------------------- |
@@ -1629,7 +1670,7 @@ Each of the properties is explained below:
 | `commit`   | finalizes all changes, making them permanent (cannot be undone) |
 | `close`    | ends the transaction and closes the session                     |
 
-> **Please note:** Constructor requires mysql `connection` or `pool` (recommended)
+> **Please note:** Constructor requires `connection` or `pool` (recommended)
 
 ## Examples
 
@@ -1639,10 +1680,10 @@ Each of the properties is explained below:
 
 ```javascript
 router.get('/users/:userId(\\d+)', async (req, res)=> {
-    const result = await User.find()
+    const response = await User.find()
 
     // above code is similar to
-    // const result = await User.find({ })
+    // const response = await User.find({ })
 
 })
 ```
@@ -1654,19 +1695,19 @@ router.get('/users/:userId(\\d+)', async (req, res)=> {
 
     const { userId } = req.params
 
-    const result = await User.find({
+    const response = await User.find({
         where: { userId }
     })
 
     // above code is similar/shorthand for:
     
     // 1. 
-    // const result = await User.find({
+    // const response = await User.find({
     //     where: { userId: userId }
     // })
 
     // 2.
-    // const result = await User.find({
+    // const response = await User.find({
     //     where: { userId: { eq: userId } }
     // })
 })
@@ -1679,7 +1720,7 @@ router.post('/users/login', async (req, res)=> {
 
     const { loginId, password } = req.body
 
-    const result = await User.find({
+    const response = await User.find({
         select: [ 'userId', 'userEmail', 'firstName', 'lastName', 'userPassword' ],
         where: {
             or: [
@@ -1701,7 +1742,7 @@ router.post('/users/login', async (req, res)=> {
 
     const { loginId, password } = req.body
 
-    const result = await User.find({
+    const response = await User.find({
         select: [ 'userId', 'userEmail', 'firstName', 'lastName', 'userPassword' ],
         where: {
             or: [
@@ -1734,7 +1775,7 @@ router.post('/users/login', async (req, res)=> {
 ```javascript
 router.get('/users', async (req, res) => {
 
-    const result = await User.find({
+    const response = await User.find({
         select: ['userId', 'firstName',
             {
                 array: {
@@ -1763,7 +1804,7 @@ router.get('/users', async (req, res) => {
 ```javascript
 router.get('/users', async (req, res) => {
 
-    const result = await User.find({
+    const response = await User.find({
         select: ['userId', 'firstName',
             {
                 array: {
@@ -1785,7 +1826,7 @@ router.get('/users', async (req, res) => {
 ```javascript
 router.get('/users', async (req, res) => {
 
-    const result = await User.find({
+    const response = await User.find({
         select: ['userId', 'firstName',
             {
                 array: {
@@ -1809,7 +1850,7 @@ router.get('/users', async (req, res) => {
 ```javascript
 router.get('/users', async (req, res) => {
 
-    const result = await User.find({
+    const response = await User.find({
         select: ['userId', 'firstName',
             {
                 json: {
@@ -1833,7 +1874,7 @@ router.post('/users', async (req, res)=> {
 
     const data = req.body
 
-    const result = await User.save({ data })
+    const response = await User.save({ data })
 
 })
 ```
@@ -1847,7 +1888,7 @@ router.put('/users/:userId(\\d+)', async (req, res)=> {
 
     const data = req.body
 
-    const result = await User.save({ data, where: { userId } })
+    const response = await User.save({ data, where: { userId } })
 
 })
 ```
@@ -1864,7 +1905,7 @@ router.post('/users', async (req, res)=> {
     // extract conflicting key (here 'userId') out of payload (data) and create a new object (here upsert) that holds remaining fields that needs to be updated on conflict
     const { userId, ...upsert } = data
 
-    const result = await User.save({ data, upsert })
+    const response = await User.save({ data, upsert })
 
 })
 ```
@@ -1878,7 +1919,7 @@ router.delete('/users/:userId(\\d+)', async (req, res)=> {
 
     const { userId } = req.params
 
-    const result = await User.delete({
+    const response = await User.delete({
         where: { userId }
     })
 
@@ -1892,7 +1933,7 @@ router.delete('/users/:userId(\\d+)', async (req, res)=> {
 
     const { userId } = req.params
 
-    const result = await User.delete({
+    const response = await User.delete({
         where: { 
             department: ['#salesInterns', '#marketingInterns'],
             {
@@ -1937,7 +1978,7 @@ router.post('/orders', async (req,res) => {
     // create 'session' instance using 'SessionManager'
     const session = new SessionManager(pool) // 'pool' or 'connection' is required
 
-    // initiate MySQL 'transaction' using 'init' lifecycle method
+    // initiate 'transaction' using 'init' lifecycle method
    const initResp =  await session.init()
 
     // handle if session init failed
@@ -1994,7 +2035,7 @@ import { UnSQL } from 'unsql'
 Any string value that **starts with a** `#` is considered as a **string value** and any other string that **does not start with** `#` is considered as a **column name**. This `#` is ignored while utilizing the actual string value. If your string value is some sort of code or any value that also has a **#** at the beginning then also an additional `#` as prefix is required else the **#** in your value will be ignored (e.g. `'#someCode'` is required to be written as `'##someCode'`)
 
 ```javascript
-const result = await User.find({
+const response = await User.find({
     select: ['userId', 'firstName', 'lastName', '#test']
     where: {
         firstName: '#Siddharth'
@@ -2005,7 +2046,7 @@ const result = await User.find({
 
 ### What are Reserved Constants in UnSQL?
 
-Apart from built-in methods, `UnSQL` also has various built-in **reserved constants** (supported by MySQL database) as mentioned below:
+Apart from built-in methods, `UnSQL` also has various built-in **reserved constants** (supported by SQL database) as mentioned below:
 
 | Constant           | Description                                                                                        |
 | ------------------ | -------------------------------------------------------------------------------------------------- |
@@ -2017,20 +2058,22 @@ Apart from built-in methods, `UnSQL` also has various built-in **reserved consta
 | `localTime`        | exactly same as `localTimestamp`                                                                   |
 | `utcTimestamp`     | provides `currentTimestamp` **in UTC format**                                                      |
 | `pi`               | provides value of mathematical constant **pi** i.e. **approx. `3.141593`**                         |
-| `isNull`           | provides MySQL compatible `IS NULL` value                                                          |
-| `isNotNull`        | provides MySQL compatible `IS NOT NULL` value                                                      |
+| `isNull`           | provides SQL compatible `IS NULL` value                                                            |
+| `isNotNull`        | provides SQL compatible `IS NOT NULL` value                                                        |
 
-### Does UnSQL support MySQL Json datatype?
+### Does UnSQL support SQL Json datatype?
 
-Yes UnSQL provides `json` and `array` wrappers to interact with **MySQL json datatype**. `save` method supports insertion of `data` containing **json Object/Array** into MySQL **json datatype** column, UnSQL internally *stringify* the json data data before saving it.
+Yes UnSQL provides `json` and `array` wrappers to interact with **SQL json datatype** (`jsonb` for `'postgresql'`). `save` method supports insertion of `data` containing **json Object/Array** into SQL **json datatype** (`TEXT` in `sqlite`) column, UnSQL internally *stringify* the json data data before saving it.
 
 ### Support
 ![npm](https://img.shields.io/badge/npm-CB3837?style=for-the-badge&logo=npm&logoColor=white) 
 ![Yarn](https://img.shields.io/badge/yarn-%232C8EBB.svg?style=for-the-badge&logo=yarn&logoColor=white)
-![MySQL](https://img.shields.io/badge/MySQL-005C84?style=for-the-badge&logo=mysql&logoColor=white)
 ![JavaScript](https://img.shields.io/badge/javascript-%23323330.svg?style=for-the-badge&logo=javascript&logoColor=%23F7DF1E)
 ![NodeJs](https://img.shields.io/badge/Node%20js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
 ![NextJs](https://img.shields.io/badge/next%20js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-005C84?style=for-the-badge&logo=mysql&logoColor=white)
+![Postgres](https://img.shields.io/badge/postgres-%23316192.svg?style=for-the-badge&logo=postgresql&logoColor=white)
+![SQLite](https://img.shields.io/badge/sqlite-%2307405e.svg?style=for-the-badge&logo=sqlite&logoColor=white)
 
 ## Author
 

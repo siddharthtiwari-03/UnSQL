@@ -12,7 +12,7 @@
 
 /**
  * casting types
- * @typedef {'char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary'} CastingTypes
+ * @typedef {'char'|'nchar'|'date'|'dateTime'|'signed'|'unsigned'|'decimal'|'binary'|'integer'} CastingTypes
  */
 
 /**
@@ -72,7 +72,6 @@
  * @typedef {Object} StringObject
  * @prop {string} value
  * @prop {EncryptionConfig} [decrypt]
- * @prop {EncryptionConfig} [encrypt]
  * @prop {boolean} [reverse]
  * @prop {'upper'|'lower'} [textCase]
  * @prop {{left?:{length:number, pattern:string}, right?:{length:number, pattern:string}}} [padding]
@@ -88,6 +87,7 @@
  * @typedef {Object} NumericObject
  * @prop {number|string} value
  * @prop {EncryptionConfig} [decrypt]
+ * @prop {EncryptionConfig} [encrypt]
  * @prop {EncryptionConfig} [decimals]
  * @prop {number|string} [sub]
  * @prop {number|string} [add]
@@ -105,6 +105,7 @@
  * @typedef {Object} DateObject
  * @prop {string} value
  * @prop {EncryptionConfig} [decrypt]
+ * @prop {EncryptionConfig} [encrypt]
  * @prop {CastingTypes} [cast]
  * @prop {string} [fromPattern]
  * @prop {string} [format]
@@ -181,6 +182,7 @@
  * json base object
  * @typedef {Object} JsonObject
  * @prop {string|{[key:string]: ValuesObject}|Array} value
+ * @prop {boolean} [aggregate]
  * @prop {string} [extract]
  * @prop {string|number|boolean|Array<string|number|boolean>} [contains]
  * @prop {ComparatorObjects} [compare]
@@ -209,6 +211,7 @@
  * @prop {StringObject} [str]
  * @prop {NumericObject} [num]
  * @prop {DateObject} [date]
+ * @prop {ConcatObject} [concat]
  * @prop {SwitchObject} [case]
  * @prop {IfObject} [if]
  * @prop {BaseJson} [json]

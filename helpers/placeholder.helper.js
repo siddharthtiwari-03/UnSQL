@@ -16,7 +16,12 @@ const prepPlaceholder = ({ value, alias = null, ctx = undefined }) => {
         return value
     }
     else if (checkConstants(value)) {
-        return constantFunctions[value] + '()'
+        if (ctx?.config?.dialect === 'sqlite') {
+            if (value === 'now') return `DATETIME('now')`
+            else if (value === 'localTime') return `TIME('now', 'localtime')`
+            else if (value === 'localTimestamp') return `DATETIME('now', 'localtime')`
+        }
+        return constantFunctions[value]
     }
     else if (value === null || value === 'null' || value === 'NULL') {
         return NULL
