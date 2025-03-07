@@ -309,6 +309,12 @@ Each of these properties is explained below:
         join: [{ table: 'order_history', using: ['orderId'] }] // ref. of join object
     })
     ```
+    Below is the explanation for each of these join types:
+    - `left` considers all records in parent table and only matching records from child table
+    - `right` considers all records in child table and only matching records from parent table
+    - `inner` only matching rows based on `using` column(s)
+    - `cross` cartesian product of records in parent and child tables
+    - `natural` based on columns with the same name and datatype (automatically detected)
   - <span id="where">`where`</span> filters record(s) to be fetched from the database based on the conditions provided as simple (or nested) objects in `key: value` pairs, comparator methods, wrapper methods etc.
     ```javascript
     // Sample:
