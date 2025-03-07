@@ -110,9 +110,19 @@ export const pool = new Pool({...})
 ```javascript
 const sqlite3 = require('sqlite3').verbose()
 
-const db = new sqlite3.Database('./databases/test.db', err => {
-    if (err) console.error('error while opening database', err)
-})
+const { open } = require('sqlite')
+
+const db = (async () => {
+    try {
+        return await open({
+            filename: './databases/test2.db',
+            driver: sqlite3.Database,
+        })
+    } catch (error) {
+        console.error('Error initializing database:', error)
+        throw error // Rethrow the error to be handled by the caller
+    }
+})()
 
 module.exports = { db }
 ```
@@ -265,11 +275,11 @@ Each of these properties is explained below:
     ```javascript
     // Interface for each join object:
     {
-        type:'', // 'left'/'right'/'inner'/'cross'/'fullOuter'
-        alias: undefined,
-        table: null, // table to associate
+        type: '', // (default '') 'left'/'right'/'inner'/'cross'/'fullOuter'
+        alias: undefined, // local reference name to the child table
+        table: null, // (required) table to associate
         select: ['*'], // columns to be fetched
-        join: [], // nest association
+        join: [], // nest another association inside this
         where: {}, // filter record(s) based on condition(s)
         junction: 'and', // connect condition(s) using
         groupBy: [], // group record(s) by column name(s)
@@ -277,24 +287,25 @@ Each of these properties is explained below:
         orderBy: {}, // re-arrange record based on 
         limit: undefined, // limit no. of records
         offset: undefined, // set the starting index for records
+        using: [] // (required) array of common column(s) or { parentColumn: childColumn }
     }
 
     // Sample:
     const response = await Order.find({
         select: ['orderId', 'createdOn',
             {
-                json: {
+                json: { // creating json object using columns from associated table
                     value: {
-                        itemId: 'itemId',
-                        name: 'itemName',
-                        quantity: 'quantity'
+                        itemId: 'itemId', // column from associated table
+                        name: 'itemName', // column from associated table
+                        quantity: 'quantity' // column from associated table
                     },
-                    aggregate: true,
+                    aggregate: true, // wrapping multiple objects inside array
                     as: 'items'
                 }
             }
         ],
-        join: [{ table: 'order_history', using: ['orderId'] }]
+        join: [{ table: 'order_history', using: ['orderId'] }] // ref. of join object
     })
     ```
   - <span id="where">`where`</span> filters record(s) to be fetched from the database based on the conditions provided as simple (or nested) objects in `key: value` pairs, comparator methods, wrapper methods etc.
@@ -569,8 +580,8 @@ UnSQL has various Constants (Reserved Keywords), Units (Date/Time), Wrapper Obje
 
 > **Please note:**
 > 1. Due to limited / difference in implementation in all three dialects, some of the keywords mentioned below are not supported by respective sql dialect:
->   - MySQL: `tz`, `TZ`, `q`
->   - SQLite: `tz`, `TZ`, `q`
+>       - MySQL: `tz`, `TZ`, `q`
+>       - SQLite: `tz`, `TZ`, `q`
 > 2. `fromPattern` property / feature is not supported by `sqlite`
 > 3. Aforementioned units are only for formatting / creating date from string pattern and not to be confused with the date units used for addition / subtraction date / time units.
 

@@ -587,13 +587,15 @@ const executePostgreSQL = async ({ sql, values, debug = false, config, session =
  */
 async function executeSqlite({ sql, values, debug = false, config, methodType = 'all', session = undefined, debugMessage = '' }) {
     const db = await (session?.pool || config?.pool)
+    console.log('methodType', methodType)
     handleQueryDebug(debug, sql, values)
     const isBenchmarking = debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true
     if (typeof db[methodType] != 'function') return { success: false, error: `Invalid method '${methodType}' detected!` }
     try {
         if (!session?.pool) await db.run('BEGIN TRANSACTION')
         if (isBenchmarking) console.time(`${colors.blue}UnSQL benchmark:${colors.reset} ${colors.cyan}${debugMessage}${colors.reset}`)
-        const result = await db.run(sql, values) // execute query
+        const result = await db[methodType](sql, values) // execute query
+        console.log('result', result)
         if (!session?.pool) await db.run('COMMIT')
         if (isBenchmarking) console.timeEnd(`${colors.blue}UnSQL benchmark:${colors.reset} ${colors.cyan}${debugMessage}${colors.reset}`)
         return {
