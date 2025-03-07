@@ -288,7 +288,7 @@ Each of these properties is explained below:
         limit: undefined, // limit no. of records
         offset: undefined, // set the starting index for records
         using: [], // (required) array of common column(s) or { parentColumn: childColumn }
-        as: null // required with 'select'/ 'where'/'having' takes priority over 'as' to refer columns from outside this object
+        as: null // required with 'select'/'where'/'having' properties takes priority over 'as' to refer columns from outside this object
     }
 
     // Sample:
@@ -309,10 +309,15 @@ Each of these properties is explained below:
         join: [{ table: 'order_history', using: ['orderId'] }] // ref. of join object
     })
     ```
-    Below is the explanation for each of these join types:
+    **Please note:** 
+    1. `using` property can accept array of column names or array of `{ parentColumn: childColumn }` where `parentColumn` is the column from parent table and `childColumn` is the column from child table. When `alias` is passed, it is automatically patched to the respective column name
+    2. When using `select` | `where` | `having` inside join, `as` is mandatory
+    3. When both `alias` and `as` is set, `as` will be used as prefix to refer column names from child tables outside join object context
+
+    Below is the explanation for each of these <span id="join-types">**join types**</span>:
     - `natural` based on columns with the same name and datatype (automatically detected)
     - `left` considers all records in parent table and only matching records from child table
-    - `right` considers all records in child table and only matching records from parent table (not suported by `sqlite`)
+    - `right` considers all records in child table and only matching records from parent table (not supported by `sqlite`)
     - `inner` only matching rows based on `using` column(s)
     - `cross` cartesian product of records in parent and child tables
     - `fullOuter` returns all records from both tables, regardless of matching condition (only supported by `postgresql`)
