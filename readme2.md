@@ -161,7 +161,7 @@ const { UnSQL } = require('unsql')
 const pool = require('path/to/your/db/service')
 
 /**
- * @class User
+ * @class
  * @extends UnSQL
  */
 class User extends UnSQL {
@@ -191,7 +191,7 @@ import { UnSQL } from 'unsql'
 import { pool } from 'path/to/your/db/service'
 
 /**
- * @class User
+ * @class
  * @extends UnSQL
  */
 export class User extends UnSQL {
@@ -306,7 +306,7 @@ Each of these properties is explained below:
                 }
             }
         ],
-        join: [{ table: 'order_history', using: ['orderId'] }] // ref. of join object
+        join: [{ table: 'order_items', using: ['orderId'] }] // ref. of join object
     })
     ```
     **Please note:** 
@@ -458,17 +458,55 @@ Each of these properties is explained below:
 
 ### 3.4 Raw Query Method
 
-`rawQuery` method is the most powerful method among all, unlike other methods that are limited to the base mapping, this method is not tied to any particular table, but utilizes the connection pool to execute queries on that database itself. It is capable of executing any and all types of queries including DDL, DML etc. It supports normal queries as well as placeholders: 
-   - In `mysql`: 
-     - Positional placeholders: `??`, `?`, 
-     - Named placeholders: `:namedVariable`, 
-     - user defined variables: `@userVariable`, 
-   - In `postgresql`: 
-     - Positional placeholder: `$1`, `$2`, `$3`...
-   - In `sqlite`:
-     - Positional placeholder: `?`,
-     - Named placeholders: `:namedVariable` or `$namedVariable` or `@namedVariable`,
-     - Indexed placeholder: `$1`, `$2`, `$3`... or `?1`, `?2`, `?3`...
+`rawQuery` method is the most powerful method among all, unlike other methods that are limited to the base mapping, this method is not tied to any particular table, but utilizes the connection pool to execute queries on that database itself. It is capable of executing any and all types of queries including **DDL, DML etc** (In `sqlite`, set `methodType: 'exec'`). 
+
+It supports various types of methods (as mentioned below) for `mysql` and `sqlite`, each method has specific capabilities:
+
+| Method Type | Dialect  | Description                                                                           |
+| ----------- | -------- | ------------------------------------------------------------------------------------- |
+| `execute`   | `mysql`  | supports **Session Manager**, and all type of queries (DML, DDL etc.)                 |
+| `query`     | `mysql`  | supports multiple sql statements in single query string, and all type of queries      |
+| `all`       | `sqlite` | supports **Session Manager and SELECT query** returns *record(s) as array*            |
+| `run`       | `sqlite` | supports **Session Manager, INSERT and UPDATE query**, *returns insertId and changes* |
+| `exec`      | `sqlite` | supports **CREATE, DROP ALTER and similar query**, returns nothing                    |
+
+It supports normal queries as well as placeholders: 
+ - In `mysql`: 
+   - Positional placeholders: `??`, `?`, 
+   - Named placeholders: `:namedVariable`, 
+   - user defined variables: `@userVariable`, 
+ - In `postgresql`: 
+   - Positional placeholder: `$1`, `$2`, `$3`...
+ - In `sqlite`:
+   - Positional placeholder: `?`,
+   - Named placeholders: `:namedVariable` or `$namedVariable` or `@namedVariable`,
+   - Indexed placeholder: `$1`, `$2`, `$3`... or `?1`, `?2`, `?3`...
+
+```javascript
+// Sample: (dialect: 'mysql')
+const response = await User.rawQuery({ // here user model is used just to utilize 'pool'
+    sql: `CREATE TABLE IF NOT EXISTS users (
+            userId INT(11) PRIMARY KEY AUTO_INCREMENT,
+            firstName VARCHAR(45) DEFAULT NULL,
+            lastName VARCHAR(45) DEFAULT NULL,
+            email VARCHAR(255) UNIQUE DEFAULT NOT NULL,
+            password VARCHAR(255) DEFAULT NOT NULL,
+            createdOn TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            lastUpdatedOn TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            status TINYINT(1) DEFAULT 1
+        );
+        CREATE TABLE IF NOT EXISTS order_history (
+            orderId INT(11) PRIMARY KEY AUTO_INCREMENT,
+            amount DECIMAL (10,2) DEFAULT 0.00,
+            coupon VARCHAR(45) DEFAULT NULL,
+            discount DECIMAL (10,2) DEFAULT 0.00,
+            createdOn TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            lastUpdatedOn TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            status TINYINT(1) DEFAULT 0
+        );`,
+    methodType: 'query' // this supports multiple statements in single query string
+})
+```
 
 ### 3.5 Export Method
 
@@ -1118,8 +1156,8 @@ All objects are explained below:
                     value: {
                         orderId: 'orderId',
                         purchaseDate: 'createdOn',
-                        orderAmount: 'totalAmount',
-                        orderStatus: 'orderStatus'
+                        total: 'amount',
+                        status: 'status'
                     },
                     table: 'order_history',
                     where: {
@@ -1529,6 +1567,10 @@ router.post('/orders', async (req,res) => {
 ### 7.1 Difference between plain text and column name?
 
 UnSQL uses `#` as prefix to identify if string is plain text, or column name if string does not start with `#`.
+
+### 7.2 What will happen if secret/iv/sha is defined inside config, encryption and decrypt/encrypt property?
+
+When configurations like `secret` | `iv` | `sha` are declared in all places, `encryption` at method level will override `encryption` at `config`, similarly `decrypt` / `encrypt` inside special object will override all other.
 
 ### Support
 ![npm](https://img.shields.io/badge/npm-CB3837?style=for-the-badge&logo=npm&logoColor=white) 

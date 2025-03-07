@@ -29,7 +29,7 @@ class UnSQL {
     static _variableCount = 0
     static isMySQL = false
     static isPostgreSQL = false
-    static SQLite = false
+    static isSQLite = false
 
     /**
      * Find method
@@ -362,13 +362,13 @@ class UnSQL {
      * @param {import("./defs/types").EncryptionConfig} [rawQueryParams.encryption] (optional) enables debug mode
      * @param {import("./defs/types").DebugTypes} [rawQueryParams.debug] (optional) enables debug mode
      * @param {Object} [rawQueryParams.session] (optional) global session reference for transactions and rollback
-     * @param {'run'|'all'|'exec'} [rawQueryParams.methodType=all] (optional) used only with 'sqlite'
+     * @param {'run'|'all'|'exec'|'execute'|'query'} [rawQueryParams.methodType=all] (optional) used only with 'sqlite'
      * @returns {Promise<{success:boolean, error?:object, result?:object}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
      */
-    static async rawQuery({ sql = '', values = [], debug = false, encryption = undefined, session = undefined, methodType = 'all' }) {
+    static async rawQuery({ sql = '', values = [], debug = false, encryption = undefined, session = undefined, methodType = this?.isSQLite ? 'all' : 'execute' }) {
         switch (this?.config?.dialect) {
             case 'mysql':
-                return await executeMySQL({ sql, values, encryption, debug, session, config: this?.config, debugMessage: `Executed raw query in` })
+                return await executeMySQL({ sql, values, encryption, debug, session, config: this?.config, methodType, debugMessage: `Executed raw query in` })
             case 'postgresql':
                 return await executePostgreSQL({ sql, values, debug, config: this?.config, debugMessage: `Executed raw query in` })
             case 'sqlite':
@@ -498,22 +498,20 @@ class UnSQL {
  * @param {import("./defs/types").DebugTypes} [options.debug] enables debug mode
  * @param {Object} [options.session] global session reference for transactions and rollback
  * @param {Object} [options.config] global configuration object
+ * @param {'all'|'run'|'exec'|'execute'|'query'} [options.methodType=execute] global configuration object
  * @param {string} [options.debugMessage] global configuration object
  * @param {import("./defs/types").EncryptionConfig} [options.encryption] enables encryption
  * @returns {Promise<{success:false, error:*}|{success:true, result:*}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'results'
  */
-const executeMySQL = async ({ sql, values, debug = false, session = undefined, config, encryption = undefined, debugMessage = '' }) => {
-
+const executeMySQL = async ({ sql, values, debug = false, session = undefined, config, methodType = 'execute', encryption = undefined, debugMessage = '' }) => {
     const conn = await (session?.conn || config?.pool?.getConnection() || config?.connection)
-
-
     try {
         if (!session?.conn) await conn?.beginTransaction()
         if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.time(`${colors.blue}UnSQL benchmark:${colors.reset} ${colors.cyan}${debugMessage}${colors.reset}`)
         if ((encryption?.mode && encryption?.mode != config?.dbEncryptionMode) || (config?.encryption?.mode && config?.encryption?.mode != config?.dbEncryptionMode)) {
             try {
                 const encPrepared = await conn.format('SET block_encryption_mode = ?', [encryption?.mode || config?.encryption?.mode])
-                const [encResp] = await conn?.execute(encPrepared)
+                const [encResp] = await conn?.[methodType](encPrepared)
                 if (!session?.conn) await conn?.commit()
             } catch (error) {
                 throw { message: `[Error]: ${error?.message} `, cause: `While setting encryption mode to: '${encryption?.mode || config?.encryption?.mode}'` }
@@ -521,7 +519,7 @@ const executeMySQL = async ({ sql, values, debug = false, session = undefined, c
         }
         const prepared = conn.format(sql, values)
         handleQueryDebug(debug, sql, values, prepared)
-        const [result] = await conn.execute(prepared)
+        const [result] = await conn[methodType](prepared)
         if (!session?.conn) await conn?.commit()
         if (debug) console.info(colors.green, 'Query executed successfully!\n', colors.reset)
         if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.timeEnd(`${colors.blue}UnSQL benchmark:${colors.reset} ${colors.cyan}${debugMessage}${colors.reset}\n`)
@@ -533,7 +531,6 @@ const executeMySQL = async ({ sql, values, debug = false, session = undefined, c
     } finally {
         if (config?.pool && !session?.conn) await conn?.release()
     }
-
 }
 
 /**
@@ -545,11 +542,8 @@ const executeMySQL = async ({ sql, values, debug = false, session = undefined, c
  * @author Siddharth Tiwari <dev.unsql@gmail.com>
  */
 const executePostgreSQL = async ({ sql, values, debug = false, config, session = undefined, timezone = undefined, encryption = undefined, debugMessage = '' }) => {
-
     const client = await (session?.conn || config?.pool?.connect())
-
     const isBenchmarking = debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true
-
     handleQueryDebug(debug, sql, values)
     try {
         if (!session?.conn) await client.query('BEGIN')
@@ -580,7 +574,7 @@ const executePostgreSQL = async ({ sql, values, debug = false, config, session =
  * @param {Array} options.values
  * @param {import("./defs/types").DebugTypes} [options.debug]
  * @param {import("./defs/types").ConfigObject} [options.config]
- * @param {'all'|'run'|'exec'} [options.methodType=all]
+ * @param {'all'|'run'|'exec'|'execute'|'query'} [options.methodType=all]
  * @param {string} [options.debugMessage]
  * @param {*} [options.session]
  * @returns {Promise<{success:boolean, result?:Array, insertId?:number, changes?:number, error?:*}>}
