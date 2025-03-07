@@ -129,6 +129,11 @@
  * @typedef {Object} ConcatObject
  * @prop {SelectObject} value
  * @prop {string|number|boolean} pattern
+ * @prop {boolean} [reverse]
+ * @prop {'upper'|'lower'} [textCase]
+ * @prop {{left?:{length:number, pattern:string}, right?:{length:number, pattern:string}}} [padding]
+ * @prop {{start:number, length:number}} [substr]
+ * @prop {'left'|'right'|boolean} [trim]
  * @prop {WhereObject} [compare]
  * @prop {string} [as]
  */
@@ -200,7 +205,7 @@
  * sub-query object
  * @typedef {Object} JoinQuery
  * @prop {SelectObject} [select]
- * @prop {'left'|'right'|'inner'} [type]
+ * @prop {'left'|'right'|'inner'|'fullOuter'|'cross'} [type]
  * @prop {(string|{[column:string]:string})[]} using
  * @typedef {PartialQuery & JoinQuery} BaseJoin
  */

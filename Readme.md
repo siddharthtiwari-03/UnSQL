@@ -1679,7 +1679,7 @@ Each of the properties is explained below:
 #### Read all records:
 
 ```javascript
-router.get('/users/:userId(\\d+)', async (req, res)=> {
+router.get('/users', async (req, res)=> {
     const response = await User.find()
 
     // above code is similar to

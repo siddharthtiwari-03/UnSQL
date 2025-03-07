@@ -16,7 +16,7 @@ const prepPlaceholder = ({ value, alias = null, ctx = undefined }) => {
         return value
     }
     else if (checkConstants(value)) {
-        if (ctx?.config?.dialect === 'sqlite') {
+        if (ctx?.isSQLite) {
             if (value === 'now') return `DATETIME('now')`
             else if (value === 'localTime') return `TIME('now', 'localtime')`
             else if (value === 'localTimestamp') return `DATETIME('now', 'localtime')`
@@ -26,11 +26,11 @@ const prepPlaceholder = ({ value, alias = null, ctx = undefined }) => {
     else if (value === null || value === 'null' || value === 'NULL') {
         return NULL
     }
-    else if (Date.parse(value) || parseInt(value) || parseFloat(value) || typeof value === 'boolean' || value?.toString()?.startsWith('#')) {
-        return ctx?.config?.dialect === 'postgresql' ? `$${ctx._variableCount++}` : '?'
+    else if (Date.parse(value) || parseInt(value) || parseFloat(value) || typeof value === 'boolean' || value?.toString()?.startsWith('#') || value === ' ' || value === '') {
+        return ctx?.isPostgreSQL ? `$${ctx._variableCount++}` : '?'
     }
 
-    return ctx?.config?.dialect === 'mysql' ? '??' : prepName({ value, alias })
+    return ctx.isMySQL ? '??' : prepName({ value, alias })
 }
 
 module.exports = { prepPlaceholder }

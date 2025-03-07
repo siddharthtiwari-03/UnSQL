@@ -1,9 +1,7 @@
 // @ts-check
 const { colors, handleError, handleQueryDebug } = require("./helpers/console.helper")
-const { checkConstants } = require("./helpers/constants.helper")
 const { prepSelect, prepWhere, prepJoin, prepOrderBy, patchGroupBy, patchLimit, prepEncryption, isVariable } = require("./helpers/main.helper")
 const { prepName } = require("./helpers/name.helper")
-const { prepPlaceholder } = require("./helpers/placeholder.helper")
 
 /**
  * UnSQL is JavaScript based library to interact with structured databases (MySQL). It provides clean and easy interface for interaction for faster and smooth developers' experience.
@@ -11,7 +9,6 @@ const { prepPlaceholder } = require("./helpers/placeholder.helper")
  * @alias UnSQL
  * @classdesc All model classes shall extend using UnSQL base class to access advanced functionalities
  * @namespace UnSQL
- * 
  * @author Siddharth Tiwari <dev.unsql@gmail.com>
  */
 class UnSQL {
@@ -30,6 +27,9 @@ class UnSQL {
     }
 
     static _variableCount = 0
+    static isMySQL = false
+    static isPostgreSQL = false
+    static SQLite = false
 
     /**
      * Find method
@@ -59,54 +59,42 @@ class UnSQL {
     static async find({ alias = undefined, select = [], join = [], where = {}, junction = 'and', groupBy = [], having = {}, orderBy = {}, limit = undefined, offset = undefined, encryption = {}, debug = false, session = undefined } = {}) {
 
         const defaultResp = handleDefaults(this)
-
         if (!defaultResp?.success) return defaultResp
-
         patchDefaults(this)
-
         const values = []
-
-        let sql = 'SELECT '
+        const sqlParts = []
 
         try {
-            sql += prepSelect({ alias, select, values, encryption, ctx: this })
-
-            sql += ' FROM ' + (this?.config?.dialect === 'mysql' ? '??' : this.config?.table)
-            if (this?.config?.dialect === 'mysql') {
+            sqlParts.push(`SELECT ${prepSelect({ alias, select, values, encryption, ctx: this })} FROM ${this?.isMySQL ? '??' : this.config?.table}`)
+            if (this?.isMySQL) {
                 values.push(this.config.table)
                 if (alias) {
-                    sql += ' ??'
+                    sqlParts.push('??')
                     values.push(alias)
                 }
             } else if (alias) {
-                sql += ` ${alias}`
+                sqlParts.push(`${alias}`)
             }
-
-            if (join.length) sql += prepJoin({ alias, join, values, encryption, ctx: this })
-
-            if (where && Object.getOwnPropertyNames(where).length > 0) sql += ` WHERE ${prepWhere({ alias, where, junction, values, encryption, ctx: this })}`
-
-            sql += patchGroupBy({ groupBy, alias, values, ctx: this })
-
-            if (having && Object.getOwnPropertyNames(having).length > 0) sql += ` HAVING ${prepWhere({ alias, where: having, junction, values, encryption, ctx: this })}`
-
-            sql += prepOrderBy({ alias, orderBy, values, ctx: this })
-            sql += patchLimit(limit, values, this)
-            sql += patchLimit(offset, values, this, 'OFFSET')
+            if (join.length) sqlParts.push(prepJoin({ alias, join, values, encryption, ctx: this }))
+            if (Object.keys(where).length > 0) sqlParts.push(`WHERE ${prepWhere({ alias, where, junction, values, encryption, ctx: this })}`)
+            if (groupBy.length) sqlParts.push(patchGroupBy({ groupBy, alias, values, ctx: this }))
+            if (Object.keys(having).length > 0) sqlParts.push(`HAVING ${prepWhere({ alias, where: having, junction, values, encryption, ctx: this })}`)
+            if (Object.keys(orderBy).length > 0) sqlParts.push(prepOrderBy({ alias, orderBy, values, ctx: this }))
+            if (typeof limit === 'number') sqlParts.push(patchLimit(limit, values, this))
+            if (typeof offset === 'number') sqlParts.push(patchLimit(offset, values, this, 'OFFSET'))
 
             switch (this?.config?.dialect) {
                 case 'mysql':
-                    return await executeMySQL({ sql, values, encryption, debug, session, config: this?.config, debugMessage: 'Fetched records in' })
+                    return await executeMySQL({ sql: sqlParts.join(' '), values, encryption, debug, session, config: this?.config, debugMessage: 'Fetched records in' })
                 case 'postgresql':
-                    return await executePostgreSQL({ sql, values, debug, config: this?.config, debugMessage: 'Fetched records in' })
+                    return await executePostgreSQL({ sql: sqlParts.join(' '), values, debug, config: this?.config, debugMessage: 'Fetched records in' })
                 case 'sqlite':
-                    return await executeSqlite({ sql, values, config: this?.config, debug, methodType: 'all', debugMessage: 'Fetched records in' })
+                    return await executeSqlite({ sql: sqlParts.join(' '), values, config: this?.config, debug, methodType: 'all', debugMessage: 'Fetched records in' })
                 default:
                     return { success: false, error: 'Invalid dialect provided in config' }
             }
 
         } catch (error) {
-            console.error('error in find', error)
             handleError(debug, error)
             return { success: false, error: error.sqlMessage || error.message || error }
         }
@@ -140,69 +128,61 @@ class UnSQL {
         if (!defaultResp?.success) return defaultResp
 
         if (Array.isArray(data) && (Object.keys(where).length || Object.keys(having).length || groupBy.length)) {
-            console.warn(colors.yellow, 'Invalid combination to update multiple records', colors.reset)
             return { success: false, error: 'Invalid combination to update multiple records, only single object inside "data" property can be passed while updating records, array of objects detected' }
         }
 
-
-        if (!Object.keys(where).length && !Object.keys(having).length && this?.config?.dialect != 'mysql')
-            data = Array.isArray(data) ? data : [data]
+        if (!Object.keys(where).length && !Object.keys(having).length && this?.config?.dialect != 'mysql') data = Array.isArray(data) ? data : [data]
 
         const values = []
-        let sql = ''
+        const sqlParts = []
 
-        sql += (Object.keys(where).length ? 'UPDATE ' : 'INSERT INTO ') + (this?.config?.dialect === 'mysql' ? '??' : this.config?.table) + ' '
+        sqlParts.push(`${Object.keys(where).length ? 'UPDATE' : 'INSERT INTO'} ${this?.isMySQL ? '??' : this.config?.table}`)
 
-        if (this?.config?.dialect === 'mysql') {
+        if (this?.isMySQL) {
             values.push(this.config.table)
-
             if (alias) {
-                sql += ' ??'
+                sqlParts.push('??')
                 values.push(alias)
             }
         } else if (alias) {
-            sql += ` ${alias}`
+            sqlParts.push(alias)
         }
 
         try {
 
             switch (true) {
-
                 // handle if data is array of json object(s)
                 case Array.isArray(data): {
                     console.info(colors.cyan, (data.length > 1000 ? 'Large dataset detected, p' : 'P') + 'lease wait while UnSQL prepares query for each record, this might take few seconds...', colors.reset)
                     const insertColumns = []
-
                     // loop over each json object for columns
                     for (let i = 0; i < data.length; i++) {
-
                         // extract keys from each object
                         Object.keys(data[i]).forEach(col => {
                             // track if col not already tracked
                             if (!insertColumns.includes(col)) insertColumns.push(col)
                         })
-
                     }
                     // loop for columns ended
 
                     // this will patch placeholder for all columns in single array
-                    if (this?.config?.dialect === "mysql") {
-                        sql += `(??)`
+                    if (this?.isMySQL) {
+                        sqlParts.push('(??)')
                         values.push(insertColumns)
                     } else {
-                        sql += `(${insertColumns.join(', ')})`
+                        sqlParts.push(`(${insertColumns.join(', ')})`)
                     }
 
-                    sql += ' VALUES '
+                    sqlParts.push('VALUES')
                     // loop over each entry (json object) for values
                     for (let i = 0; i < data.length; i++) {
                         const properties = []
                         for (let j = 0; j < insertColumns.length; j++) { // loop over each property
-                            let propSql = this?.config?.dialect === 'postgresql' ? `${this._variableCount++}` : '?'
+                            let propSql = this?.isPostgreSQL ? `$${this._variableCount++}` : '?'
                             if (typeof data[i][insertColumns[j]] === 'object') {
-                                if (this?.config?.dialect === 'mysql') {
+                                if (this?.isMySQL) {
                                     values.push(JSON.stringify(data[i][insertColumns[j]]))
-                                } else if (this?.config?.dialect === 'postgresql') {
+                                } else if (this?.isPostgreSQL) {
                                     this._variableCount-- // revert back variable count since not being used
                                     propSql = prepJsonbUpdate(insertColumns[j], data[i][insertColumns[j]], (Object.keys(where).length || Object.keys(having).length))
                                 }
@@ -211,14 +191,11 @@ class UnSQL {
                             }
 
                             propSql = prepEncryption({ placeholder: propSql, col: insertColumns[j], values, ctx: this, encrypt, encryption })
-                            // const encResp = prepEncryption({ placeholder: propSql, col: insertColumns[j], values, ctx: this, encrypt, encryption })
-                            // propSql = encResp.sql // replace previous sql with encryption wrapper
-                            // values.push(...encResp?.values) // values are patched not replaced
                             properties.push(propSql)
                         } // loop for properties ended
 
                         // this prefixes ',' before each (except 1st) entry
-                        sql += (i != 0 ? ', ' : '') + `(${properties.join(', ')})`
+                        sqlParts.push(`${(i != 0 ? ', ' : '')}(${properties.join(', ')})`)
                     }
                     // loop for values ended
                     if (debug === true || debug === 'query' || debug === 'benchmark' || debug === 'benchmark-query') console.info(colors.cyan, `Query generated, inserting records`, colors.reset)
@@ -227,71 +204,66 @@ class UnSQL {
 
                 case typeof data === 'object': {
                     // extract all columns from data object
-                    sql += 'SET ' + Object.entries(data).map(([col, val]) => {
+                    const setEntries = Object.entries(data).map(([col, val]) => {
 
-                        // const colPlaceholder = prepPlaceholder({ value: col, alias, ctx: this })
-                        const colPlaceholder = (this?.config?.dialect === 'mysql' ? '??' : col)
+                        const colPlaceholder = this?.isMySQL ? '??' : col
                         let propSql = colPlaceholder + ' = '
                         if (isVariable(colPlaceholder)) values.push(prepName({ value: col, alias }))
 
                         if (typeof val === 'object') {
-                            if (this?.config?.dialect === 'mysql') {
+                            if (this?.isMySQL) {
                                 propSql += '?'
                                 values.push(JSON.stringify(val))
-                            } else if (this?.config?.dialect === 'postgresql') {
+                            } else if (this?.isPostgreSQL) {
                                 propSql += prepJsonbUpdate(col, val, (Object.keys(where).length || Object.keys(having).length))
                             }
                         } else {
                             values.push(val)
                             if (encrypt[col]) {
                                 propSql += prepEncryption({
-                                    placeholder: (this?.config?.dialect === 'postgresql' ? `$${this._variableCount++}` : '?'), col, ctx: this, encrypt, encryption, values
+                                    placeholder: (this?.isPostgreSQL ? `$${this._variableCount++}` : '?'), col, ctx: this, encrypt, encryption, values
                                 })
                             } else {
-                                propSql += this?.config?.dialect === 'postgresql' ? `$${this._variableCount++}` : '?'
+                                propSql += this?.isPostgreSQL ? `$${this._variableCount++}` : '?'
                             }
                         }
 
                         return propSql
-                    }).join(', ') // loop for data object ended
+                    }) // loop for data object ended
+
+                    sqlParts.push(`SET ${setEntries.join(', ')}`)
 
                     if (Object.keys(upsert).length) { // if upsert object is provided
-                        sql += ' ON DUPLICATE KEY UPDATE ' + Object.entries(upsert).map(([col, val]) => {
-
+                        const duplicateEntries = Object.entries(upsert).map(([col, val]) => {
                             let propSql = ''
-
-                            const colPlaceholder = (this?.config?.dialect === 'mysql' ? '??' : col)
+                            const colPlaceholder = (this?.isMySQL ? '??' : col)
                             propSql += colPlaceholder + ' = '
                             if (isVariable(colPlaceholder)) values.push(prepName({ value: col, alias }))
 
                             if (typeof val === 'object') {
-                                if (this?.config?.dialect === 'mysql') {
+                                if (this?.isMySQL) {
                                     values.push(JSON.stringify(val))
-                                } else if (this?.config?.dialect === 'postgresql') {
+                                } else if (this?.isPostgreSQL) {
                                     propSql += prepJsonbUpdate(col, val, (Object.keys(where).length || Object.keys(having).length))
                                 }
                             } else {
                                 values.push(val)
                                 if (encrypt[col]) {
                                     propSql += prepEncryption({
-                                        placeholder: (this?.config?.dialect === 'postgresql' ? `$${this._variableCount++}` : '?'), col, ctx: this, encrypt, encryption, values
+                                        placeholder: (this?.isPostgreSQL ? `$${this._variableCount++}` : '?'), col, ctx: this, encrypt, encryption, values
                                     })
-
                                 }
-                                else propSql += this?.config?.dialect === 'postgresql' ? `$${this._variableCount++}` : '?'
-
+                                else propSql += this?.isPostgreSQL ? `$${this._variableCount++}` : '?'
                             }
 
                             return propSql
+                        }) // upsert loop ended
 
-                        }).join(', ') // upsert loop ended
+                        sqlParts.push(`ON DUPLICATE KEY UPDATE ${duplicateEntries.join(', ')}`)
                     }
-
-                    if (Object.keys(where).length) sql += ` WHERE ${prepWhere({ alias, where, junction, encryption, ctx: this })}`
-
-                    sql += patchGroupBy({ groupBy, alias, values, ctx: this })
-
-                    if (Object.keys(having).length) sql += ` HAVING ${prepWhere({ alias, where: having, junction, encryption, ctx: this })}`
+                    if (Object.keys(where).length) sqlParts.push(` WHERE ${prepWhere({ alias, where, junction, values, encryption, ctx: this })}`)
+                    if (groupBy.length > 0) sqlParts.push(patchGroupBy({ groupBy, alias, values, ctx: this }))
+                    if (Object.keys(having).length) sqlParts.push(` HAVING ${prepWhere({ alias, where: having, junction, values, encryption, ctx: this })}`)
 
                     break
                 }
@@ -302,18 +274,17 @@ class UnSQL {
 
             switch (this?.config?.dialect) {
                 case 'mysql':
-                    return await executeMySQL({ sql, values, encryption, debug, session, config: this?.config, debugMessage: `${(where && Object.getOwnPropertyNames(where).length > 0) || (having && Object.getOwnPropertyNames(having).length > 0) ? 'Updated' : 'Inserted'} records in` })
+                    return await executeMySQL({ sql: sqlParts.join(' '), values, encryption, debug, session, config: this?.config, debugMessage: `${(Object.keys(where).length > 0) || (Object.keys(having).length > 0) ? 'Updated' : 'Inserted'} records in` })
                 case 'postgresql':
-                    sql += ' RETURNING *'
-                    return await executePostgreSQL({ sql, values, debug, config: this?.config, debugMessage: `${(where && Object.getOwnPropertyNames(where).length > 0) || (having && Object.getOwnPropertyNames(having).length > 0) ? 'Updated' : 'Inserted'} records in` })
+                    sqlParts.push('RETURNING *')
+                    return await executePostgreSQL({ sql: sqlParts.join(' '), values, debug, config: this?.config, debugMessage: `${(Object.keys(where).length > 0) || (Object.keys(having).length > 0) ? 'Updated' : 'Inserted'} records in` })
                 case 'sqlite':
-                    return await executeSqlite({ sql, values, debug, config: this?.config, session, debugMessage: `${(where && Object.getOwnPropertyNames(where).length > 0) || (having && Object.getOwnPropertyNames(having).length > 0) ? 'Updated' : 'Inserted'} records in` })
+                    return await executeSqlite({ sql: sqlParts.join(' '), values, debug, config: this?.config, session, methodType: 'run', debugMessage: `${(Object.keys(where).length > 0) || (Object.keys(having).length > 0) ? 'Updated' : 'Inserted'} records in` })
                 default:
                     return { success: false, error: 'Invalid dialect provided in config' }
             }
 
         } catch (error) {
-            console.error('error message', error?.message)
             return { success: false, error }
         }
     }
@@ -353,32 +324,30 @@ class UnSQL {
         }
 
         const values = []
+        const sqlParts = [`DELETE FROM ${(this?.isMySQL ? '??' : this.config?.table)}`]
 
-        let sql = `DELETE FROM ${(this?.config?.dialect === 'mysql' ? '??' : this.config?.table)} `
-
-        if (this?.config?.dialect === 'mysql') {
+        if (this?.isMySQL) {
             values.push(this.config.table)
-
             if (alias) {
-                sql += ' ??'
+                sqlParts.push('??')
                 values.push(alias)
             }
-        } else if (alias) sql += ` ${alias}`
+        } else if (alias) sqlParts.push(alias)
 
 
-        if (Object.keys(where).length) sql += ` WHERE ${prepWhere({ alias, where, junction, encryption, ctx: this })}`
+        if (Object.keys(where).length) sqlParts.push(`WHERE ${prepWhere({ alias, where, junction, values, encryption, ctx: this })}`)
 
-        sql += patchGroupBy({ groupBy, alias, values, ctx: this })
+        if (groupBy.length > 0) sqlParts.push(patchGroupBy({ groupBy, alias, values, ctx: this }))
 
-        if (Object.keys(having).length) sql += ` HAVING ${prepWhere({ alias, where: having, junction, encryption, ctx: this })}`
+        if (Object.keys(having).length) sqlParts.push(`HAVING ${prepWhere({ alias, where: having, junction, values, encryption, ctx: this })}`)
 
         switch (this?.config?.dialect) {
             case 'mysql':
-                return await executeMySQL({ sql, values, encryption, debug, session, config: this?.config, debugMessage: `Removed record(s) from '${this?.config?.table}' table` })
+                return await executeMySQL({ sql: sqlParts.join(' '), values, encryption, debug, session, config: this?.config, debugMessage: `Removed record(s) from '${this?.config?.table}' table` })
             case 'postgresql':
-                return await executePostgreSQL({ sql, values, debug, config: this?.config, debugMessage: `Removed record(s) from '${this?.config?.table}' table` })
+                return await executePostgreSQL({ sql: sqlParts.join(' '), values, debug, config: this?.config, debugMessage: `Removed record(s) from '${this?.config?.table}' table` })
             case 'sqlite':
-                return await executeSqlite({ sql, values, config: this?.config, debug, methodType: 'run', session, debugMessage: `Removed record(s) from '${this?.config?.table}' table` })
+                return await executeSqlite({ sql: sqlParts.join(' '), values, config: this?.config, debug, methodType: 'run', session, debugMessage: `Removed record(s) from '${this?.config?.table}' table` })
             default:
                 return { success: false, error: 'Invalid dialect provided in config' }
         }
@@ -436,13 +405,10 @@ class UnSQL {
     static async export({ target = this.config.table, directory = 'exports_unsql', select = ['*'], alias = undefined, join = [], where = {}, groupBy = [], having = {}, orderBy = {}, limit = undefined, offset = undefined, encrypt = undefined, encryption = undefined, mode = 'append', debug = false } = {}) {
 
         patchDefaults(this)
-
         const defaultResp = handleDefaults(this)
 
         if (!defaultResp.success) return defaultResp
-
         if (!this?.config?.devMode) return { success: false, error: `[Action Denied]: Record(s) can only be exported from '${this?.name}' model if inside 'config', 'devMode' is set to 'true' (currently '${this?.config?.devMode}')` }
-
         if (Object.getPrototypeOf(target) === UnSQL && !target['config']?.devMode) return { success: false, error: `[Action Denied]: Record(s) can only be exported from '${target['name']}' model if inside 'config', 'devMode' is set to 'true' (currently '${target['config']?.devMode}')` }
 
         const result = await this.find({ alias, select, join, where, groupBy, having, orderBy, limit, offset, debug, encryption })
@@ -501,10 +467,10 @@ class UnSQL {
 
         if (!defaultResp.success) return defaultResp
 
-        const sql = `TRUNCATE ${this?.config?.dialect === 'mysql' ? '??' : this.config?.table}`
+        const sql = `TRUNCATE ${this?.isMySQL ? '??' : this.config?.table}`
         const values = []
 
-        if (this?.config?.dialect === 'mysql') values.push(this.config.table)
+        if (this?.isMySQL) values.push(this.config.table)
 
         const debugMessage = `Reset '${this?.config?.table}' table record(s) in`
 
@@ -543,9 +509,7 @@ const executeMySQL = async ({ sql, values, debug = false, session = undefined, c
 
     try {
         if (!session?.conn) await conn?.beginTransaction()
-
         if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.time(`${colors.blue}UnSQL benchmark:${colors.reset} ${colors.cyan}${debugMessage}${colors.reset}`)
-
         if ((encryption?.mode && encryption?.mode != config?.dbEncryptionMode) || (config?.encryption?.mode && config?.encryption?.mode != config?.dbEncryptionMode)) {
             try {
                 const encPrepared = await conn.format('SET block_encryption_mode = ?', [encryption?.mode || config?.encryption?.mode])
@@ -555,16 +519,12 @@ const executeMySQL = async ({ sql, values, debug = false, session = undefined, c
                 throw { message: `[Error]: ${error?.message} `, cause: `While setting encryption mode to: '${encryption?.mode || config?.encryption?.mode}'` }
             }
         }
-
         const prepared = conn.format(sql, values)
-
         handleQueryDebug(debug, sql, values, prepared)
-
         const [result] = await conn.execute(prepared)
         if (!session?.conn) await conn?.commit()
-        // if (debug === true) console.info(colors.green, 'Query executed successfully!', colors.reset)
-        if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.timeEnd(`${colors.blue}UnSQL benchmark:${colors.reset} ${colors.cyan}${debugMessage}${colors.reset}`)
-        if (debug === true) console.info('\n')
+        if (debug) console.info(colors.green, 'Query executed successfully!\n', colors.reset)
+        if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.timeEnd(`${colors.blue}UnSQL benchmark:${colors.reset} ${colors.cyan}${debugMessage}${colors.reset}\n`)
         return { success: true, result }
     } catch (error) {
         handleError(debug, error)
@@ -594,18 +554,13 @@ const executePostgreSQL = async ({ sql, values, debug = false, config, session =
     try {
         if (!session?.conn) await client.query('BEGIN')
         if (isBenchmarking) console.time(`${colors.blue}UnSQL benchmark:${colors.reset} ${colors.cyan}${debugMessage}${colors.reset}`)
-
-
         const { rows, error } = await client.query(sql, values)
-
         if (!session?.conn) await client.query('COMMIT')
-
         if (error) {
             if (!session?.conn) await client.query('ROLLBACK')
             handleError(debug, error)
             return { success: false, error: { ...error, message: error.message } }
         }
-
         if (isBenchmarking) console.timeEnd(`${colors.blue}UnSQL benchmark:${colors.reset} ${colors.cyan}${debugMessage}${colors.reset}`)
         return { success: true, result: rows }
     } catch (error) {
@@ -631,60 +586,26 @@ const executePostgreSQL = async ({ sql, values, debug = false, config, session =
  * @returns {Promise<{success:boolean, result?:Array, insertId?:number, changes?:number, error?:*}>}
  */
 async function executeSqlite({ sql, values, debug = false, config, methodType = 'all', session = undefined, debugMessage = '' }) {
-    const db = (session?.pool || config?.pool)
-
+    const db = await (session?.pool || config?.pool)
     handleQueryDebug(debug, sql, values)
     const isBenchmarking = debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true
-
-    return new Promise((resolve, reject) => {
-        if (typeof db[methodType] != 'function') return resolve({ success: false, error: `Invalid method '${methodType}' detected!` })
-
-        try {
-
-            if (methodType === 'run' && !session?.pool) { // 'session' is not managing tx/commit/rollback and query type is 'run'
-
-                db.serialize(() => { // serialize all queries
-                    db.run('BEGIN TRANSACTION', txError => { // initiate tx
-                        if (isBenchmarking) console.time(`${colors.blue}UnSQL benchmark:${colors.reset} ${colors.cyan}${debugMessage}${colors.reset}`)
-                        if (txError) return resolve({ success: false, error: { ...txError, message: txError.message } }) // handle if tx fails
-
-                        db.run(sql, values, function (error) { // run actual query
-                            if (error) return db.run('ROLLBACK', () => resolve({ success: false, error: { ...error, message: error.message } })) // handle actual query error
-
-                            db.run('COMMIT', commitError => {
-                                if (commitError) return resolve({ success: false, error: { ...commitError, message: commitError.message } }) // handle if commit fails
-                                if (isBenchmarking) console.timeEnd(`${colors.blue}UnSQL benchmark:${colors.reset} ${colors.cyan}${debugMessage}${colors.reset}`)
-                                return resolve({ success: true, insertId: this.lastID, changes: this.changes }) // return result of run query
-                            })
-                        })
-
-                    })
-                })
-
-            } else { // when 'session' is managing tx/commit/rollback
-                if (isBenchmarking) console.time(`${colors.blue}UnSQL benchmark:${colors.reset} ${colors.cyan}${debugMessage}${colors.reset}`)
-                db[methodType](sql, values, (error, result) => {
-                    if (error) {
-                        handleError(debug, error)
-                        return resolve({ success: false, error: { ...error, message: error.message } })
-                    }
-
-                    const payload = {
-                        success: true,
-                        ...(methodType === 'all' && { result }),
-                        ...(this?.lastID !== undefined && { insertId: this?.lastID }),
-                        ...(this?.changes !== undefined && { changes: this?.changes })
-                    }
-                    if (isBenchmarking) console.timeEnd(`${colors.blue}UnSQL benchmark:${colors.reset} ${colors.cyan}${debugMessage}${colors.reset}`)
-                    return resolve(payload)
-                })
-            }
-
-        } catch (error) {
-            console.error('error while executing sqlite', error)
-            return resolve({ success: false, error: { ...error, message: error.message } })
+    if (typeof db[methodType] != 'function') return { success: false, error: `Invalid method '${methodType}' detected!` }
+    try {
+        if (!session?.pool) await db.run('BEGIN TRANSACTION')
+        if (isBenchmarking) console.time(`${colors.blue}UnSQL benchmark:${colors.reset} ${colors.cyan}${debugMessage}${colors.reset}`)
+        const result = await db.run(sql, values) // execute query
+        if (!session?.pool) await db.run('COMMIT')
+        if (isBenchmarking) console.timeEnd(`${colors.blue}UnSQL benchmark:${colors.reset} ${colors.cyan}${debugMessage}${colors.reset}`)
+        return {
+            success: true,
+            ...(methodType === 'all' && { result }),
+            ...(result?.lastID !== undefined && { insertId: result?.lastID }),
+            ...(result?.changes !== undefined && { changes: result?.changes })
         }
-    })
+    } catch (error) {
+        if (!session?.pool) await db.run('ROLLBACK')
+        return { success: false, error: { ...error, message: error.message } }
+    }
 }
 
 /**
@@ -701,12 +622,15 @@ const patchDefaults = ctx => {
     if (!('dialect' in ctx.config)) ctx.config.dialect = 'mysql'
     if (!('dbEncryptionMode' in ctx.config)) ctx.config.dbEncryptionMode = 'unknown'
     ctx._variableCount = 1
+    ctx.isMySQL = ctx?.config?.dialect === 'mysql'
+    ctx.isPostgreSQL = ctx?.config?.dialect === 'postgresql'
+    ctx.isSQLite = ctx?.config?.dialect === 'sqlite'
 }
 
 const handleDefaults = ctx => {
     if (!ctx?.config && ('TABLE_NAME' in ctx) && ('POOL' in ctx)) return { success: false, error: `[UnSQL Version Conflict]: '${ctx?.name}' model class is using 'v1.x' class configuration with 'v2.x' to continue with 'v1.x' kindly switch the 'unsql' import to 'unsql/legacy'` }
     // handle if connection object is missing
-    if (!ctx?.config?.pool && !ctx?.config?.connection) return { success: false, error: `[Missing]: Please provide ${ctx?.config?.dialect === 'mysql' ? `'connection' or ` : ''} 'pool' inside config(static property) of '${ctx?.name}' model class` }
+    if (!ctx?.config?.pool && !ctx?.config?.connection) return { success: false, error: `[Missing]: Please provide ${ctx?.isMySQL ? `'connection' or ` : ''} 'pool' inside config(static property) of '${ctx?.name}' model class` }
     // handle if table name is missing
     if (!ctx?.config?.table) return { success: false, error: `[Required]: Missing 'table' name inside 'config' of '${ctx?.name}' model class` }
     return { success: true }
@@ -727,7 +651,7 @@ class SessionManager {
     /**
      * @constructor
      * @param {*} pool MySQL connection pool or connection object or PostgreSQL pool object
-     * @param {'mysql'|'postgresql'} [dialect='mysql'] 
+     * @param {'mysql'|'postgresql'|'sqlite'} [dialect='mysql'] 
      */
     constructor(pool, dialect = 'mysql') {
         this.pool = pool
@@ -751,6 +675,10 @@ class SessionManager {
                 this.conn = await this?.pool?.connect()
                 await this?.conn?.query('BEGIN')
                 break
+            case 'sqlite':
+                this.conn = await this?.pool
+                await this?.conn?.run('BEGIN')
+                break
             default:
                 return { success: false, error: 'Invalid dialect provided in config' }
         }
@@ -768,6 +696,7 @@ class SessionManager {
     async rollback(close = true) {
         if (this.dialect === 'mysql') await this?.conn?.rollback()
         else if (this.dialect === 'postgresql') await this?.conn?.query('ROLLBACK')
+        else if (this.dialect === 'sqlite') await this?.conn?.run('ROLLBACK')
         if (close) await this.close()
     }
 
@@ -778,11 +707,12 @@ class SessionManager {
      * @param {boolean} [close=true]
      * @returns {Promise<void|{success: false, error: string}>}
      * @memberof SessionManager
-     */
+    */
     async commit(close = true) {
         try {
             if (this.dialect === 'mysql') await this.conn.commit()
             else if (this.dialect === 'postgresql') await this.conn.query('COMMIT')
+            else if (this.dialect === 'sqlite') await this.conn.run('COMMIT')
         } catch (error) {
             await this.rollback()
             return { success: false, error }

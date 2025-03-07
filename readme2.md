@@ -23,14 +23,14 @@
    - [3.4 Raw Query Method](#34-raw-query-method)
    - [3.5 Export Method](#35-export-method)
    - [3.6 Reset Method](#36-reset-method)
-4. Built-in Constants (Reserved Keywords) / Units / Wrapper Objects / Comparator Objects
+4. [Built-in Constants (Reserved Keywords) / Units / Wrapper Objects / Comparator Objects](#4-built-in-constants-units-wrapper-objects-and-comparator-objects)
    - [4.1 Constants (Reserved Keywords)](#41-constants-reserved-keywords)
    - [4.2 Units](#42-units-datetime)
    - [4.3 Wrapper Objects](#43-wrapper-objects)
    - [4.4 Comparator Objects](#44-comparator-objects)
-5. Session Manager
-6. Examples
-7. FAQs
+5. [Session Manager](#5-session-manager)
+6. [Examples](#6-examples)
+7. [FAQs](#7-faqs)
 
 ## 1. Overview
 
@@ -243,7 +243,7 @@ Each of these methods are explained below:
 const response = await User.find({
     alias: undefined,
     select: ['*'],
-    join: [].
+    join: [],
     where: {},
     junction: 'and',
     groupBy: [],
@@ -261,8 +261,53 @@ Each of these properties is explained below:
 
   - <span id="alias">`alias`</span> provides local reference name to the table. It is context sensitive hence when alias are defined in nested objects, each alias is by default attached to all columns inside that context, to use a different alias (from parent or child table), reference to that alias must be prefixed to that column name along with `'.'` symbol in between
   - <span id="select">`select`</span> is an array of values, each value can be column name, static string/number/boolean value, or any of the reserved keyword(s) or wrapper object(s). It is used to restrict the column(s) to be fetched from the database or create dummy column(s), or mutate any value (through wrapper object(s)) at execution
-  - <span id="join">`join`</join> is an array of objects where each object represents association of a child table with this parent (model class) table. See for more details on [*join*](#how-join-works-in-unsql)
+  - <span id="join">`join`</join> is an array of objects where each object represents association of a child table with this parent (model class) table. Below is the interface for join object, similar to `find`:
+    ```javascript
+    // Interface for each join object:
+    {
+        type:'', // 'left'/'right'/'inner'/'cross'/'fullOuter'
+        alias: undefined,
+        table: null, // table to associate
+        select: ['*'], // columns to be fetched
+        join: [], // nest association
+        where: {}, // filter record(s) based on condition(s)
+        junction: 'and', // connect condition(s) using
+        groupBy: [], // group record(s) by column name(s)
+        having: {}, // filter record(s) based on condition(s) [including aggregate methods]
+        orderBy: {}, // re-arrange record based on 
+        limit: undefined, // limit no. of records
+        offset: undefined, // set the starting index for records
+    }
+
+    // Sample:
+    const response = await Order.find({
+        select: ['orderId', 'createdOn',
+            {
+                json: {
+                    value: {
+                        itemId: 'itemId',
+                        name: 'itemName',
+                        quantity: 'quantity'
+                    },
+                    aggregate: true,
+                    as: 'items'
+                }
+            }
+        ],
+        join: [{ table: 'order_history', using: ['orderId'] }]
+    })
+    ```
   - <span id="where">`where`</span> filters record(s) to be fetched from the database based on the conditions provided as simple (or nested) objects in `key: value` pairs, comparator methods, wrapper methods etc.
+    ```javascript
+    // Sample:
+    const response = await User.find({
+        where: {
+            department: ['#marketing', '#sales'],
+            joiningDate: { between: { gt: '2025-01-01', lt: 'now' } },
+            or: [{userStatus: 1}, {userStatus: 2}]
+        }
+    })
+    ```
   - <span id="junction">`junction`</span> determines the connecting clause (`'and'` or `'or'`) that will be used to connect conditions provided inside `where` and `having` properties. Defaults to `'and'`
   - <span id="groupBy">`groupBy`</span> groups record(s) based on the column name(s) provided as an array
   - <span id="having">`having`</span> similar to `where`, filter record(s) based on condition(s) the only difference is that it supports **aggregate object(s)** (in `wrapper objects`)
@@ -326,7 +371,7 @@ response = {
 3. Sqlite returns
 response = {
     success: true,
-    insertId: 1, // in case of 'save', last 'inserted' ID
+    insertId: 1, // in case of 'save', last 'inserted' Id
     changes: 1 // in case of 'update'
 }
 */
@@ -487,46 +532,47 @@ UnSQL has various Constants (Reserved Keywords), Units (Date/Time), Wrapper Obje
 
 ### 4.2 Units (Date/Time)
 
-**UnSQL** supports various **Date / Time Patterns and Units** for `mysql` and `postgresql` since the units and the format varies for each:
+**UnSQL** supports various **Date / Time Patterns and Units** for all sql dialects since the units and the format varies for each, unsql provides a unified symbols that are standard for all:
 
-- When using `format` or `fromPattern` (only supported by `mysql`) property:
+- When using `format` | `fromPattern` (not supported by `sqlite`) property:
 
-    | MySQL | PostgreSQL        | SQLite              | Description                                                                 |
-    | ----- | ----------------- | ------------------- | --------------------------------------------------------------------------- |
-    | `%a`  | `Dy`              | `%w` (0-6, Sun-Sat) | Abbreviated weekday name (Sun to Sat)                                       |
-    | `%b`  | `Mon`             | *Not supported*     | Abbreviated month name (Jan to Dec)                                         |
-    | `%c`  | `FMMonth`/`FMMon` | *Not supported*     | Numeric month name (0 to 12)                                                |
-    | `%D`  | `FMDDth`          | *Not supported*     | Day of the month as a numeric value, followed by suffix (1st, 2nd, 3rd,...) |
-    | `%d`  | `DD`              | `%d` (01-31)        | Day of the month as a numeric value (01 to 31)                              |
-    | `%e`  | `FMDD`            | `%e`                | Day of the month as a numeric value (0 to 31)                               |
-    | `%f`  | `US`              | `%f` (fractions)    | Microseconds (000000 to 999999)                                             |
-    | `%H`  | `HH24`            | `%H` (00-23)        | Hour (00 to 23)                                                             |
-    | `%h`  | `HH12`            | `%I` (01-12)        | Hour (00 to 12)                                                             |
-    | `%I`  | `HH12`            | `%I` (01-12)        | Hour (00 to 12)                                                             |
-    | `%i`  | `MI`              | `%M` (00-59)        | Minutes (00 to 59)                                                          |
-    | `%j`  | `DDD`             | `%j` (001-366)      | Day of the year (001 to 366)                                                |
-    | `%k`  | `FMHH24`          | `%H` (0-23)         | Hour (0 to 23)                                                              |
-    | `%l`  | `FMHH12`          | `%I` (1-12)         | Hour (1 to 12)                                                              |
-    | `%M`  | `Month`           | *Not supported*     | Month name in full (January to December)                                    |
-    | `%m`  | `MM`              | `%m` (00-12)        | Month name as a numeric value (00 to 12)                                    |
-    | `%p`  | `AM/PM`           | `%p` / `%P`         | AM or PM / am or pm                                                         |
-    | `%r`  | `HH12:MI:SS AM`   | `%I:%M:%S %p`       | Time in 12-hour AM/PM format (hh:mm:ss AM/PM)                               |
-    | `%s`  | `SS`              | `%S` (00-59)        | Seconds (00 to 59)                                                          |
-    | `%T`  | `HH24:MI:SS`      | `%H:%M:%S`          | Time in 24-hour format (hh:mm:ss)                                           |
-    | `%U`  | `WW`              | *Not supported*     | Week where Sunday is the 1st day of the week (00 to 53)                     |
-    | `%u`  | `IW`              | `%U`                | Week where Monday is the 1st day of the week (00 to 53)                     |
-    | `%V`  | `WW`              | *Not supported*     | Week where Sunday is the 1st day of the week (01 to 53). Used with `%X`     |
-    | `%v`  | `IW`              | *Not supported*     | Week where Monday is the 1st day of the week (01 to 53). Used with `%x`     |
-    | `%W`  | `Day`             | *Not supported*     | Weekday name in full (Sunday to Saturday)                                   |
-    | `%w`  | `D`               | `%w` (0-6, Sun=0)   | Day of the week where Sunday=0 and Saturday=6                               |
-    | `%X`  | `IYYY`            | *Not supported*     | Year for the week (Sunday being 1st day of the week). Used with `%V`        |
-    | `%x`  | `IYYY`            | *Not supported*     | Year for the week (Monday being 1st day of the week). Used with `%v`        |
-    | `%Y`  | `YYYY`            | `%Y` (4-digit)      | Year (4-digit)                                                              |
-    | `%y`  | `YY`              | `*Not supported*    | Year (2-digit)                                                              |
+    | Keyword | Description                                            |
+    | :-----: | ------------------------------------------------------ |
+    |   `d`   | Day of the month, single digit (e.g., 1, 2, ..., 31)   |
+    |  `dd`   | Day of the month, double digit (e.g., 01, 02, ..., 31) |
+    |   `D`   | Day of the month with ordinal suffix (e.g., 1st, 2nd)  |
+    |  `dy`   | Abbreviated day of the week (e.g., Sun, Mon)           |
+    |  `Dy`   | Full day of the week (e.g., Sunday, Monday)            |
+    |  `dow`  | Day of week as number (0-6) Sunday = 0                 |
+    |  `doy`  | Day of year (001-366)                                  |
+    |   `M`   | Month as a single digit (e.g., 1, 2, ..., 12)          |
+    |  `MM`   | Month as a double digit (e.g., 01, 02, ..., 12)        |
+    |  `Mon`  | Abbreviated month name (e.g., Jan, Feb)                |
+    |  `MON`  | Full month name (e.g., January, February)              |
+    |   `y`   | Year, two digits (e.g., 24, 25)                        |
+    |   `Y`   | Year, four digits (e.g., 2024, 2025)                   |
+    |   `H`   | Hour (0-23), single digit                              |
+    |  `HH`   | Hour (00-23), double digit                             |
+    |   `h`   | Hour (1-12), single digit                              |
+    |  `hh`   | Hour (01-12), double digit                             |
+    |   `m`   | Minute (0-59), single digit                            |
+    |  `mm`   | Minute (00-59), double digit                           |
+    |   `s`   | Second (0-59), single digit                            |
+    |  `ss`   | Second (00-59), double digit                           |
+    |  `ms`   | Microseconds (000000-999999)                           |
+    |   `a`   | am or pm (lowercase)                                   |
+    |   `A`   | AM or PM (uppercase)                                   |
+    |   `w`   | Week number (00-53), Monday is the first day           |
+    |   `q`   | Quarter (1-4)                                          |
+    |  `TZ`   | Time zone name or abbreviation (e.g., UTC, EST)        |
+    |  `tz`   | Time zone offset from UTC (e.g., +0530, -0800)         |
 
 > **Please note:**
-> 1. Due to weird implementation in `postgresql`, if random whitespaces appear while formatting **Date/Time**, use `FFMonth` / `FFMon` instead of `Month` / `Mon`
-> 2. `fromPattern` property / feature is only supported by `mysql` and neither by `postgresql` nor by `sqlite`
+> 1. Due to limited / difference in implementation in all three dialects, some of the keywords mentioned below are not supported by respective sql dialect:
+>   - MySQL: `tz`, `TZ`, `q`
+>   - SQLite: `tz`, `TZ`, `q`
+> 2. `fromPattern` property / feature is not supported by `sqlite`
+> 3. Aforementioned units are only for formatting / creating date from string pattern and not to be confused with the date units used for addition / subtraction date / time units.
 
 - When using `add` / `sub` property:
 
@@ -542,7 +588,7 @@ UnSQL has various Constants (Reserved Keywords), Units (Date/Time), Wrapper Obje
     | `q`   | `QUARTER`     | *Not supported*           | QUARTER     |
     | `y`   | `YEAR`        | `%Y` (4-digit)            | YEAR        |
 
-> **Please note:** You can use them in combination like `2d 5m 1M 10y` in `add` and (or) `sub`
+> **Please note:** You can use them in combination like `2d 5m 1M 10y` in `add` | `sub`
 
 ### 4.3 Wrapper Objects
 
@@ -1115,7 +1161,7 @@ All objects are explained below:
 
 - #### Concat Wrapper (Keyword <span id="concat">`concat`</span>)
 
-    Used to combine (concat) multiple values using string `pattern`.
+    Used to combine (concat) multiple values using string `pattern`, it is similar to `str` but with multiple values.
 
     ```javascript
     // Interface:
@@ -1123,6 +1169,22 @@ All objects are explained below:
         concat: { 
             value: [], // list of values / special objects to be combined
             pattern: '', // pattern to be used to connect values
+            textCase: null, // transform text case to 'upper' or 'lower'
+            padding: { // maintains min. no. of chars. by filing text
+                left: { // fill missing text to left direction
+                    length: null, // min. chars to maintain
+                    pattern: null // text to fill
+                },
+                right: { // fill missing text to right direction
+                    length: null, // min. chars to maintain
+                    pattern: null // text to fill
+                }
+            },
+            substr: { // create sub-string
+                start: 0, // start index for sub-string
+                length: null // length of the sub-string
+            },
+            trim: false, // remove whitespace from 'left' / 'right' or both
             as: null, // local reference name to this object 'value'  
             compare: {} // comparator object
         }
@@ -1145,20 +1207,315 @@ All objects are explained below:
 
 UnSQL provides various objects to **compare different values**, as mentioned below:
 
-|   Comparator   |    Expression     | Description                                                                          |
-| :------------: | :---------------: | ------------------------------------------------------------------------------------ |
-|      `eq`      |        `=`        | compares, `key` **is equal** to `value`                                              |
-|    `notEq`     |       `!=`        | compares, `key` **is not equal** to `value`                                          |
-|      `gt`      |        `>`        | compares, `key` **is greater than** to `value`                                       |
-|      `lt`      |        `<`        | compares, `key` **is lower than** to `value`                                         |
-|     `gtEq`     |       `>=`        | compares, `key` **is greater than** to `value`                                       |
-|     `ltEq`     |       `<=`        | compares, `key` **is lower than** to `value`                                         |
-|   `between`    | `BETWEEN ? AND ?` | checks, `key` is in a range of values                                                |
-|      `in`      |       `IN`        | checks, `key` has an **exact match** in the provided set of values in `value`        |
-|    `notIn`     |     `NOT IN`      | checks, `key` **does not have exact match** in the provided set of values in `value` |
-|     `like`     |   `LIKE '%?%'`    | **fuzzy search**, `value` **contains** `key` **at any position**                     |
-|   `notLike`    | `NOT LIKE '%?%'`  | **fuzzy search**, `value` **does not contain** `key` **at any position**             |
-|  `startLike`   |    `LIKE '?%'`    | **fuzzy search**, `value` **begins with** `key`                                      |
-| `notStartLike` |  `NOT LIKE '?%'`  | **fuzzy search**, `value` **does not begins with** `key`                             |
-|   `endLike`    |    `LIKE '%?'`    | **fuzzy search**, `value` **ends with** `key`                                        |
-|  `notEndLike`  |  `NOT LIKE '%?'`  | **fuzzy search**, `value` **does not ends with** `key`                               |
+|   Comparator   |    Expression     | Description                                                               |
+| :------------: | :---------------: | ------------------------------------------------------------------------- |
+|      `eq`      |        `=`        | compares, `key` **is equal** to `value`                                   |
+|    `notEq`     |       `!=`        | compares, `key` **is not equal** to `value`                               |
+|      `gt`      |        `>`        | compares, `key` **is greater than** to `value`                            |
+|      `lt`      |        `<`        | compares, `key` **is lower than** to `value`                              |
+|     `gtEq`     |       `>=`        | compares, `key` **is greater than** to `value`                            |
+|     `ltEq`     |       `<=`        | compares, `key` **is lower than** to `value`                              |
+|   `between`    | `BETWEEN ? AND ?` | checks, `key` is in a range of values                                     |
+|      `in`      |       `IN`        | checks, `key` has an **exact match** in a set of values in `value`        |
+|    `notIn`     |     `NOT IN`      | checks, `key` **does not have exact match** in a set of values in `value` |
+|     `like`     |   `LIKE '%?%'`    | **fuzzy search**, `value` **contains** `key` **at any position**          |
+|   `notLike`    | `NOT LIKE '%?%'`  | **fuzzy search**, `value` **does not contain** `key` **at any position**  |
+|  `startLike`   |    `LIKE '?%'`    | **fuzzy search**, `value` **begins with** `key`                           |
+| `notStartLike` |  `NOT LIKE '?%'`  | **fuzzy search**, `value` **does not begins with** `key`                  |
+|   `endLike`    |    `LIKE '%?'`    | **fuzzy search**, `value` **ends with** `key`                             |
+|  `notEndLike`  |  `NOT LIKE '%?'`  | **fuzzy search**, `value` **does not ends with** `key`                    |
+
+## 5. Session Manager
+
+Session Manager is a special class, used to create an instance of `session` object. It also provides various *static asynchronous* methods to manage the lifecycle of a persistent (reusable) instance of *transaction* across multiple query execution as mentioned below:
+
+| Method     | Description                                                     |
+| ---------- | --------------------------------------------------------------- |
+| `init`     | initializes session (`transaction`)                             |
+| `rollback` | undo all (un-committed) changes, reverting to the initial state |
+| `commit`   | finalizes all changes, making them permanent (cannot be undone) |
+| `close`    | ends the transaction and closes the session                     |
+
+> **Please note:** 
+> 1. Constructor requires `connection` or connection `pool` as parameter
+> 2. `rollback` and `commit` accept an optional boolean parameter, to close `session` (when `true`) at this point
+
+## 6. Examples
+
+### 6.1 Find all Users
+
+```javascript
+router.get('/users', async (req, res) => {
+
+    const response = await User.find() // similar to await User.find({ })
+      // your code here
+})
+```
+
+### 6.2 Find single User by Id
+
+```javascript
+router.get('/users/:userId(\\d+)', async (req, res) => {
+    
+    const { userId } = req.params
+
+    const response = await User.find({ where: { userId } })
+    // your code here
+})
+```
+
+### 6.3 Login User by email or mobile
+
+```javascript
+router.post('/users/login', async (req, res) => {
+    
+    const { loginId, password } = req.body
+
+    const response = await User.find({
+        select: [...],
+        where: { 
+            or: [
+                { email: `#${loginId}` },
+                { mobile: `#${loginId}` }
+            ]
+        } 
+    })
+    // your code here
+})
+```
+
+**Please note:** UnSQL uses `#` as prefixed to recognize string as *plain text* instead of *column name*
+
+### 6.4 Extract value from a Json Array of values
+
+```javascript
+router.get('/users', async (req, res) => {
+
+    const response = await User.find({
+        select: ['userId', 'firstName',
+            {
+                json: {
+                    value: ['#Jabalpur', '#Delhi', '#Pune'],
+                    extract: 0 // Output: city: 'Jabalpur'
+                    as: 'city'
+                }
+            }
+        ]
+    })
+    // your code here
+})
+```
+
+### 6.5 Extract value from a Json Object
+
+```javascript
+router.get('/users', async (req, res) => {
+
+    const response = await User.find({
+        select: ['userId', 'firstName',
+            {
+                json: {
+                    value: 'address',
+                    extract: 'permanent.city'
+                    as: 'city'
+                }
+            }
+        ]
+    })
+    // your code here
+})
+```
+
+### 6.6 Fetch Users with their last 10 Orders (Join sub-query)
+
+```javascript
+router.get('/users', async (req, res) => {
+
+    const response = await User.find({
+        alias: 'u',
+        select: ['userId', 'firstName',
+            {
+                json: { // creates custom json object
+                    value: {
+                        orderId: 'orderId',
+                        purchaseDate: 'createdOn',
+                        total: 'amount',
+                        discount: 'discount'
+                    },
+                    table: 'order_history',
+                    where: {
+                        userId: 'u.userId'
+                    },
+                    limit: 10,
+                    aggregate: true // wraps order object in array '[]'
+                    as: 'orders'
+                }
+            }
+        ]
+    })
+    // your code here
+})
+```
+
+### 6.7 Save User
+
+```javascript
+router.post('/users', async (req, res) => {
+
+    const data = req.body // {...} single user or [{...}] multiple users
+
+    const response = await User.save({ data })
+    // your code here
+})
+```
+
+### 6.8 Update User
+
+```javascript
+router.put('/users/:userId(\\d+)', async (req, res) => {
+
+    const { userId } = req.params
+
+    const data = req.body
+
+    const response = await User.save({ data, where: { userId } })
+    // your code here
+})
+```
+
+### 6.9 Upsert User
+
+```javascript
+router.post('/users', async (req, res) => {
+
+    const data = req.body
+
+    const { userId, ...upsert } = data // extracted Id to create update object (upsert)
+
+    const response = await User.save({ data, upsert })
+    // your code here
+})
+```
+
+### 6.10 Delete User
+
+```javascript
+router.delete('/users/:userId(\\d+)', async (req, res) => {
+
+    const { userId } = req.params
+
+    const response = await User.delete({ where: { userId } })
+    // your code here
+})
+```
+
+### 6.11 Delete multiple users
+
+```javascript
+router.delete('/users', async (req, res) => {
+
+    const response = await User.delete({
+        where: {
+            departments: ['#sales', '#marketing']
+        }
+    })
+    // your code here
+})
+```
+
+**Please note:** UnSQL uses `#` as prefixed to recognize string as *plain text* instead of *column name*
+
+### 6.12 Delete all Users
+
+```javascript
+router.delete('/users', async (req, res) => {
+
+    const response = await User.delete()
+    // your code here
+})
+```
+
+**Please note:** `saveMode: false` is required in model `config` to delete all users
+
+### 6.13 Reset User table
+
+```javascript
+router.delete('/users', async (req, res) => {
+
+    const response = await User.reset()
+    // your code here
+})
+```
+
+**Please note:** `saveMode: false` and `devMode: true` is required in model `config` to use `reset`
+
+### 6.14 Sample Session Manager
+
+```javascript
+import { SessionManager } from 'unsql'
+import { pool } from './path/to/your/db/service'
+
+// Other imports goes here...
+
+router.post('/orders', async (req,res) => {
+
+    const { userId } = req.params
+
+    const data = req.body
+
+    // create 'session' instance using 'SessionManager'
+    const session = new SessionManager(pool) // 'pool' or 'connection' is required
+
+    // initiate 'transaction' using 'init' lifecycle method
+   const initResp =  await session.init()
+
+    // handle if session init failed
+    if (!initResp.success) return res.status(400).json(initResp)
+    
+    // fetch objects inside bucket, pass 'session' object to the query method
+    const bucketResp = await Bucket.find({ where: { userId }, session })
+
+    // create order using 'data' and pass 'session' object to the query method
+    const orderResp = await Order.save({ data, session })
+
+    // attach 'orderId' to each item
+    const items =  bucketResp.result.map(item => item.orderId = orderResp.insertId )
+
+    // save order 'items' and pass 'session' object to the query method
+    const itemsResp = await OrderItems.save({ data: items, session })
+
+    // clear bucket after successfully creating order and pass 'session' object to the query method
+    const clearBucket = await Bucket.delete({ where: { userId }, session })
+
+    // handle if any (or all) query failed
+    if(!bucketResp.success || !orderResp.success || !itemsResp.success) {
+        // rollback changes
+        await session.rollback()
+        return res.status(400).json({ success: false, message: 'Error while placing order!', error: bucketResp?.error || orderResp?.error || itemsResp?.error })
+    }
+
+    // commit changes if no errors were encountered
+    await session.commit()
+    return res.status(201).json({ success: true, message: 'Order placed successfully!', orderId: orderResp.insertId })
+})
+```
+
+## 7. FAQs
+
+### 7.1 Difference between plain text and column name?
+
+UnSQL uses `#` as prefix to identify if string is plain text, or column name if string does not start with `#`.
+
+### Support
+![npm](https://img.shields.io/badge/npm-CB3837?style=for-the-badge&logo=npm&logoColor=white) 
+![Yarn](https://img.shields.io/badge/yarn-%232C8EBB.svg?style=for-the-badge&logo=yarn&logoColor=white)
+![JavaScript](https://img.shields.io/badge/javascript-%23323330.svg?style=for-the-badge&logo=javascript&logoColor=%23F7DF1E)
+![NodeJs](https://img.shields.io/badge/Node%20js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
+![NextJs](https://img.shields.io/badge/next%20js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-005C84?style=for-the-badge&logo=mysql&logoColor=white)
+![Postgres](https://img.shields.io/badge/postgres-%23316192.svg?style=for-the-badge&logo=postgresql&logoColor=white)
+![SQLite](https://img.shields.io/badge/sqlite-%2307405e.svg?style=for-the-badge&logo=sqlite&logoColor=white)
+
+## Author
+
+- [Siddharth Tiwari](https://www.linkedin.com/in/siddharth-tiwari-2775aa97)
