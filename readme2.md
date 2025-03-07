@@ -287,7 +287,8 @@ Each of these properties is explained below:
         orderBy: {}, // re-arrange record based on column(s) in ascending or descending order
         limit: undefined, // limit no. of records
         offset: undefined, // set the starting index for records
-        using: [] // (required) array of common column(s) or { parentColumn: childColumn }
+        using: [], // (required) array of common column(s) or { parentColumn: childColumn }
+        as: null // required with 'select'/ 'where'/'having' takes priority over 'as' to refer columns from outside this object
     }
 
     // Sample:
