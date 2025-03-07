@@ -310,11 +310,12 @@ Each of these properties is explained below:
     })
     ```
     Below is the explanation for each of these join types:
+    - `natural` based on columns with the same name and datatype (automatically detected)
     - `left` considers all records in parent table and only matching records from child table
-    - `right` considers all records in child table and only matching records from parent table
+    - `right` considers all records in child table and only matching records from parent table (not suported by `sqlite`)
     - `inner` only matching rows based on `using` column(s)
     - `cross` cartesian product of records in parent and child tables
-    - `natural` based on columns with the same name and datatype (automatically detected)
+    - `fullOuter` returns all records from both tables, regardless of matching condition (only supported by `postgresql`)
   - <span id="where">`where`</span> filters record(s) to be fetched from the database based on the conditions provided as simple (or nested) objects in `key: value` pairs, comparator methods, wrapper methods etc.
     ```javascript
     // Sample:
