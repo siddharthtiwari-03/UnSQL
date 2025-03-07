@@ -284,7 +284,7 @@ Each of these properties is explained below:
         junction: 'and', // connect condition(s) using
         groupBy: [], // group record(s) by column name(s)
         having: {}, // filter record(s) based on condition(s) [including aggregate methods]
-        orderBy: {}, // re-arrange record based on 
+        orderBy: {}, // re-arrange record based on column(s) in ascending or descending order
         limit: undefined, // limit no. of records
         offset: undefined, // set the starting index for records
         using: [] // (required) array of common column(s) or { parentColumn: childColumn }
