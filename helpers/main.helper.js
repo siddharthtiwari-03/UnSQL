@@ -67,9 +67,9 @@ const prepSelect = ({ alias, select = [], values, encryption = undefined, ctx = 
                 continue
             }
 
-            const name = prepName({ value: selectable, alias })
+            const name = prepName({ value: selectable, alias, ctx })
             values.push(name)
-            sqlParts.push(placeholder.startsWith('$') ? `${placeholder} AS ${name}` : placeholder)
+            sqlParts.push(placeholder.startsWith('$') ? `${placeholder} AS "${name}"` : placeholder)
         }
     }
     return sqlParts.join(', ')
@@ -103,7 +103,7 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', values,
             let sql = ''
             if (parent && !(parent in conditions) && parent != 'refer') {
                 sql = prepPlaceholder({ value: parent, alias, ctx })
-                if (isVariable(sql)) values.push(prepName({ alias, value: parent }))
+                if (isVariable(sql)) values.push(prepName({ alias, value: parent, ctx }))
             }
 
             if (key === 'isNull' || key === 'isNotNull') {
@@ -113,46 +113,32 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', values,
 
             sql += conditions[key]
 
-
-
             const valPlaceholder = handlePlaceholder({ value: val, alias, junction, values, parent, encryption, ctx })
 
-            const prefixes = {
-                in: '(',
-                exists: '(',
-                notExists: '(',
-                like: 'CONCAT("%", ',
-                notLike: 'CONCAT("%", ',
-                startLike: 'CONCAT(',
-                notStartLike: 'CONCAT(',
-                endLike: 'CONCAT("%", ',
-                notEndLike: 'CONCAT("%", ',
+            const prefix = {
+                in: `(${valPlaceholder})`,
+                exists: `(${valPlaceholder})`,
+                notExists: `(${valPlaceholder})`,
+                like: ctx?.isPostgreSQL ? `'%' || ${valPlaceholder} || '%'` : `CONCAT("%", ${valPlaceholder}, "%")`,
+                notLike: ctx?.isPostgreSQL ? `'%' || ${valPlaceholder} || '%'` : `CONCAT("%", ${valPlaceholder}, "%")`,
+                startLike: ctx?.isPostgreSQL ? `${valPlaceholder} || '%'` : `CONCAT(${valPlaceholder}, "%")`,
+                notStartLike: ctx?.isPostgreSQL ? `${valPlaceholder} || '%'` : `CONCAT(${valPlaceholder}, "%")`,
+                endLike: ctx?.isPostgreSQL ? `'%' || ${valPlaceholder}` : `CONCAT("%", ${valPlaceholder})`,
+                notEndLike: ctx?.isPostgreSQL ? `'%' || ${valPlaceholder}` : `CONCAT("%", ${valPlaceholder})`
             }
 
-            const suffixes = {
-                in: ')',
-                exists: ')',
-                notExists: ')',
-                like: ', "%")',
-                notLike: ', "%")',
-                startLike: ')',
-                notStartLike: ')',
-                endLike: ', "%")',
-                notEndLike: ', "%")',
-            }
-
-            sql += `${prefixes[key] || ''}${valPlaceholder}${suffixes[key] || ''}`
+            sql += `${prefix[key] || valPlaceholder}`
             sqlParts.push(sql)
             continue
         }
 
         if (Array.isArray(val)) {
             const keyPlaceholder = prepPlaceholder({ value: key, alias, ctx })
-            if (isVariable(keyPlaceholder)) values.push(prepName({ alias, value: key }))
+            if (isVariable(keyPlaceholder)) values.push(prepName({ alias, value: key, ctx }))
             const valuePlaceholders = []
             for (const value of val) {
                 const valPlaceholder = prepPlaceholder({ value, alias, ctx })
-                if (isVariable(valPlaceholder)) values.push(prepName({ alias, value }))
+                if (isVariable(valPlaceholder)) values.push(prepName({ alias, value, ctx }))
                 valuePlaceholders.push(valPlaceholder)
             }
             sqlParts.push(`${keyPlaceholder} IN (${valuePlaceholders.join(', ')})`)
@@ -161,7 +147,7 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', values,
 
         if (typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean') {
             const keyPlaceholder = prepPlaceholder({ value: key, alias, ctx })
-            if (isVariable(keyPlaceholder)) values.push(prepName({ alias, value: key }))
+            if (isVariable(keyPlaceholder)) values.push(prepName({ alias, value: key, ctx }))
 
             if (val === 'isNull' || val === 'isNotNull') {
                 sqlParts.push(`${keyPlaceholder} ${constantFunctions[val]}`)
@@ -169,7 +155,7 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', values,
             }
 
             const valPlaceholder = prepPlaceholder({ value: val, alias, ctx })
-            if (isVariable(valPlaceholder)) values.push(prepName({ alias, value: val }))
+            if (isVariable(valPlaceholder)) values.push(prepName({ alias, value: val, ctx }))
             sqlParts.push(`${keyPlaceholder} = ${valPlaceholder}`)
             continue
         }
@@ -202,49 +188,51 @@ const prepJoin = ({ alias, join = [], values, encryption = undefined, ctx = unde
         if (joinTypes[type]) sqlParts.push(joinTypes[type])
         sqlParts.push('JOIN')
         if (select.length || nestedJoin.length) {
-            sqlParts.push(`(SELECT ${prepSelect({ alias: joinAlias, select, values, encryption, ctx })} FROM ${ctx?.isMySQL ? '??' : table}`)
+            sqlParts.push(`(SELECT ${prepSelect({ alias: joinAlias, select, values, encryption, ctx })} FROM ${ctx?.isMySQL ? '??' : `"${table}"`}`)
             if (ctx?.isMySQL) {
                 values.push(table)
                 if (joinAlias) {
                     sqlParts.push('??')
                     values.push(joinAlias)
                 }
-            } else if (joinAlias) sqlParts.push(`${joinAlias}`)
-            if (nestedJoin.length) sqlParts.push(prepJoin({ alias, join: nestedJoin, values, encryption, ctx }))
+            } else if (joinAlias) sqlParts.push(`"${joinAlias}"`)
+            if (nestedJoin.length) sqlParts.push(prepJoin({ alias: joinAlias, join: nestedJoin, values, encryption, ctx }))
             if (Object.keys(where).length > 0) sqlParts.push(`WHERE ${prepWhere({ alias: joinAlias, where, junction, values, encryption, ctx })}`)
             if (groupBy.length) sqlParts.push(patchGroupBy({ groupBy, alias, values, ctx }))
             if (Object.keys(having).length > 0) sqlParts.push(`HAVING ${prepWhere({ alias: joinAlias, where: having, junction, values, encryption, ctx })}`)
             if (Object.keys(orderBy).length) sqlParts.push(prepOrderBy({ alias, orderBy, values, ctx }))
             if (typeof limit === 'number') sqlParts.push(patchLimit(limit, values, ctx))
             if (typeof offset === 'number') sqlParts.push(patchLimit(offset, values, ctx, 'OFFSET'))
-            if (!as) throw { message: 'Missing "as" property with selective join association', cause: "Every derived table must have its own alias ('as' property)" }
-            sqlParts.push(`) AS ${ctx?.isMySQL ? '??' : as}`)
+            if (!as) throw { message: `Missing 'as' property with selective join association`, cause: `Every derived table must have its own alias ('as' property)` }
+            sqlParts.push(`) AS ${ctx?.isMySQL ? '??' : `"${as}"`}`)
             if (ctx?.isMySQL) values.push(as)
         } else {
             if (ctx?.isMySQL) {
-                sqlParts.push('?? ')
+                sqlParts.push('??')
                 values.push(table)
                 if (joinAlias) {
-                    sqlParts.push('?? ')
+                    sqlParts.push('??')
                     values.push(joinAlias)
                 }
             } else {
-                sqlParts.push(`${table} `)
+                sqlParts.push(`"${table}"`)
+                if (joinAlias) sqlParts.push(`"${joinAlias}"`)
             }
         }
 
-        if (!using.length) throw { message: 'Common column(s) to associate tables is missing', cause: "Missing conditions for association in 'using' clause" }
+        if (!using.length && !Object.keys(using).length) throw { message: 'Common column(s) to associate tables is missing', cause: "Missing conditions for association in 'using' clause" }
 
-        if (using.every(condition => typeof condition === 'string')) {
-            sqlParts.push(`USING (${using.map(column => ctx?.isMySQL ? '??' : column).join(', ')})`)
+        if (Array.isArray(using)) {
+            sqlParts.push(`USING (${using.map(column => ctx?.isMySQL ? '??' : `"${column}"`).join(', ')})`)
             if (ctx?.isMySQL) using.forEach(column => values.push(column))
-        } else if (using.every(condition => typeof condition === 'object')) {
-            const usingConditions = using.map(condition => {
-                const [parentColumn, childColumn] = Object.entries(condition)[0]
-                const parentPlaceholder = alias ? `${alias}.${parentColumn}` : parentColumn
-                const childPlaceholder = as || joinAlias ? `${as || joinAlias}.${childColumn}` : childColumn
-                if (ctx?.isMySQL) values.push(parentPlaceholder, childPlaceholder)
-                return ctx?.isMySQL ? '?? = ??' : `${parentPlaceholder} = ${childPlaceholder}`
+        } else if (typeof using === 'object') {
+            const usingConditions = Object.entries(using).map(([parentColumn, childColumn]) => {
+                const parentPlaceholder = prepPlaceholder({ value: parentColumn, alias, ctx })
+                const childPlaceholder = prepPlaceholder({ value: childColumn, alias: as || joinAlias, ctx })
+                const parentColumnName = prepName({ value: parentColumn, alias, ctx })
+                const childColumnName = prepName({ value: childColumn, alias: joinAlias, ctx })
+                if (ctx?.isMySQL) values.push(parentColumnName, childColumnName)
+                return `${parentPlaceholder} = ${childPlaceholder}`
             })
             sqlParts.push(`ON ${usingConditions.join(' AND ')}`)
         } else {
@@ -274,7 +262,7 @@ const prepJson = ({ val, encryption = undefined, junction = 'and', values, named
     let jsonSql = ''
     if (typeof value === 'string') {
         const jsPlaceholder = prepPlaceholder({ value, alias, ctx })
-        if (isVariable(jsPlaceholder)) values.push(prepName({ alias, value }))
+        if (isVariable(jsPlaceholder)) values.push(prepName({ alias, value, ctx }))
         jsonSql = jsPlaceholder
     } else {
         if (ctx?.isPostgreSQL) {
@@ -435,7 +423,7 @@ const prepCase = ({ alias, val, junction = 'and', values, encryption = undefined
     })
 
     const elsePlaceholder = prepPlaceholder({ value: defaultElse, alias, ctx })
-    if (isVariable(elsePlaceholder)) values.push(prepName({ alias, value: defaultElse }))
+    if (isVariable(elsePlaceholder)) values.push(prepName({ alias, value: defaultElse, ctx }))
 
     if (as && ctx?.isMySQL) values.push(as)
     return `CASE ${conditionalPlaceholders.join(' ')} ELSE ${elsePlaceholder} END${as ? ` AS ${ctx?.isMySQL ? '?' : as}` : ''}`
@@ -455,8 +443,7 @@ const prepConcat = ({ alias, val, junction = 'and', values, encryption = undefin
 
     const { value = [], pattern = '', substr = null, reverse = false, textCase = null, padding = {}, trim = false, as = null, compare = {} } = val
     const patternPlaceholder = prepPlaceholder({ value: pattern, alias, ctx })
-    if (isVariable(patternPlaceholder)) values.push(prepName({ alias, value: pattern }))
-
+    if (isVariable(patternPlaceholder)) values.push(prepName({ alias, value: pattern, ctx }))
     let sql = `CONCAT_WS(${patternPlaceholder}, ${value.map(v => handlePlaceholder({ alias, value: v, junction, values, encryption, ctx })).join(', ')})`
 
     // trim
@@ -465,48 +452,13 @@ const prepConcat = ({ alias, val, junction = 'and', values, encryption = undefin
     else if (trim === true) sql = `TRIM(${sql})`
 
     // substring extras
-    if (!!substr) {
-        // handle if substr length is missing
-        if (!substr?.length) {
-            throw { message: `[Missing]: Sub-string 'length' is missing!`, cause: "Missing 'length' property inside substr" }
-        }
-        // handle if substr start index is missing
-        if (!substr?.start) {
-            throw { message: `[Missing]: Sub-string 'start' index is missing!`, cause: "Missing 'start' property inside substr" }
-        }
-        sql = `SUBSTR(${sql}, ${prepPlaceholder({ value: substr?.start, ctx })}, ${prepPlaceholder({ value: substr?.length, ctx })})`
-        values.push(substr?.start, substr?.length)
-    }
+    if (!!substr) sql = prepSubStr({ length: substr?.length, start: substr?.start, sql, values, ctx })
 
     // apply right padding (extras)
-    if (padding?.right) {
-        if (ctx?.isSQLite) throw { message: `Padding not supported by 'sqlite'`, cause: `'RPAD' is not a part of 'sqlite'` }
-        // handle if padding length is missing
-        if (!padding?.right?.length) {
-            throw { message: `[Missing]: Right padding 'length' is required!`, cause: "Missing 'length' property inside padding right" }
-        }
-        // handle if padding pattern is missing
-        if (!padding?.right?.pattern) {
-            throw { message: `[Missing]: Right padding 'pattern' is required!`, cause: "Missing 'pattern' property inside padding right" }
-        }
-        sql = `RPAD(${sql} ${ctx?.isPostgreSQL ? `, $${ctx._variableCount++}, $${ctx._variableCount++}` : ', ?, ?'})`
-        values.push(padding?.right?.length, padding?.right?.pattern)
-    }
+    if (padding?.right) sql = prepPadding({ sql, values, side: 'R', length: padding?.right?.length, pattern: padding?.right?.pattern, ctx })
 
     // apply left padding (extras)
-    if (padding?.left) {
-        if (ctx?.isSQLite) throw { message: `Padding not supported by 'sqlite'`, cause: `'LPAD' is not a part of 'sqlite'` }
-        // handle if padding length is missing
-        if (!padding?.left?.length) {
-            throw { message: `[Missing]: Left padding 'length' is required!`, cause: "Missing 'length' property inside padding left" }
-        }
-        // handle if padding pattern is missing
-        if (!padding?.left?.pattern) {
-            throw { message: `[Missing]: Left padding 'pattern' is required!`, cause: "Missing 'pattern' property inside padding left" }
-        }
-        sql = `LPAD(${sql} ${ctx?.isPostgreSQL ? `, $${ctx._variableCount++}, $${ctx._variableCount++}` : ', ?, ?'})`
-        values.push(padding?.left?.length, padding?.left?.pattern)
-    }
+    if (padding?.left) sql = prepPadding({ sql, values, length: padding?.left?.length, pattern: padding?.left?.pattern, ctx })
 
     // text case ends here
     if (textCase === 'lower') sql = `LOWER(${sql})`
@@ -514,7 +466,7 @@ const prepConcat = ({ alias, val, junction = 'and', values, encryption = undefin
 
     // handle reverse
     if (reverse) {
-        if (ctx?.isSQLite) throw { message: `SQLite does not support 'reverse' feature`, cause: 'SQLite does not support string reversal' }
+        if (ctx?.isSQLite) throw { message: `String 'reverse' is not supported by 'sqlite'`, cause: 'SQLite does not support string reversal' }
         sql = `REVERSE(${sql})`
     }
 
@@ -525,7 +477,7 @@ const prepConcat = ({ alias, val, junction = 'and', values, encryption = undefin
             sql += ` AS ?`
             values.push(as)
         } else {
-            sql += ` AS ${as}`
+            sql += ` AS "${as}"`
         }
     }
 
@@ -549,7 +501,7 @@ const prepString = ({ alias, val, junction = 'and', values, named = false, encry
     // prepare place holder
     let sql = prepPlaceholder({ value, alias, ctx })
     if (isVariable(sql)) {
-        values.push(prepName({ alias, value }))
+        values.push(prepName({ alias, value, ctx }))
     }
 
     // envelop decrypt
@@ -564,48 +516,13 @@ const prepString = ({ alias, val, junction = 'and', values, named = false, encry
     else if (trim === true) sql = `TRIM(${sql})`
 
     // substring extras
-    if (!!substr) {
-        // handle if substr length is missing
-        if (!substr?.length) {
-            throw { message: `[Missing]: Sub-string 'length' is missing!`, cause: "Missing 'length' property inside substr" }
-        }
-        // handle if substr start index is missing
-        if (!substr?.start) {
-            throw { message: `[Missing]: Sub-string 'start' index is missing!`, cause: "Missing 'start' property inside substr" }
-        }
-        sql = `SUBSTR(${sql}, ${prepPlaceholder({ value: substr?.start, ctx })}, ${prepPlaceholder({ value: substr?.length, ctx })})`
-        values.push(substr?.start, substr?.length)
-    }
+    if (!!substr) sql = prepSubStr({ length: substr?.length, start: substr?.start, sql, values, ctx })
 
     // apply right padding (extras)
-    if (padding?.right) {
-        // handle if padding length is missing
-        if (!padding?.right?.length) {
-            throw { message: `[Missing]: Right padding 'length' is required!`, cause: "Missing 'length' property inside padding right" }
-        }
-        // handle if padding pattern is missing
-        if (!padding?.right?.pattern) {
-            throw { message: `[Missing]: Right padding 'pattern' is required!`, cause: "Missing 'pattern' property inside padding right" }
-        }
-        if (ctx?.isSQLite) throw { message: `Padding not supported by 'sqlite'`, cause: `'RPAD' is not a part of 'sqlite'` }
-        sql = `RPAD(${sql} ${ctx?.isPostgreSQL ? `, $${ctx._variableCount++}, $${ctx._variableCount++}` : ', ?, ?'})`
-        values.push(padding?.right?.length, padding?.right?.pattern)
-    }
+    if (padding?.right) sql = prepPadding({ sql, values, side: 'R', length: padding?.right?.length, pattern: padding?.right?.pattern, ctx })
 
     // apply left padding (extras)
-    if (padding?.left) {
-        // handle if padding length is missing
-        if (!padding?.left?.length) {
-            throw { message: `[Missing]: Left padding 'length' is required!`, cause: "Missing 'length' property inside padding left" }
-        }
-        // handle if padding pattern is missing
-        if (!padding?.left?.pattern) {
-            throw { message: `[Missing]: Left padding 'pattern' is required!`, cause: "Missing 'pattern' property inside padding left" }
-        }
-        if (ctx?.isSQLite) throw { message: `Padding not supported by 'sqlite'`, cause: `'LPAD' is not a part of 'sqlite'` }
-        sql = `LPAD(${sql} ${ctx?.isPostgreSQL ? `, $${ctx._variableCount++}, $${ctx._variableCount++}` : ', ?, ?'})`
-        values.push(padding?.left?.length, padding?.left?.pattern)
-    }
+    if (padding?.left) sql = prepPadding({ sql, values, length: padding?.left?.length, pattern: padding?.left?.pattern, ctx })
 
     // text case ends here
     if (textCase === 'lower') sql = `LOWER(${sql})`
@@ -621,20 +538,21 @@ const prepString = ({ alias, val, junction = 'and', values, named = false, encry
     if (replace != null) {
         // handle if padding length is missing
         if (!replace?.target) {
-            throw { message: `[Missing]: Replace 'target' is missing!`, cause: "Missing 'target' property inside replace" }
+            throw { message: `[Missing]: Replace 'target' string is missing!`, cause: "Missing 'target' property inside 'replace'" }
         }
         // handle if padding pattern is missing
-        if (!replace?.with) {
-            throw { message: `[Missing]: Replace 'with' string is missing!`, cause: "Missing 'with' property inside replace" }
+        if (!replace?.replaceWith) {
+            throw { message: `[Missing]: 'replaceWith' string is missing!`, cause: "Missing 'replaceWith' property inside 'replace'" }
         }
+
         sql = `REPLACE(${sql} ${ctx?.isPostgreSQL ? `, $${ctx._variableCount++}, $${ctx._variableCount++}` : ', ?, ?'} )`
-        values.push(replace?.target, replace?.with)
+        values.push(replace?.target, replace?.replaceWith)
     }
 
     if (Object.keys(compare).length) sql += prepWhere({ alias, where: compare, junction, values, encryption, ctx })
 
     if (!Object.keys(compare).length && (as || named)) {
-        sql += ` AS ${ctx?.isMySQL ? '?' : (as || value.split('.').pop())}`
+        sql += ` AS ${ctx?.isMySQL ? '?' : `"${(as || value.split('.').pop())}"`}`
         if (ctx?.isMySQL) values.push(as || value.split('.').pop())
     }
     return sql
@@ -678,7 +596,7 @@ const prepDate = ({ alias, val, junction = 'and', values, named = false, encrypt
     // patch value to values array (conditional)
     if (isVariable(sql)) {
         // prepare name
-        localValues.push(prepName({ alias, value }))
+        localValues.push(prepName({ alias, value, ctx }))
     }
 
     // decrypt
@@ -791,54 +709,51 @@ const prepNumeric = ({ alias, val, junction = 'and', values, named = false, encr
 
     // patch placeholder to the sql string
     let sql = prepPlaceholder({ value, alias, ctx })
-    if (isVariable(sql)) values.push(prepName({ alias, value }))
+    if (isVariable(sql)) values.push(prepName({ alias, value, ctx }))
 
     // envelop decrypt
     if (decrypt) sql = prepDecryption({ placeholder, value, decrypt, values, encoding, encryption, ctx })
-
-    // type casting
-    if (cast) sql = `CAST(${sql} AS ${dataTypes[cast] || 'CHAR'})`
 
     // apply power
     if (power != null) {
         const powPlaceholder = prepPlaceholder({ value: power, alias, ctx })
         sql = `${ctx?.isSQLite ? 'POW' : 'POWER'}(${sql}, ${powPlaceholder})`
-        if (isVariable(powPlaceholder)) values.push(prepName({ alias, value: power }))
+        if (isVariable(powPlaceholder)) values.push(prepName({ alias, value: power, ctx }))
     }
 
     // apply division
     if (divideBy != null) {
         const divisorPlaceholder = prepPlaceholder({ value: divideBy, alias, ctx })
         sql = `(${sql} / ${divisorPlaceholder})`
-        if (isVariable(divisorPlaceholder)) values.push(prepName({ alias, value: divideBy }))
+        if (isVariable(divisorPlaceholder)) values.push(prepName({ alias, value: divideBy, ctx }))
     }
 
     // apply modulus
     if (mod != null) {
         const modPlaceholder = prepPlaceholder({ value: mod, alias, ctx })
         sql = `(${sql} % ${modPlaceholder})`
-        if (isVariable(modPlaceholder)) values.push(prepName({ alias, value: mod }))
+        if (isVariable(modPlaceholder)) values.push(prepName({ alias, value: mod, ctx }))
     }
 
     // apply multiplier
     if (multiplyBy != null) {
         const multiplierPlaceholder = prepPlaceholder({ value: multiplyBy, alias, ctx })
         sql = `(${sql} * ${multiplierPlaceholder})`
-        if (isVariable(multiplierPlaceholder)) values.push(prepName({ alias, value: multiplyBy }))
+        if (isVariable(multiplierPlaceholder)) values.push(prepName({ alias, value: multiplyBy, ctx }))
     }
 
     // apply addition
     if (add != null) {
         const addPlaceholder = prepPlaceholder({ value: add, alias, ctx })
         sql = `(${sql} + ${addPlaceholder})`
-        if (isVariable(addPlaceholder)) values.push(prepName({ alias, value: add }))
+        if (isVariable(addPlaceholder)) values.push(prepName({ alias, value: add, ctx }))
     }
 
     // apply subtraction
     if (sub != null) {
         const subPlaceholder = prepPlaceholder({ value: sub, alias, ctx })
         sql = `(${sql} - ${subPlaceholder})`
-        if (isVariable(subPlaceholder)) values.push(prepName({ alias, value: sub }))
+        if (isVariable(subPlaceholder)) values.push(prepName({ alias, value: sub, ctx }))
     }
 
     // apply decimal format
@@ -850,10 +765,13 @@ const prepNumeric = ({ alias, val, junction = 'and', values, named = false, encr
         values.push(decimals)
     }
 
+    // type casting
+    if (cast) sql = `CAST(${sql} AS ${dataTypes[cast] || 'CHAR'})`
+
     if (Object.keys(compare).length) sql += prepWhere({ alias, where: compare, junction, values, encryption, ctx })
 
     if (!Object.keys(compare).length && (as || named)) {
-        sql += ` AS ${ctx?.isMySQL ? '?' : (as || value.split('.').pop())}`
+        sql += ` AS ${ctx?.isMySQL ? '?' : `"${(as || value.split('.').pop())}"`}`
         if (ctx?.isMySQL) values.push(as || value.split('.').pop())
     }
 
@@ -873,7 +791,7 @@ const prepNumeric = ({ alias, val, junction = 'and', values, named = false, encr
 const patchGroupBy = ({ groupBy, alias, values, ctx }) => {
     if (groupBy.length == 0) return ''
     return 'GROUP BY ' + groupBy.map(gb => {
-        const col = prepName({ value: gb, alias })
+        const col = prepName({ value: gb, alias, ctx })
         if (ctx?.isMySQL) {
             values.push(col)
             return '??'
@@ -897,7 +815,7 @@ const orderDirections = Object.freeze({ asc: 'ASC', desc: 'DESC' })
 const prepOrderBy = ({ alias, orderBy, values, ctx }) => {
     if (!Object.keys(orderBy).length) return ''
     return 'ORDER BY ' + Object.entries(orderBy).map(([col, dir]) => {
-        const name = prepName({ alias, value: col })
+        const name = prepName({ alias, value: col, ctx })
         const order = orderDirections[dir]
         if (ctx?.isMySQL) {
             values.push(name)
@@ -922,7 +840,7 @@ const prepJsonB = ({ value, aggregate = false, alias = null, values, ctx }) => {
         }
         const placeholder = prepPlaceholder({ value: val, alias, ctx })
         // const placeholder = handlePlaceholder({ value: val, alias, values, ctx })
-        if (isVariable(placeholder)) values.push(prepName({ value: val, alias }))
+        if (isVariable(placeholder)) values.push(prepName({ value: val, alias, ctx }))
         return `${placeholder}${isVariable(placeholder) ? `::${typeMap[typeof val](val)}` : ''}`
     }
 
@@ -970,7 +888,7 @@ const prepJsonContains = ({ jsonRef, contains, values, ctx, alias = null }) => {
         return `${jsonRef}@>$${ctx._variableCount++}`
     }
 
-    const name = prepName({ value: contains, alias })
+    const name = prepName({ value: contains, alias, ctx })
     if (typeof name === 'string') { if (name.startsWith('#')) values.push(name) }
     else values.push(JSON.stringify(name))
 
@@ -979,7 +897,7 @@ const prepJsonContains = ({ jsonRef, contains, values, ctx, alias = null }) => {
 
 const prepEncryption = ({ placeholder, col, encrypt = {}, values, encryption, ctx }) => {
     if (!encrypt[col]) return placeholder
-    if (ctx?.config?.dialect != 'mysql' && ctx?.config?.dialect != 'postgresql') throw { message: `[Invalid]: No built-in AES Encryption support found for '${ctx?.config?.dialect}'`, cause: `AES Encryption not supported by '${ctx?.config?.dialect}'` }
+    if (!ctx?.isMySQL && !ctx?.isPostgreSQL) throw { message: `[Invalid]: No built-in AES Encryption support found for '${ctx?.config?.dialect}'`, cause: `AES Encryption not supported by '${ctx?.config?.dialect}'` }
 
     const config = { ...(ctx?.config?.encryption || {}), ...(encryption || {}), ...(encrypt[col] || {}) }
     const modes = ['aes-128-ecb', 'aes-256-cbc']
@@ -1006,7 +924,7 @@ const prepEncryption = ({ placeholder, col, encrypt = {}, values, encryption, ct
 
 const prepDecryption = ({ placeholder, value, decrypt, encoding, values, encryption, ctx }) => {
 
-    if (ctx?.config?.dialect != 'mysql' && ctx?.config?.dialect != 'postgresql') throw { message: `[Invalid]: No built-in AES Decryption support found for '${ctx?.config?.dialect}'`, cause: `AES Decryption not supported by '${ctx?.config?.dialect}'` }
+    if (!ctx?.isMySQL && !ctx?.isPostgreSQL) throw { message: `[Invalid]: No built-in AES Decryption support found for '${ctx?.config?.dialect}'`, cause: `AES Decryption not supported by '${ctx?.config?.dialect}'` }
 
     if (!decrypt) return placeholder
 
@@ -1046,7 +964,39 @@ const prepDecryption = ({ placeholder, value, decrypt, encoding, values, encrypt
  */
 const patchLimit = (limit, values, ctx, key = 'LIMIT') => {
     values.push(limit)
-    return ` ${key} ${ctx?.isPostgreSQL ? `$${ctx._variableCount++}` : '?'}`
+    return `${key} ${ctx?.isPostgreSQL ? `$${ctx._variableCount++}` : '?'}`
+}
+
+/**
+ * @function prepPadding
+ * @description adds padding to either side of the string
+ * @param {*} param0 
+ * @returns {string}
+ */
+const prepPadding = ({ sql, pattern, length, values, side = 'L', ctx }) => {
+
+    // handle if padding length is missing
+    if (!length) throw { message: `[Missing]: Right padding 'length' is required!`, cause: `String padding 'length' property is required inside 'padding->${side == 'L' ? 'left' : 'right'}'` }
+
+    // handle if padding pattern is missing
+    if (!pattern) throw { message: `[Missing]: Right padding 'pattern' is required!`, cause: `String padding 'pattern' property is required inside 'padding->${side == 'L' ? 'left' : 'right'}'` }
+
+    // handle sqlite not supported
+    if (ctx?.isSQLite) throw { message: `Padding not supported by 'sqlite'`, cause: `'${side}PAD' is not a part of 'sqlite'` }
+
+    values.push(length, pattern)
+    return `${side}PAD(${sql} ${ctx?.isPostgreSQL ? `, $${ctx._variableCount++}, $${ctx._variableCount++}` : ', ?, ?'})`
+}
+
+const prepSubStr = ({ length, start, sql, values, ctx }) => {
+    // handle if substr length is missing
+    if (!length) throw { message: `[Missing]: Sub-string 'length' is missing!`, cause: "Sub-string 'length' property is required inside 'substr'" }
+
+    // handle if substr start index is missing
+    if (!start && start != 0) throw { message: `[Missing]: Sub-string 'start' index is missing!`, cause: "Sub-string 'start' (index) property is required inside 'substr'" }
+
+    values.push(start, length)
+    return `SUBSTR(${sql}, ${prepPlaceholder({ value: start, ctx })}, ${prepPlaceholder({ value: length, ctx })})`
 }
 
 const patchDateCast = value => !value ? '' : (value.includes('-') && value.includes(':') ? '::timestamp' : (value.includes('-') ? '::date' : (value.includes(':') ? '::time' : '')))
@@ -1056,7 +1006,7 @@ const handlePlaceholder = ({ value, alias, junction = 'and', parent = null, encr
         return prepWhere({ alias, where: value, junction, parent, values, encryption, ctx })
     } else {
         const placeholder = prepPlaceholder({ value, alias, ctx })
-        if (isVariable(placeholder)) values.push(prepName({ value, alias }))
+        if (isVariable(placeholder)) values.push(prepName({ value, alias, ctx }))
         return placeholder
     }
 }
@@ -1071,7 +1021,7 @@ const handleBetween = ({ alias, val, junction, parent, values, encryption, ctx }
     const { gt, lt } = val
     if (parent && !(parent in conditions)) {
         sql = prepPlaceholder({ value: parent, alias, ctx })
-        if (isVariable(sql)) values.push(prepName({ alias, value: parent }))
+        if (isVariable(sql)) values.push(prepName({ alias, value: parent, ctx }))
     }
     const gtPlaceholder = handlePlaceholder({ value: gt, alias, junction, values, encryption, ctx })
     const ltPlaceholder = handlePlaceholder({ value: lt, alias, junction, values, encryption, ctx })

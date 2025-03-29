@@ -12,11 +12,17 @@ const sanitizeSql = (input) => {
  * @param {object} nameBuilder
  * @param {string} [nameBuilder.alias] local reference for the table name
  * @param {*} nameBuilder.value actual value to prepare name for
+ * @param {*} [nameBuilder.ctx] context reference
  * @returns {string} prepared name to replace the placeholder
  */
-const prepName = ({ alias, value }) => {
-    if (value?.toString()?.startsWith('#')) return value.substring(1)
-    return typeof value === 'number' || typeof value === 'boolean' || parseInt(value) || Date.parse(value) || value.toString().includes('.') ? sanitizeSql(value) : sanitizeSql((alias ? alias + '.' : '') + value)
+const prepName = ({ alias, value, ctx = undefined }) => {
+    if (typeof value === 'string' && value?.startsWith('#')) return value.substring(1)
+    if (typeof value == 'string' && value.trim() == '') return value
+    if (typeof value === 'number' || typeof value === 'boolean') return value
+    if (!isNaN(Date.parse(value)) || !isNaN(parseInt(value))) return value
+    if (value.includes('.')) return !ctx?.isMySQL ? `"${value.split('.')[0]}"."${value.split('.')[1]}"` : value
+    const prefix = alias ? `${!ctx?.isMySQL ? `"${alias}"` : alias}.` : ''
+    return !ctx?.isMySQL ? `${prefix}"${sanitizeSql(`${value}`)}"` : sanitizeSql(`${prefix}${value}`)
 }
 
 module.exports = { prepName }

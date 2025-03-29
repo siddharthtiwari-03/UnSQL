@@ -12,10 +12,11 @@ const { prepName } = require("./name.helper")
  * @returns {('?'|'??'|string)} placeholder or a constant function name
  */
 const prepPlaceholder = ({ value, alias = null, ctx = undefined }) => {
-    if (value.toString().includes('*')) {
+    if (typeof value === 'string' && value.includes('*')) {
+        if (value.includes('.')) return !ctx?.isMySQL ? `"${value.split('.')[0]}".${value.split('.')[1]}` : `\`${value.split('.')[0]}\`.${value.split('.')[1]}`
         return value
     }
-    else if (checkConstants(value)) {
+    if (checkConstants(value)) {
         if (ctx?.isSQLite) {
             if (value === 'now') return `DATETIME('now')`
             else if (value === 'localTime') return `TIME('now', 'localtime')`
@@ -23,14 +24,14 @@ const prepPlaceholder = ({ value, alias = null, ctx = undefined }) => {
         }
         return constantFunctions[value]
     }
-    else if (value === null || value === 'null' || value === 'NULL') {
+    if (value === null || value === 'null' || value === 'NULL') {
         return NULL
     }
-    else if (Date.parse(value) || parseInt(value) || parseFloat(value) || typeof value === 'boolean' || value?.toString()?.startsWith('#') || value === ' ' || value === '') {
+    if (Date.parse(value) || parseInt(value) || parseFloat(value) || typeof value === 'boolean' || (typeof value === 'string' && value?.startsWith('#')) || value === ' ' || value === '') {
         return ctx?.isPostgreSQL ? `$${ctx._variableCount++}` : '?'
     }
-
-    return ctx.isMySQL ? '??' : prepName({ value, alias })
+    value = value.trim()
+    return ctx.isMySQL ? '??' : prepName({ value, alias, ctx })
 }
 
 module.exports = { prepPlaceholder }

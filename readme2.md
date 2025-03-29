@@ -56,12 +56,13 @@ import { UnSQL } from 'unsql'
 
 ### 1.2 What's New?
 
-**Version v2.1** brings support for **Multiple Dialects**, **Bug Fixes**, **Improved Code Suggestions**, brought back the **rawQuery Method**, enhanced **Session Manager** and better code optimization under the hood and much more
+**Version v2.1** brings support for **Multiple Dialects** along with **Unified codebase**, **Bug Fixes**, **Improved Code Suggestions**, brought back the **rawQuery Method**, enhanced **Session Manager** and better code optimization under the hood and much more
 
 ### 1.3 Key Features
 
 - **Promise based** interface with streamlined async/await support
 - **Schemaless** eliminates boilerplate code and hectic to manage migrations
+- **Unified Codebase** enables maintaining single codebase while switching between SQL dialects
 - **Class-based Models** encapsulates configurations into clean interface
 - **Reuse connections** supports connection `pool` for better performance
 - **Dynamic query generation** perform CRUDs without writing SQL
@@ -108,28 +109,25 @@ export const pool = new Pool({...})
     Both `sqlite` and `sqlite3` packages are required to be installed in your project to interact with SQLite db.
 
 ```javascript
-const sqlite3 = require('sqlite3').verbose()
+import sqlite3 from 'sqlite3'
+import { open } from 'sqlite'
 
-const { open } = require('sqlite')
-
-const db = (async () => {
-    try {
-        return await open({
-            filename: './databases/test2.db',
-            driver: sqlite3.Database,
-        })
-    } catch (error) {
-        console.error('Error initializing database:', error)
-        throw error // Rethrow the error to be handled by the caller
-    }
+export const pool = (async () => {
+  try {
+    return await open({
+      filename: './databases/test2.db',
+      driver: sqlite3.Database
+    })
+  } catch (error) {
+    console.error('Error initializing database:', error)
+    throw error // Rethrow the error to be handled by the caller
+  }
 })()
-
-module.exports = { db }
 ```
 
 > **Please note:**
-> 1. Named placeholders and multiline statement settings are only required to be configured with MySQL
-> 2. Although SQLite provides connection reference (here `db`), it is still used with `pool` property of `config`
+> 1. Named placeholders and multiline statement settings are only required to be configured with **MySQL**
+> 2. Although **SQLite** provides connection reference (here `db`), it is still used with `pool` property of `config`
 
 ### 2.2 Installation
 
@@ -287,7 +285,7 @@ Each of these properties is explained below:
         orderBy: {}, // re-arrange record based on column(s) in ascending or descending order
         limit: undefined, // limit no. of records
         offset: undefined, // set the starting index for records
-        using: [], // (required) array of common column(s) or { parentColumn: childColumn }
+        using: [], // (required) array of common column(s) or an object of { parentColumn: childColumn }
         as: null // required with 'select'/'where'/'having' properties takes priority over 'as' to refer columns from outside this object
     }
 
@@ -310,7 +308,7 @@ Each of these properties is explained below:
     })
     ```
     **Please note:** 
-    1. `using` property can accept array of column names or array of `{ parentColumn: childColumn }` where `parentColumn` is the column from parent table and `childColumn` is the column from child table. When `alias` is passed, it is automatically patched to the respective column name
+    1. `using` property can accept array of column names or an object like `{ parentColumn: childColumn }` where `parentColumn` is the column from parent table and `childColumn` is the column from child table. When `alias` is passed, it is automatically patched to the respective column name
     2. When using `select` | `where` | `having` inside join, `as` is mandatory
     3. When both `alias` and `as` is set, `as` will be used as prefix to refer column names from child tables outside join object context
 
@@ -414,6 +412,8 @@ Each of these properties is explained below:
    - `encryption` same as explained [here](#encryption)
    - `session` same as explained [here](#session)
 
+**Please Note:** In **Upsert mode**, while `mysql` and `postgresql` will only update the columns provided in the `upsert` object, with `dialect: 'sqlite'` if any existing column value is ignored in the `upsert` object, then that value will either be set to `null` or `predefined default value` will be assigned to that column, due to the native upsert behavior (**INSERT OR REPLACE**) of **SQLite**
+
 ### 3.3 Delete Method
 
 `delete` is a *static, asynchronous* method, used to remove record(s) from the database. `where` and `having` properties are used to *filter* record(s) that will be removed, if no *conditions* are provided in `where` and (or) `having` property, this method will remove all records in the database. `safeMode` property (when set to `true`) in the `config` property of the model class helps prevent accidental *delete all* of the records. Interface for this method along with default values is shown below:
@@ -458,19 +458,17 @@ Each of these properties is explained below:
 
 ### 3.4 Raw Query Method
 
-`rawQuery` method is the most powerful method among all, unlike other methods that are limited to the base mapping, this method is not tied to any particular table, but utilizes the connection pool to execute queries on that database itself. It is capable of executing any and all types of queries including **DDL, DML etc** (In `sqlite`, set `methodType: 'exec'`). 
+`rawQuery` method is the most powerful method among all, unlike other methods that are limited to the base mapping, this method is not tied to any particular table, but utilizes the connection pool to execute queries on that database itself. It is capable of executing any and all types of queries including **DDL, DML etc** (In `sqlite`, set `methodType: 'exec'`). It also supports execution of multiple SQL statements in one query. When multiple `SELECT` statements are executed (not supported by `sqlite`), `result` contains nested array one for each `SELECT` statement.
 
-It supports various types of methods (as mentioned below) for `mysql` and `sqlite`, each method has specific capabilities:
+For `sqlite`, UnSQL supports various types of methods (as mentioned below) that can be set manually, each method has specific capabilities:
 
-| Method Type | Dialect  | Description                                                                           |
-| ----------- | -------- | ------------------------------------------------------------------------------------- |
-| `execute`   | `mysql`  | supports **Session Manager**, and all type of queries (DML, DDL etc.)                 |
-| `query`     | `mysql`  | supports multiple sql statements in single query string, and all type of queries      |
-| `all`       | `sqlite` | supports **Session Manager and SELECT query** returns *record(s) as array*            |
-| `run`       | `sqlite` | supports **Session Manager, INSERT and UPDATE query**, *returns insertId and changes* |
-| `exec`      | `sqlite` | supports **CREATE, DROP ALTER and similar query**, returns nothing                    |
+| Method Type | Description                                                                           |
+| ----------- | ------------------------------------------------------------------------------------- |
+| `all`       | supports **Session Manager and SELECT query** returns *record(s) as array*            |
+| `run`       | supports **Session Manager, INSERT and UPDATE query**, *returns insertId and changes* |
+| `exec`      | supports **CREATE, DROP ALTER and similar query**, returns nothing                    |
 
-It supports normal queries as well as placeholders: 
+It supports normal as well as parameterized (with placeholders) queries: 
  - In `mysql`: 
    - Positional placeholders: `??`, `?`, 
    - Named placeholders: `:namedVariable`, 
@@ -686,7 +684,7 @@ All objects are explained below:
             value: 'some value / column containing text',
             replace: {
                 target: null, // chars to be replaced
-                with: null // replace with
+                replaceWith: null // replace target with this
             }, 
             reverse: false, // rearrange characters in reverse order
             textCase: null, // transform text case to 'upper' or 'lower'
@@ -767,6 +765,7 @@ All objects are explained below:
     6. `sqlite` does not support built-in AES Encryption/Decryption hence will throw error if values are set
     7. <span id="encoding">`encoding`</span> (only used with `mysql`) determines the character set to be used while decrypting data. It can be any character set supported by `mysql` like: `'utf8mb4'` (default) | `'latin1'` | `'ascii'` | `'utf8'` | `'ucs2'` | `'utf16'` etc
     8. <span id="compare">`compare`</span> is similar to `where` and `having`, it compares value returned by this object to the condition specified in this object.
+    9. In `replace` property, due to limitation of implementation by SQL, `target` and `replaceWith` properties are always expected to be static string and never a column name, hence adding a prefix of `#` is not required for these properties
 
 - #### **Numeric Wrapper** (Keyword <span id="num">`num`</span>): 
   Performs **Numerical/Mathematical** operation(s) on `value` property. Follows the rules of **BODMAS** when performing multiple operations. Interface with default properties is shown below:
@@ -1301,6 +1300,7 @@ Session Manager is a special class, used to create an instance of `session` obje
 > **Please note:** 
 > 1. Constructor requires `connection` or connection `pool` as parameter
 > 2. `rollback` and `commit` accept an optional boolean parameter, to close `session` (when `true`) at this point
+> 3. When trying to combine Session Manager with `rawQuery`, it will not work with `methodType: 'exec'` is set in `dialect: 'sqlite'` or when executing multiple SQL statements in single query
 
 ## 6. Examples
 
@@ -1566,11 +1566,19 @@ router.post('/orders', async (req,res) => {
 
 ### 7.1 Difference between plain text and column name?
 
-UnSQL uses `#` as prefix to identify if string is plain text, or column name if string does not start with `#`.
+UnSQL uses `#` as prefix to identify if string is plain text, or column name if string does not start with `#`. The only exception is `target` and `replaceWith` properties inside `replace` due to the limited of implementation for these properties by SQL they only support plain text and not columns hence prefixing them with `#` is not required
 
-### 7.2 What will happen if secret/iv/sha is defined inside config, encryption and decrypt/encrypt property?
+### 7.2 Priority of secret / iv / sha defined inside config / encryption / decrypt / encrypt?
 
 When configurations like `secret` | `iv` | `sha` are declared in all places, `encryption` at method level will override `encryption` at `config`, similarly `decrypt` / `encrypt` inside special object will override all other.
+
+### 7.3 Does UnSQL support unified codebase for all SQL dialects?
+
+Yes, UnSQL is the only library that supports unified codebase across multiple SQL dialects so you don't have to update your code while switching between SQL dialect to another.
+
+### 7.4 Are the identifiers like column and table names case sensitive?
+
+Yes, in case of `postgresql` and `sqlite`, identifiers like column names and table names are case sensitive by default. In case of `mysql` identifiers like table name and column name are case in-sensitive.
 
 ### Support
 ![npm](https://img.shields.io/badge/npm-CB3837?style=for-the-badge&logo=npm&logoColor=white) 

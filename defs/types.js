@@ -74,6 +74,7 @@
  * @prop {EncryptionConfig} [decrypt]
  * @prop {boolean} [reverse]
  * @prop {'upper'|'lower'} [textCase]
+ * @prop {{target:string, replaceWith:string}} [replace]
  * @prop {{left?:{length:number, pattern:string}, right?:{length:number, pattern:string}}} [padding]
  * @prop {{start:number, length:number}} [substr]
  * @prop {'left'|'right'|boolean} [trim]
@@ -88,7 +89,7 @@
  * @prop {number|string} value
  * @prop {EncryptionConfig} [decrypt]
  * @prop {EncryptionConfig} [encrypt]
- * @prop {EncryptionConfig} [decimals]
+ * @prop {'floor'|'ceil'|'round'|number} [decimals]
  * @prop {number|string} [sub]
  * @prop {number|string} [add]
  * @prop {number|string} [power]
@@ -206,7 +207,7 @@
  * @typedef {Object} JoinQuery
  * @prop {SelectObject} [select]
  * @prop {'left'|'right'|'inner'|'fullOuter'|'cross'} [type]
- * @prop {(string|{[column:string]:string})[]} using
+ * @prop {string[]|{[column:string]:string}} using
  * @typedef {PartialQuery & JoinQuery} BaseJoin
  */
 
@@ -222,9 +223,14 @@
  * @prop {BaseJson} [json]
  * @prop {BaseJson} [array]
  * @prop {BaseQuery} [refer]
- * @prop {BetweenObject} [between]
+ */
+
+/**
+ * composite methods
+ * @typedef {Object} CompositeMethods
  * @prop {(WrapperMethods|AggregateWrappers|CustomWrapper)[]} [and]
  * @prop {(WrapperMethods|AggregateWrappers|CustomWrapper)[]} [or]
+ * @prop {BetweenObject} [between]
  */
 
 /**
@@ -255,7 +261,7 @@
 
 /**
  * where object
- * @typedef {(CustomWrapper|WrapperMethods)} WhereObject
+ * @typedef {(CustomWrapper|WrapperMethods|CompositeMethods)} WhereObject
  */
 
 /**
