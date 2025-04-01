@@ -116,9 +116,10 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', values,
             const valPlaceholder = handlePlaceholder({ value: val, alias, junction, values, parent, encryption, ctx })
 
             const prefix = {
-                in: `(${valPlaceholder})`,
-                exists: `(${valPlaceholder})`,
-                notExists: `(${valPlaceholder})`,
+                in: Array.isArray(val) ? `(${valPlaceholder})` : valPlaceholder,
+                notIn: Array.isArray(val) ? `(${valPlaceholder})` : valPlaceholder,
+                exists: valPlaceholder,
+                notExists: valPlaceholder,
                 like: ctx?.isPostgreSQL ? `'%' || ${valPlaceholder} || '%'` : `CONCAT("%", ${valPlaceholder}, "%")`,
                 notLike: ctx?.isPostgreSQL ? `'%' || ${valPlaceholder} || '%'` : `CONCAT("%", ${valPlaceholder}, "%")`,
                 startLike: ctx?.isPostgreSQL ? `${valPlaceholder} || '%'` : `CONCAT(${valPlaceholder}, "%")`,
@@ -1002,6 +1003,9 @@ const prepSubStr = ({ length, start, sql, values, ctx }) => {
 const patchDateCast = value => !value ? '' : (value.includes('-') && value.includes(':') ? '::timestamp' : (value.includes('-') ? '::date' : (value.includes(':') ? '::time' : '')))
 
 const handlePlaceholder = ({ value, alias, junction = 'and', parent = null, encryption, ctx, values }) => {
+    if (Array.isArray(value)) {
+        return prepSelect({ select: value, values, alias, encryption, ctx })
+    }
     if (typeof value === 'object') {
         return prepWhere({ alias, where: value, junction, parent, values, encryption, ctx })
     } else {

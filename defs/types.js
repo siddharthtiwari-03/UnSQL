@@ -72,6 +72,7 @@
  * @typedef {Object} StringObject
  * @prop {string} value
  * @prop {EncryptionConfig} [decrypt]
+ * @prop {string} [encoding]
  * @prop {boolean} [reverse]
  * @prop {'upper'|'lower'} [textCase]
  * @prop {{target:string, replaceWith:string}} [replace]
@@ -79,7 +80,7 @@
  * @prop {{start:number, length:number}} [substr]
  * @prop {'left'|'right'|boolean} [trim]
  * @prop {CastingTypes} [cast]
- * @prop {Object} [compare]
+ * @prop {ValuesObject|ComparatorObjects} [compare]
  * @prop {string} [as]
  */
 
@@ -88,6 +89,7 @@
  * @typedef {Object} NumericObject
  * @prop {number|string} value
  * @prop {EncryptionConfig} [decrypt]
+ * @prop {string} [encoding]
  * @prop {EncryptionConfig} [encrypt]
  * @prop {'floor'|'ceil'|'round'|number} [decimals]
  * @prop {number|string} [sub]
@@ -97,7 +99,7 @@
  * @prop {number|string} [multiplyBy]
  * @prop {number|string} [mod]
  * @prop {CastingTypes} [cast]
- * @prop {Object} [compare]
+ * @prop {ValuesObject|ComparatorObjects} [compare]
  * @prop {string} [as]
  */
 
@@ -106,13 +108,14 @@
  * @typedef {Object} DateObject
  * @prop {string} value
  * @prop {EncryptionConfig} [decrypt]
+ * @prop {string} [encoding]
  * @prop {EncryptionConfig} [encrypt]
  * @prop {CastingTypes} [cast]
  * @prop {string} [fromPattern]
  * @prop {string} [format]
  * @prop {number|string} [sub]
  * @prop {number|string} [add]
- * @prop {{[key:string]:ComparatorObjects|BetweenWrapper}} [compare]
+ * @prop {ValuesObject|ComparatorObjects} [compare]
  * @prop {string} [as]
  */
 
@@ -135,7 +138,7 @@
  * @prop {{left?:{length:number, pattern:string}, right?:{length:number, pattern:string}}} [padding]
  * @prop {{start:number, length:number}} [substr]
  * @prop {'left'|'right'|boolean} [trim]
- * @prop {WhereObject} [compare]
+ * @prop {ValuesObject|ComparatorObjects} [compare]
  * @prop {string} [as]
  */
 
@@ -166,7 +169,7 @@
 
 /**
  * comparators
- * @typedef {{eq:ValuesObject}|{notEq:ValuesObject}|{in:ValuesObject}|{notIn:ValuesObject}|{lt:ValuesObject}|{gt:ValuesObject}|{ltEq:ValuesObject}|{gtEq:ValuesObject}|{like:ValuesObject}|{startLike:ValuesObject}|{endLike:ValuesObject}|{notStartLike:ValuesObject}|{notEndLike:ValuesObject}} ComparatorObjects
+ * @typedef {{eq:ValuesObject}|{notEq:ValuesObject}|{in:ValuesObject}|{notIn:ValuesObject}|{lt:ValuesObject}|{gt:ValuesObject}|{ltEq:ValuesObject}|{gtEq:ValuesObject}|{like:ValuesObject}|{notLike:ValuesObject}|{startLike:ValuesObject}|{endLike:ValuesObject}|{notStartLike:ValuesObject}|{notEndLike:ValuesObject}} ComparatorObjects
  */
 
 /**
@@ -256,12 +259,12 @@
 
 /**
  * custom wrapper
- * @typedef {{[key:string]:(ValuesObject|ComparatorObjects)}} CustomWrapper
+ * @typedef {{[key:string]:(ValuesObject|ComparatorObjects|{between:BetweenObject})}} CustomWrapper
  */
 
 /**
  * where object
- * @typedef {(CustomWrapper|WrapperMethods|CompositeMethods)} WhereObject
+ * @typedef {(ValuesObject|CustomWrapper|WrapperMethods|CompositeMethods)} WhereObject
  */
 
 /**
