@@ -5,48 +5,40 @@
 ![NPM Downloads](https://img.shields.io/npm/dm/unsql)
 ![NPM License](https://img.shields.io/npm/l/unsql "UnSQL License")
 
-
-**UnSQL** is an open-source, lightweight JavaScript library that provides schemaless, class based, clean and modern interface to interact with structured Database (`mysql`/`postgresql`/`sqlite`), through dynamic query generation. `UnSQL` is compatible with JavaScript based runtimes like Node.js and Next.js.
+**UnSQL** is a lightweight, open-source JavaScript library that facilitates class based, schemaless interactions with the structured databases viz. `MySQL`, `PostgreSQL` and `SQLite` through dynamic query generation. It is compatible with javascript runtime environments like NodeJS and NextJS.
 
 ## Table of Contents
-1. [Overview](#overview)
-2. [Breaking Changes](#breaking-changes)
-3. [What's New?](#whats-new)
-4. [Features](#features)
-5. [Setup Guide](#setup-guide)
-   - [Installation](#installation)
-   - [Prerequisite](#prerequisite)
-6. [Basics](#basics)
-   - [How UnSQL Works?](#how-unsql-works)
-   - [Model Class (Example)](#model-class-example)
-   - [What is config inside model class?](#what-is-config-inside-unsql-model-class)
-7. [What are the built-in methods in UnSQL?](#what-are-the-built-in-methods-in-unsql)
-   - [Find method](#find-method)
-   - [Save method](#save-method)
-   - [Delete method](#delete-method)
-   - [Raw Query method](#raw-query-method)
-   - [Export method](#export-method)
-   - [Reset method](#reset-method)
-8. [What is Session Manager in UnSQL?](#what-is-session-manager-in-unsql)
-9. [Examples](#examples)
-   - [How to find (read/retrieve) record(s) using UnSQL?](#how-to-find-readretrieve-records-using-unsql)
-   - [How to save (insert/update/upsert) data using UnSQL?](#how-to-save-insertupdateupsert-data-using-unsql)
-   - [How to delete (remove) record(s) using UnSQL?](#how-to-delete-remove-records-using-unsql)
-   - [How to use Session Manager?](#how-to-use-session-manager)
-10. [FAQs](#faqs)
-    - [How to import UnSQL in model class](#how-to-import-unsql-in-model-class)
-    - [How does UnSQL differentiates between column name and string value?](#how-does-unsql-differentiates-a-column-name-and-string-value)
-    - [What are Reserved Constants in UnSQL?](#what-are-reserved-constants-in-unsql)
-    - [Does UnSQL support SQL Json Datatype](#does-unsql-support-mysql-json-datatype)
-    - [How Encryption/Decryption works in UnSQL?](#how-does-encryptiondecryption-works-in-unsql)
+1. [Overview](#1-overview)
+   - [1.1 Breaking Changes](#11-breaking-changes)
+   - [1.2 What's new](#12-whats-new)
+   - [1.3 Key Features](#13-key-features)
+2. [Getting Started](#2-getting-started)
+   - [2.1 Prerequisites](#21-prerequisites)
+   - [2.2 Installation](#22-installation)
+   - [2.3 Setup Guide](#23-setup-guide)
+3. [Built-in Query Methods](#3-built-in-query-methods)
+   - [3.1 Find Method](#31-find-method)
+   - [3.2 Save Method](#32-save-method)
+   - [3.3 Delete Method](#33-delete-method)
+   - [3.4 Raw Query Method](#34-raw-query-method)
+   - [3.5 Export Method](#35-export-method)
+   - [3.6 Reset Method](#36-reset-method)
+4. [Built-in Constants (Reserved Keywords) / Units / Wrapper Objects / Comparator Objects](#4-built-in-constants-units-wrapper-objects-and-comparator-objects)
+   - [4.1 Constants (Reserved Keywords)](#41-constants-reserved-keywords)
+   - [4.2 Units](#42-units-datetime)
+   - [4.3 Wrapper Objects](#43-wrapper-objects)
+   - [4.4 Comparator Objects](#44-comparator-objects)
+5. [Session Manager](#5-session-manager)
+6. [Examples](#6-examples)
+7. [FAQs](#7-faqs)
 
-## Overview
+## 1. Overview
 
-**UnSQL** simplifies working with structured (SQL) databases by dynamically generating queries under the hood while offering developers a flexible and intuitive interface. It eliminates boilerplate code, enhances security, and improves productivity in database management.
+**UnSQL** simplifies working with structured databases by dynamically generating SQLs under the hood. It provides developer friendly interface while eliminating the complexities of SQL. UnSQL also utilizes placeholders and prepared statements to prevent SQL-injections.
 
-## Breaking Changes
+### 1.1 Breaking Changes
 
-Beyond **version v2.0**, backward compatibility has been dropped, from the default import, in favour of security, features and overall interface. For projects still running on version v1.x it is recommend to switch all the `import` / `require` of `'unsql'` in your existing `model` classes to legacy flag `'unsql/legacy'` as shown below:
+With the release of **version v2.0**, UnSQL has been re-written from scratch to cater modern challenges, including enhanced security and including new features all while also keeping the interface clean and simple, improving the overall developer experience. If your project is still using version v1.x then it is recommended you switch your `import/require` from `'unsql'` to `'unsql/legacy'`, as shown below:
 
 ```javascript
 // v1.x import
@@ -60,78 +52,51 @@ const { UnSQL } = require('unsql')
 import { UnSQL } from 'unsql'
 ```
 
-> **Please note:** [**Documentation for version v1.x**](https://github.com/siddharthtiwari-03/UnSQL/tree/legacy "Open v1.x documentation") is available on **GitHub**
+> [Documentation for v1.x](https://github.com/siddharthtiwari-03/UnSQL/tree/legacy "Open v1.x documentation") can be found on GitHub
 
-## What's New?
+### 1.2 What's New?
 
-With the release of: 
+**Version v2.1** brings support for **Multiple Dialects** along with **Unified codebase**, **Bug Fixes**, **Improved Code Suggestions**, brought back the **rawQuery Method**, enhanced **Session Manager** and better code optimization under the hood and much more
 
-### version v2.0.4:
-
-- **Minor Bug fixes** code is more stable than before
-- **Performance enhancement** query generation is now faster and more efficient
-
-> For full **release notes** please visit [this](https://github.com/siddharthtiwari-03/UnSQL/releases "UnSQL release notes")
-
-## Key Features
+### 1.3 Key Features
 
 - **Promise based** interface with streamlined async/await support
 - **Schemaless** eliminates boilerplate code and hectic to manage migrations
+- **Unified Codebase** enables maintaining single codebase while switching between SQL dialects
 - **Class-based Models** encapsulates configurations into clean interface
-- **Support connection** `pool` reuses connections
+- **Reuse connections** supports connection `pool` for better performance
 - **Dynamic query generation** perform CRUDs without writing SQL
+- **Safer code** prevents SQL-injections with placeholders and prepared statements
 - **JSON as Response** including execution success/failure acknowledgement and `result` or `error`
 - **Transaction** based executions, handles rollbacks on failure
 - **Graceful Error Handling** no try-catch required, returns structured error message
-- **JSDoc-compatible** for type checking and code suggestion
+- **JSDoc-compatible** for type checking and code suggestions
 - **Built-in Debug Modes** (eg.: 'query', 'error', 'benchmarks' etc)
 - **Built-in AES Encryption/Decryption** protect sensitive data natively without any third part package
 
-## Setup Guide
+## 2. Getting Started
 
-### Installation
+### 2.1 Prerequisites
 
-`UnSQL` can be installed into your package via. any of the package managers viz. **npm** or **yarn** as shown below:
+UnSQL can work with three different `dialect` of SQL (`'mysql'`, `'postgresql'` and `'sqlite'`). Each of them require different *prerequisite setup* which are utilized by UnSQL as a source of connection `pool` as mentioned below:
 
-1. Using **npm**
+- **MySQL (default)** (`dialect: 'mysql'`)
 
-```bash
-npm install unsql
-```
-
-Or
-
-```bash
-npm i unsql
-```
-
-Or 
-
-2. Using **yarn**
-
-```bash
-yarn add unsql
-```
-
-### Prerequisite
-
-1. **MySQL:** `dialect: 'mysql'` (default)
-
-MySQL `connection` or connection `pool` (recommended) is required to connect to the MySQL database. `mysql2` is the most commonly used package for this purpose. Make sure to **add** `multipleStatements: true` into your `mysql2` `createPool` or `createConnection` method as shown below:
+    `mysql2` is the most commonly used package to provided connection `pool` to interact with **MySQL** database.
 
 ```javascript
-import mysql from 'mysql2/promise'
+import mysql2 from 'mysql2/promise'
 
-export const pool = mysql.createPool({
-    ...
+export const pool = createPool({
+    ...,
     namedPlaceholders: true, // (optional) required if using rawQuery with named placeholders
     multipleStatements: true // (optional) required if using Encryption/Decryption features
 })
 ```
 
-2. **PostgreSQL:** `dialect: 'postgresql'`
+- **PostgreSQL** (`dialect: 'postgresql'`)
 
-With version v2.1.0, support for **postgresql** has been added. `pg` is the most commonly used package to create connection `pool` for **postgresql** databases. Your `db.service.js` file should look like: 
+    `pg` is the package required to generate connection `pool`
 
 ```javascript
 import { Pool } from 'pg'
@@ -139,37 +104,53 @@ import { Pool } from 'pg'
 export const pool = new Pool({...})
 ```
 
-3. **SQLite:** `dialect: 'sqlite'`
+- **SQLite** (`dialect: 'sqlite'`)
 
-With version v2.1.0, support for **SQLite** has been added. `sqlite` and `sqlite3` are required packages for establishing *connection*. Your `db.service.js` file should look like:
+    Both `sqlite` and `sqlite3` packages are required to be installed in your project to interact with SQLite db.
 
 ```javascript
-const sqlite3 = require('sqlite3').verbose()
+import sqlite3 from 'sqlite3'
+import { open } from 'sqlite'
 
-const db = new sqlite3.Database('./databases/test.db', err => {
-    if (err) console.error('error while opening database', err)
-})
-
-module.exports = { db }
+export const pool = (async () => {
+  try {
+    return await open({
+      filename: './databases/test2.db',
+      driver: sqlite3.Database
+    })
+  } catch (error) {
+    console.error('Error initializing database:', error)
+    throw error // Rethrow the error to be handled by the caller
+  }
+})()
 ```
 
-> **Please note:** 
-> 1. These libraries are required to establish a *connection* with the respected database(s). Configuration inside `db.service.js` for each `dialect` is different (as aforementioned)
-> 2. Common configurations like `host`, `user`, `password`, `database`, `port` are not mentioned above but required by them
-> 3. Although, `sqlite` does not support **connection pool**, the connection `db` established here is used inside `pool` property of `config`
-> 4. `'./databases/test.db'` directory mentioned is just a sample name and no directory will be created automatically
+> **Please note:**
+> 1. Named placeholders and multiline statement settings are only required to be configured with **MySQL**
+> 2. Although **SQLite** provides connection reference (here `db`), it is still used with `pool` property of `config`
 
-## Basics
+### 2.2 Installation
 
-## How UnSQL works?
+**UnSQL** can be installed using any of the package managers viz. `npm` or `yarn`:
 
-`UnSQL` uses **class-based approach**, therefore first step is to create model class. Each table in your database is represented by a model class that **extends** from the `UnSQL` base class and holds *config* property specific to this model. These model classes are used to invoke various built-in methods to perform **CRUD**s.
+- Using `npm`
 
-## Model Class (Example)
+```bash
+npm i unsql
+```
 
-Below is the example for a model class using both CommonJS and ES6 module. Here, class named `User`, extending from the `UnSQL` base class, is defined inside the `user.class.js` file. For explanation, MySQL connection `pool` is used:
+- Using `yarn`
 
-**user.class.js** (CommonJS)
+```bash
+yarn add unsql
+```
+
+### 2.3 Setup Guide
+
+**Unsql** uses class based approach hence, after *prerequisites* and *installation*, next step is to create **model classes**. Each model is mapped to a database table and *extends* from the **UnSQL** base class and has a *static property named* `config` that holds all the *configurations* related to the respective model class. Below if the sample model class using **CommonJS** and **ES6 Module**:
+
+- **user.class.js** (CommonJS)
+
 ```javascript
 // @ts-check
 const { UnSQL } = require('unsql')
@@ -178,7 +159,7 @@ const { UnSQL } = require('unsql')
 const pool = require('path/to/your/db/service')
 
 /**
- * @class User
+ * @class
  * @extends UnSQL
  */
 class User extends UnSQL {
@@ -199,7 +180,7 @@ class User extends UnSQL {
 module.exports = { User }
 ```
 
-**user.class.js** (ES6 Module)
+- **user.class.js** (ES6 Module)
 ```javascript
 // @ts-check
 import { UnSQL } from 'unsql'
@@ -208,7 +189,7 @@ import { UnSQL } from 'unsql'
 import { pool } from 'path/to/your/db/service'
 
 /**
- * @class User
+ * @class
  * @extends UnSQL
  */
 export class User extends UnSQL {
@@ -228,34 +209,43 @@ export class User extends UnSQL {
 }
 ```
 
-## What is config inside UnSQL model class?
+#### 2.3.1 Config Property
 
-`config` is a *static* object that is used to define **global level configurations** that are specific for all references of this model class. Below are the list of properties `config` accepts:
-- **table**: (mandatory) accepts name of the table in the database,
-- **pool**: (optional) accepts sql connection `pool` (or `sqlite` `db` connection) object,
-- **connection**: (optional) accepts mysql `connection` object,
-- **safeMode**: accepts `boolean` value, helps avoiding accidental *delete all* due to missing `where` and (or) `having` property in `delete` method,
-- **devMode**: accepts `boolean` value, Enables/Disables features like **Export to/Import from another model**, **reset** database table mapped to model
-- **dialect**: defines sql type viz. `'mysql'`, `'postgresql'` or `'sqlite'` (defaults to `'mysql'`)
+`Config` property is the *heart and soul* of any model class, it **holds all configurations** related to the model class and is used throughout *query generation and execution*. It can also hold global level configurations related to **Encryption/Decryption** for that table so that you don't have to re-define them for each query.
 
-> **Please note:** Either of the two: `pool` or `connection` property is required. `pool` takes priority over `connection` in case value for both are provided
+| Property           | Description                                                                                                           |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| `table`            | (required) name of the database table to be mapped with this model class                                              |
+| `pool`             | (required) connection / pool of connection provided by [prerequisite package](#21-prerequisites)                      |
+| `safeMode`         | (required) defaults to `true` prevents accidental *delete all* and *reset* query                                      |
+| `devMode`          | (required) defaults to `false`, unless `true`, prevents export/import of data                                         |
+| `dialect`          | (required) defines the dialect used for dynamic query generation                                                      |
+| `encryption`       | (optional) defines various properties viz. `secret`, `iv`, `sha` and `mode` at global level to used by all executions |
+| `dbEncryptionMode` | (optional) defaults to `unknown`, defines the encryption mode set on the database                                     |
 
-## What are the built-in methods in UnSQL?
+> **Please note:** 
+> 1. `secret` is the **secret key** that is used to encrypt the data
+> 2. `iv` and `sha` are only used when `dialect` is set to `'mysql'`, as `postgresql` sets up `iv` internally and `sqlite` does not have any built-in Encryption/Decryption methods
+> 3. When `dbEncryptionMode` is same as `mode` inside `encryption` property, in `mysql` dialect, an additional *internal* query that is used to set the `block_encryption_mode` is skipped
 
-`UnSQL` provides six (06) *static* methods to perform the **CRUD** operations via. model class as mentioned below:
+## 3. Built-in Query Methods
 
-| Method                          | Description                                                                                                                       |
-| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| [`find`](#find-method)          | fetch record(s) from the database table                                                                                           |
-| [`save`](#save-method)          | insert / update / upsert record(s) in the database table                                                                          |
-| [`delete`](#delete-method)      | remove record(s) from the database table                                                                                          |
-| [`rawQuery`](#raw-query-method) | enables execution of raw queries, supports manually created placeholders                                                          |
-| [`export`](#export-method)      | export record(s) to a dynamically generated '.json' file or migrate data into another table mapped to a valid `UnSQL` model class |
-| [`reset`](#reset-method)        | remove all records from database table (resets `'auto increment'` IDs to zero (0))                                                |
+**Unsql** provides various *static, asynchronous* built-in methods as mentioned below:
 
-### Find method
+| Method     | Description                                                                         |
+| ---------- | ----------------------------------------------------------------------------------- |
+| `find`     | used to read / retrieve /fetch record(s) from database                              |
+| `save`     | used to insert / update / upsert record(s) into database                            |
+| `delete`   | used to remove / delete record(s) from database                                     |
+| `rawQuery` | used to write custom SQL (manually), can be used for any of type of query execution |
+| `reset`    | will remove all record(s) and reset *auto increment* column to initial state        |
+| `export`   | can dump record(s) from database to specified `target` (json file or model class)   |
 
-`find` is a static, asynchronous method, that dynamically generates *select query*, to read/retrieve record(s) from the mapped database table. It accepts object (optional) as its parameter with various properties (optional). `find` method always returns a JSON object with execution success/failure acknowledgement via. `success` property (being `true` on success and `false` on failure) and `result` (Array of record(s)) or `error` (detailed error object) depending upon query was successful or not. `find` method combines `findAll` and `findOne` into one single method, as `findOne` method (in every other library/ORM) is just a wrapper around `findAll` and grabs the first matching record. `find` method along with all its parameters with their default values is shown below:
+Each of these methods are explained below: 
+
+### 3.1 Find Method
+
+`find` is a static, asynchronous method used to fetch record(s) from the database or add a dummy column(s) with static value(s) while execution. It can also perform several operations like re-order, filter, mutate or even Encryption/Decryption of record(s) while fetching. It can also combine multiple tables as child associations and retrieve record(s) from these tables combined. UnSQL has combined the features of *findOne and findAll* methods into one `find` method, as *findOne* (in other libraries) is just a wrapper around *findAll* to fetch first returning record irrespective of the response set. Interface of `find` method along with its default properties is explained below:
 
 ```javascript
 const response = await User.find({
@@ -273,341 +263,96 @@ const response = await User.find({
     debug: false,
     session: undefined
 })
-
-/*
- Above code is equivalent to:
- // 1. Passing empty object as parameter
- const response = await User.find({ })
- And
- // 2. Not passing any parameter at all
- const response = await User.find()
-*/
-
-/* 
-1. When successful
-response = {
-    success: true,
-    result: [...] or [] (when no data found),
-}
-
-2. When error is encountered
-response = {
-    success: false,
-    error: ErrorObject (containing error code, message, sql, trace)
-}
-*/
 ```
 
-Each of the aforementioned properties / parameters are explained below: [selector](#selector)
+Each of these properties is explained below:
 
-#### alias
+  - <span id="alias">`alias`</span> provides local reference name to the table. It is context sensitive hence when alias are defined in nested objects, each alias is by default attached to all columns inside that context, to use a different alias (from parent or child table), reference to that alias must be prefixed to that column name along with `'.'` symbol in between
+  - <span id="select">`select`</span> is an array of values, each value can be column name, static string/number/boolean value, or any of the reserved keyword(s) or wrapper object(s). It is used to restrict the column(s) to be fetched from the database or create dummy column(s), or mutate any value (through wrapper object(s)) at execution
+  - <span id="join">`join`</join> is an array of objects where each object represents association of a child table with this parent (model class) table. Below is the interface for join object, similar to `find`:
+    ```javascript
+    // Interface for each join object:
+    {
+        type: '', // (default '') 'left'/'right'/'inner'/'cross'/'fullOuter'
+        alias: undefined, // local reference name to the child table
+        table: null, // (required) table to associate
+        select: ['*'], // columns to be fetched
+        join: [], // nest another association inside this
+        where: {}, // filter record(s) based on condition(s)
+        junction: 'and', // connect condition(s) using
+        groupBy: [], // group record(s) by column name(s)
+        having: {}, // filter record(s) based on condition(s) [including aggregate methods]
+        orderBy: {}, // re-arrange record based on column(s) in ascending or descending order
+        limit: undefined, // limit no. of records
+        offset: undefined, // set the starting index for records
+        using: [], // (required) array of common column(s) or an object of { parentColumn: childColumn }
+        as: null // required with 'select'/'where'/'having' properties takes priority over 'as' to refer columns from outside this object
+    }
 
-`alias` is an important parameter throughout `UnSQL`, it accepts string as value that defines local reference name of the table. It is **context sensitive**, meaning, it always refers to the immediate parent table (Here it refers to the parent model class). This parameter plays an important role as it helps identify the columns being referred to in any property (e.g, `select` or `where` or `having` or `join` etc) when using sub-query type wrappers or `join`.
-
-```javascript
-const response = await User.find({ alias: 't1' })
-```
-
-#### select
-
-`select` accepts an array of values like column name(s), string value, boolean, number, wrapper methods (See [wrapper methods](#what-are-wrapper-methods-in-unsql)). This property restricts the columns that needs to be fetched from the database table. By default, it is set to select all the columns. Below is a sample of `select` property:
-
-```javascript
-const response = await User.find({
-    select: [
-        'userId',
-        { 
-        str: {
-            value:'firstName',
-            textCase: 'upper',
-            as: 'fname'
+    // Sample:
+    const response = await Order.find({
+        select: ['orderId', 'createdOn',
+            {
+                json: { // creating json object using columns from associated table
+                    value: {
+                        itemId: 'itemId', // column from associated table
+                        name: 'itemName', // column from associated table
+                        quantity: 'quantity' // column from associated table
+                    },
+                    aggregate: true, // wrapping multiple objects inside array
+                    as: 'items'
+                }
             }
-        }, 
-        'lastName', 
-        '#this is string value and will be printed as it is'
-    ]
-})
-```
-
-> **Explanation:** In the above sample block, `'userId'`, `'lastName'` and `'lastName'` are the column names in the database table, and at the end starting with `#` is a static string value
-
-#### join
-
-`join` parameter accepts an array of *join object(s)*. Each *join object* represents an association of a child `table` with the immediate parent table, on the bases of a *common column*, reference of which is provided inside `using` property. Join object along with its default values is explained below:
-
-```javascript
-const response = await User.find({
-    join: [
-        {
-            select: ['*'],
-            table: 'some_table',
-            type: null,
-            alias: null,
-            join: [],
-            where: {},
-            junction: 'and',
-            groupBy: [],
-            having: {},
-            using:[],
-            as: null
-        }
-    ]
-})
-```
-
-Properties defined inside each join object are context sensitive and will work inside that scope only. Below are the explanation of each of these join properties:
-
-`select` (optional) similar as explained above in `find` method (See [select](#select)), this property is used to restrict the columns/values that will be fetched from the associated child table.
-
-`table` (required) accepts name of the table that is being associated as a child
-
-`type` (optional) defines the type of the association these two tables will have. Can have any one of the values `'left'` | `'right'` | `'inner'`
-- `'left'` considers all records from the parent table and only the matching record(s) from the child table
-- `'right'` considers all records from the child table and only the matching record(s) from the parent table
-- `'inner'` considers only the overlapping records from the two table and ignores all the other records
-
-> Please note: If type is not provided, it results in a `'natural'` join which results in only the matching column(s) record(s) of two tables
-
-`alias` (optional) similar as explained inside `find` method, this property provides local reference name to the associated (child) table. This property is *context* sensitive hence `alias` property defined inside this join object will override the default `alias` being prefixed to the column name(s) and any column name from parent table needs to be specifically prefixed with parent `alias` value (if column name(s) are ambiguous). Until `as` property is set inside join object, `alias` is also used to refer the values from the associated (child) table outside the join object. (Also see [alias](#alias) for more details on alias)
-
-`join` (optional) accepts array of join object(s). Used for nested join association(s) (Same as [join](#join))
-
-`where` (optional) accepts object value, allows to filter records in the associated child table using various conditions (Also see [where](#where) for more details on where)
-
-`junction` (optional) defines the clause that will be used to connect different conditions inside the `where` | `having` property inside this join object. Similar to `junction` in `find` method (See [junction](#junction) for details), 
-
-`groupBy` (optional) used to group records in child table (see [groupBy](#groupby) for details)
-
-`having` (optional) allows to perform comparison on the group of records from associated (child) table (See [having](#having) for details)
-
-`using` (required) accepts array of column name(s) or object(s) in the format of `{ parentColumn: childColumn }` here, `parentColumn` is the column name from the parent table and `childColumn` is the column name from the associated (child) table.
-
-`as` (optional) provides a local reference name to this join object and helps refer column(s) outside this join object context, such as in `select`, `where`, `having` properties of the parent table
-
-
-> **Please note:** 
-> 1. When the name of the columns that connect the two tables is different or when using multiple join objects (even with same connecting column names), it is required to set the value of `using` property in the format of `{ parentColumn: childColumn }`.
-> 2. While using multiple join objects, it is recommended to set appropriate (and unique) values to the `alias` property on both the parent as well as child tables.
-> 3. It is **mandatory** to set `as` property while using `select` and (or) any other filtering properties viz. `where` and `having` property in case.
-
-#### where
-
-`where` parameter accepts object (simple or nested) as value, it is used to filter record(s) in the database based on the condition(s). Each object is in a `key: value` pair format, where `key` and `value` can be a either be a string or boolean or number or a wrapper method, on the other hand value can also accept array of values (each can be of any type: string, number, boolean or wrapper method) (see [wrapper methods](#what-are-wrapper-methods-in-unsql)). Sample where property is show below:
-
-```javascript
-const response = await User.find({
-    where: {
-        or: [
-            { userId: { between: { gt: 1, lt: 30 } } },
-            { userRole: ['#manager', '#admin'] }
         ],
-        userStatus: 1
-    }
-})
-```
-
-> **Explanation:** In the above sample, `'userId'`, `'userRole'` and `'userStatus'` are column names, `'manager'`, `'admin'` are normal string values (starting with `#`) (See [this](#how-does-unsql-differentiates-between-a-column-name-and-string-value) for details on column name vs string value)
-
-#### junction
-
-`junction` can have any one of the two string values `'and'` | `'or'`. This property is used to connect the *conditions* passed inside the `where` | `having` properties. Default value is `'and'`
-
-```javascript
-const response = await User.find({ where:{...},  junction: 'and' })
-```
-
-> **Please note:** `junction` property only works with `where` and `having` parameters, and setting `junction` parameter alone will have no effect.
-
-#### groupBy
-
-`groupBy` property accepts array of column name(s). These column name(s) can either be from the parent table, any of the associated (child) table(s) or both. When referencing any column name from the associated (child) table(s), if the `alias` (or `as`) property is set inside the `join` object context, then that column name is required to be *prefixed* with its respective `alias` (or `as`) property value and a `'.'` symbol connecting them.
-
-```javascript
-// Example 1: when grouping records using a column (here 'role') from the parent table
-const result1 = await User.find({ groupBy: ['userRole'] })
-
-// Example 2: When grouping records using a column (here 'city') from the associated (child) table
-const result2 = await User.find({
-    alias:'t1',
-    join: [
-        {
-            alias: 't2',
-            table: 'order_history',
-            using: ['userId']
-        }
-    ]
-    groupBy: ['t2.city']
+        join: [{ table: 'order_items', using: ['orderId'] }] // ref. of join object
     })
+    ```
+    **Please note:** 
+    1. `using` property can accept array of column names or an object like `{ parentColumn: childColumn }` where `parentColumn` is the column from parent table and `childColumn` is the column from child table. When `alias` is passed, it is automatically patched to the respective column name
+    2. When using `select` | `where` | `having` inside join, `as` is mandatory
+    3. When both `alias` and `as` is set, `as` will be used as prefix to refer column names from child tables outside join object context
 
-// Example 3: When grouping records using a column (here 'city') from the associated (child) table in a complex association
-const result3 = await User.find({
-    alias:'t1',
-    join: [
-        {
-            select: ['orderId', 'userId', 'city']
-            table: 'order_history',
-            alias: 't2',
-            using: ['userId'],
-            where: {
-                totalValue: { gt: 5000 }
-            },
-            as: 'j1'
-        }
-    ]
-    groupBy: ['j1.city']
-    })
-```
-
-> **Explanation:**
-> 1. In the first example, all the user records are being grouped on the basis of their `'userRole'` column.
-> 2. In the second example, `'order_history'` table (child) is associated with the `'user'` (parent) table and the records are being grouped based on the `'city'` name from the `'order_history'` (child) table, hence the column name is being *prefixed* with the `alias` from the child table (here `'t2'` and connected using `'.'` symbol)
-> 3. In the third example, similar to example 2, records are being grouped based on the `'city'` name from the child table, however, in this case, complex association is used and a local reference name (here `'j1'`) is set using the `as` parameter, hence to refer any column from this association, this local reference needs to be *prefixed* to the column name using a `'.'` symbol
-> 
-> **Please note:** 
-> 1. In example 1, if the column belongs to the parent table, alias as *prefix* is note required as `UnSQL` will do that automatically based on the context relation.
-> 2. In both the examples 2 and 3, if the column names being referenced are not ambiguous in both the tables, there is no need to *prefix* the column names with `alias` or `as` prefixes.
-
-#### having
-
-`having` property is similar to `where` property, as it also helps *filtering* the record(s) from the database table however, it is significantly different when it comes to the fact how it works. `having` property is capable of performing regular comparisons just like `where` property however, the major difference between that two properties is that `having` property can also perform comparisons using *aggregate methods* such as `sum`, `avg`, `min`, `max` etc. on the **grouped** records (using `groupBy` property), which is not possible with the `where` property. Below is an example of filtering with `having` property and `groupBy` property using `sum` aggregate (wrapper) method
-
-```javascript
-const response = await User.find({
-    groupBy: 'salary',
-    having: { 
-        sum: { 
-            value: 'salary',
-            compare: { gt: 5000 }
-         }
+    Below is the explanation for each of these <span id="join-types">**join types**</span>:
+    - `natural` based on columns with the same name and datatype (automatically detected)
+    - `left` considers all records in parent table and only matching records from child table
+    - `right` considers all records in child table and only matching records from parent table (not supported by `sqlite`)
+    - `inner` only matching rows based on `using` column(s)
+    - `cross` cartesian product of records in parent and child tables
+    - `fullOuter` returns all records from both tables, regardless of matching condition (only supported by `postgresql`)
+  - <span id="where">`where`</span> filters record(s) to be fetched from the database based on the conditions provided as simple (or nested) objects in `key: value` pairs, comparator methods, wrapper methods etc.
+    ```javascript
+    // Sample:
+    const response = await User.find({
+        where: {
+            department: ['#marketing', '#sales'],
+            joiningDate: { between: { gt: '2025-01-01', lt: 'now' } },
+            or: [{userStatus: 1}, {userStatus: 2}]
         }
     })
-```
+    ```
+  - <span id="junction">`junction`</span> determines the connecting clause (`'and'` or `'or'`) that will be used to connect conditions provided inside `where` and `having` properties. Defaults to `'and'`
+  - <span id="groupBy">`groupBy`</span> groups record(s) based on the column name(s) provided as an array
+  - <span id="having">`having`</span> similar to `where`, filter record(s) based on condition(s) the only difference is that it supports **aggregate object(s)** (in `wrapper objects`)
+  - <span id="orderBy">`orderBy`</span> used to define the order in which record(s) are fetched
+  - <span id="limit">`limit`</span> limits the number of records to be fetched
+  - <span id="offset">`offset`</span> defines the starting index of the record(s) being fetched
+  - <span id="encryption">`encryption`</span> defines configurations (similar to `encryption` inside [`config`](#231-config-property) property) but limited to a specific execution (local level)
+  - <span id="debug">`debug`</span> enables various debug modes and prints to console: dynamically generated query (un-prepared and prepared statements), values to be injected, errors, benchmarks, based on the selected mode as explained below:
 
-> **Please note:** `groupBy` property plays an important role when filtering records using aggregate method(s) to compare within `having` property.
+      | Mode               | Description                                                         |
+      | ------------------ | ------------------------------------------------------------------- |
+      | `'query'`          | logs **prepared**, **un-prepared**, **values**                      |
+      | `'error'`          | logs entire error object in the console                             |
+      | `'benchmark'`      | logs out the time taken to execute the query                        |
+      | `benchmark-query'` | enables combination of `'query'` and `'benchmark'` modes            |
+      | `benchmark-error'` | enables combination of `'error'` and `'benchmark'` modes            |
+      | `true`             | enables all three modes i.e. `'query'`, `'error'` and `'benchmark'` |
+      | `false`            | (default) disables all debug modes                                  |
+  - <span id="session">`session`</span> reference of `SessionManager` object, used to **override the transaction/commit/rollback features** to be controlled *externally*
 
-#### orderBy
+### 3.2 Save Method
 
-`orderBy` property is used to re-arrange the records being fetched in a specific order(s) based on the specified column name(s), it accepts object in `key: value` pair format, where in each pair the `key` represents the name of the column in the database table and the `value` is one of the two values i.e. `'asc'` (ascending order) or `'desc'` (descending order)
-
-```javascript
-// Example 1:
-const result1 = await User.find({
-    orderBy: { firstName: 'desc' }
-})
-
-// Example 2:
-const result2 = await User.find({
-    orderBy: { firstName: 'asc', joiningDate: 'desc' }
-})
-```
-
-> **Explanation:**
-> 1. In the first example, records are being re-arranged in the descending order based on the values of `'firstName'` column from the database table
-> 2. In the second example, records are being re-arranged based on the two provided criteria: first- ascending order of their `'firstName'` column and, second- descending order of their `'joiningDate'` column
-
-#### limit
-
-`limit` as the name suggests, this property limits the no. of records that will be fetched from the database table, default is **null** hence no limit is applied and all records are fetched.
-
-```javascript
-const found = await User.find({ limit: 10 })
-```
-
-> **Explanation:** Above example will limit the no. of records to '10'. `limit` along with `offset` property is used for pagination of records
-
-#### offset
-
-`offset` property accepts number value that will 'offset' the starting index of the records being fetched from the database table, default is **null** hence no offset is applied and records from the beginning are fetched
-
-```javascript
-const found = await User.find({ offset: 10 })
-```
-
-> **Please note:** Above example will offset the starting index of records to be fetched to '10'. If this index is set greater than the number of records in the database, it will return null or empty array.
-
-#### encryption
-
-`encryption` is one of the most important properties, it is used to define **Encryption/Decryption** related configurations such as `mode`, `secret`, `iv` and `sha`. These *local* configuration(s) will override *global* `encryption` property (see [global config](#what-is-config-inside-unsql-model-class)). These configurations are restricted to execution context and can be redefined for each execution as desired. It can hold any one of the four configurations (or all):
-
-```javascript
-const response = await User.find({ 
-    encryption: {
-        mode: 'aes-256-cbc',
-        secret: 'your_secret_string_goes_here'
-        iv: 'Initialization Vector (required with CBC mode) goes here',
-        sha: 512
-    }   
-})
-```
-
-> **Please note:** 
-> 1. All the configurations inside `encryption` property are optional and can be used to either set or override any (or all) of global configuration(s) for local execution.
-> 2. `iv` works only with 'cbc' mode and hence will be ignore (if set) in 'ecb' mode
-> 3. **When setting encryption `mode`, it is required to set `multipleStatements: true` inside your `createConnection` or `createPool` configuration.**
-
-#### debug
-
-**debug** property controls the debug mode for each execution, and can be set to either `'query'` | `'error'` | `true` | `false`  | `'benchmark'` | `'benchmark-query'` | `'benchmark-error'`. `debug` property plays an important role in understanding the SQL query that is being generated and hence understanding the operation that will be performed in this execution. Debug mode can be controlled specifically for execution, avoiding unnecessary cluttered terminal. By default, `debug` mode is in disable mode hence if no value is set for this property, no debugging will be performed.
-
-#### session
-
-**session** (provided by `SessionManager`) enables `UnSQL` to chain multiple query executions and **re-use one transaction** across these queries and **rollback** (in case of error) or **commit** all changes at once using this **session/transaction**
-
-```javascript
-import { SessionManager } from 'unsql'
-import { pool } from '.path/to/your/db/service/'
-
-router.post('/', async (req, res) => {
-
-    const { userInfo, addressInfo } = req.body
-
-    // Create session from Session Manager
-    const session = new SessionManager(pool)
-
-    // invoke transaction by calling transaction lifecycle method provided by session
-    await session.init()
-    
-    // your code goes here...
-    const userResponse = await User.save({ data: userInfo, session }) // pass session inside query to chain this query
-
-    addressInfo.userId = userResponse.insertId // patch auto generated 'userId' to addressInfo
-
-    const addressResponse = await Address.save({ data: addressInfo, session }) // pass session inside query to chain this query
-
-    //  handle if error is encountered
-    if(!userInfo.success || !addressInfo.success) {
-        // rollback all prior changes if error is encountered
-        await session.rollback()
-        return
-    }
-
-    // finally commit all changes if no errors encountered
-    await session.commit()
-})
-```
-> **Please note:**
-> 1. SessionManager takes in another optional parameter viz. `'mysql'` (default), `'postgresql'` or `'sqlite'`
-> 2. Passing `false` as parameter for `rollback` and `commit` methods will allow you to perform their respective actions (at multiple locations) **without closing** the `transaction` and destroying the session
-> 3. `rollback` and `commit` can be called at any position and it will either **rollback/commit** all proceeding changes till that position
-
-
-| Mode                | Description                                                                                                                                                                        |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `'query'`           | prints **Dynamically Generated SQL Query**: 1. **un-prepared statement**, 2. **values array** (to be inserted) and 3. **prepared statement** after substituting all the **values** |
-| `'error'`           | prints only the **structured error object** (when error is encountered), includes error message, error code, full stacktrace etc                                                   |
-| `'benchmark'`       | prints the **time taken to execute** the method                                                                                                                                    |
-| `'benchmark-query'` | enables the combination of `'benchmark'` and `'query'` modes                                                                                                                       |
-| `'benchmark-error'` | enables the combination of `'benchmark'` and `'error'` modes                                                                                                                       |
-| `true`              | enables all debug modes i.e. `'query'` and `'error'` and `'benchmark'`                                                                                                             |
-| `false`             | **disables all query mode**                                                                                                                                                        |
-
-> **Please note:**
-> 1. Few **'warnings'** like **'version configuration mismatch'** or **'invalid value'** or **'missing required field'** errors will still be logged in the console even if the debug mode is off to facilitate faster resolving of the issue.
-> 2. Irrespective of the debug mode is *enabled* or *disabled*, if the query fails, the error message/object will be available in the `'error'` parameter of the **'result'** object of the method along with the `'success'` acknowledgement keyword being set to `false`.
-
-### Save method
-
-`save` is a static, asynchronous method. It dynamically generates valid SQL query, that **insert** | **update** | **upsert** data (single or in bulk) into the database table When only `data` property is set, this method **inserts** record(s), when `data` along with `where` or `having` (with `groupBy`) is set, it **updates** record(s), when `data` and `upsert` are set, it **upsert** record. `save` method takes in an object as its parameter with various properties as mentioned below:
+`save` is a *static, asynchronous* method, used to **insert | update | upsert** record(s) into the database. It can *insert | update* single or even multiple records (in bulk) in single execution. It also supports data Encryption during this process. When only `data` property is set, this method operates in **insert mode**, when along with `data`, any or both of `where` and `having` are also set, this method operates in **update mode**, and when along with `data`, `upsert` property is set, this method operates in **upsert mode**. Interface along with default values for this method is shown below:
 
 ```javascript
 const response = await User.save({
@@ -624,7 +369,6 @@ const response = await User.save({
     session: undefined
 })
 
-
 /* When successful
 1. MySQL returns
 response = {
@@ -639,171 +383,44 @@ response = {
         "changedRows": 0
     }
 }
+
 2. PostgreSQL returns
 response = {
     "success": true,
     "result": [{...}] // record (with primary key ID) that was recently added
 }
+
 3. Sqlite returns
 response = {
     success: true,
-    insertId: 1, // in case of 'save', last 'inserted' ID
+    insertId: 1, // in case of 'save', last 'inserted' Id
     changes: 1 // in case of 'update'
 }
 */
 ```
-Below are the explanations for each of these properties:
 
-`alias` (optional) same as in `find` method (See [alias](#alias) for details) 
+Each of these properties is explained below:
 
-```javascript
-const response = await User.save({ data, alias: 'u' })
-```
+   - `alias` same as explained [here](#alias)
+   - <span id="data">`data`</span> (required) this is the actual data that will be **inserted | updated** into the database. It can either be a **single object** (supports **insert | update | upsert**) or an **array of objects** (supports **only insert**)
+   - `where` same as explained [here](#where), used to filter record(s) to be updated
+   - `junction` same as explained [here](#junction)
+   - `groupBy` same as explained [here](#groupBy)
+   - `having` same as explained [here](#having), used to filter record(s) to be updated
+   - <span id="encrypt">`encrypt`</span> accepts `key: value` pair, where `key` can be column name and `value` is another object that holds *configurations* like `secret`, `iv` and `sha` that will be used to encrypt this column. When no properties are set i.e. `value` is set as `{}`, in such a case, *configurations* defined in `encryption` property (local or global) is used. This property helps encrypting different columns with different `secret`
+   - `debug` same as explained [here](#debug)
+   - `encryption` same as explained [here](#encryption)
+   - `session` same as explained [here](#session)
 
-`data` (mandatory) is the actual data that will be **inserted** | **updated** | **upsert** into the database table. `data` can either be a single object (supports **insert**, **update** and **upsert**) or an array of objects (supports only **insert** of bulk data).
+**Please Note:** In **Upsert mode**, while `mysql` and `postgresql` will only update the columns provided in the `upsert` object, with `dialect: 'sqlite'` if any existing column value is ignored in the `upsert` object, then that value will either be set to `null` or `predefined default value` will be assigned to that column, due to the native upsert behavior (**INSERT OR REPLACE**) of **SQLite**
 
-```javascript
-// 1. insert single record
-const response = await User.save({ 
-    data: { 
-        firstName: 'John', 
-        userEmail: 'john.doe@example.com'
-    }
- })
+### 3.3 Delete Method
 
-// 2. insert bulk records
-const response = await User.save({ 
-    data: [
-        { 
-            firstName: 'John', 
-            userEmail: 'john.doe@example.com'
-        },
-        {
-            firstName: 'Jane',
-            userEmail: 'jane.doe@example.com'
-        }
-        ...
-    ]
- })
-```
-
-
-`where` (optional) when condition(s) are provided, converts `save` method from **insert mode** into **update mode**. Used to identify (filter) the record(s) to be **updated** in the database table, based on the set condition(s) (See [where](#where) for more details)
+`delete` is a *static, asynchronous* method, used to remove record(s) from the database. `where` and `having` properties are used to *filter* record(s) that will be removed, if no *conditions* are provided in `where` and (or) `having` property, this method will remove all records in the database. `safeMode` property (when set to `true`) in the `config` property of the model class helps prevent accidental *delete all* of the records. Interface for this method along with default values is shown below:
 
 ```javascript
-// perform update
-const response = await User.save({ 
-    data: {...},
-    where: {
-        userId: 1
-    }
- })
-```
-
-`junction` (optional) accepts one of the two string values `'and'` | `'or'` (See [junction](#junction) for details)
-
-```javascript
-const response = await User.save({ 
-    data: {...},
-    where: {...},
-    junction: 'and'
- })
-```
-
-`groupBy` (optional) used with `having` property to group records, same as explained above (See [groupBy](#groupby) for details)
-
-```javascript
-const response = await User.save({ 
-    data: {...},
-    groupBy: 'userRole',
-    having: {...}
- })
-```
-
-`having` (optional) similar to `where` property, `having` also helps in **updating** the record(s) in the database (See [having](#having) for more details)
-
-```javascript
-const response = await User.save({ 
-    data: {...},
-    groupBy: 'department',
-    having: {
-        {
-            sum: {
-                value: 'salary',
-                compare: {
-                    gt: 50000
-                }
-            }
-        }
-    }
- })
-```
-
-`upsert` (optional) accepts single object value, when provided, switches `save` method into **upsert mode**. Value of this property is only used in a special case when `'ON DUPLICATE KEY'` error is encountered, in this case, the conflicting record is **updated** using the values provided in this property, else this property is ignored
-
-```javascript
-const response = await User.save({ 
-    data: {...},
-    upsert: {
-        name: 'john',
-        ...
-    }
- })
-```
-
-`encrypt` (optional) holds information regarding the `columns` that needs to be **encrypted** and stored in the database. It accepts object in `key: value` format where each `key` represents the **column name** and `value` again is an object with three as key(s) `secret`, `iv` and `sha`
-
-```javascript
-const response = await User.save({
-    data: {...},
-    encrypt: {
-        userEmail: {
-            secret: 'someSecret',
-            sha: 512
-        }
-    }
-})
-```
-
-> **Explanation:** Above sample will encrypt `'userEmail'` column inside `data` property using the encryption configurations `secret` and `sha` provided as value object.
-
-`encryption` (optional) holds local level configurations such as `mode`, `secret`, `iv` and `sha` that can be used for encrypting columns from the `data` property, that are specified inside the `encrypt` property (See [encryption](#encryption) for more details)
-
-```javascript
-const response = await User.save({
-    data: {...},
-    encrypt: {
-        userEmail: {}
-    },
-    encryption: {
-        mode: 'aes-256-cbc',
-        secret: 'someSecret',
-        iv: 'someInitializationVector',
-        sha: 512
-    }
-})
-```
-
-> **Explanation:** In the above sample, encryption configurations are provided inside the `encryption` property and the value for the column name is an empty object inside `encrypt` property. Hence, the configurations from `encryption` property will be used
->
-> **Please note:** If values in both properties viz. `encrypt` and `encryption` are set, `encrypt` always takes priority and will override configurations provided in `encryption` property or global encryption configurations set inside `config` property of model class
-
-`debug` (optional) enables various 'debug' modes (See [debug](#debug) for more details)
-
-
-```javascript
-const response = await User.save({
-    data: {...},
-    debug: 'query'
-})
-```
-
-### Delete method
-
-`delete` is a static, asynchronous method that is used to dynamically generate valid SQL query that removes record(s) from the database table. `delete` method takes in an object as its parameter with various properties as mentioned below:
-
-```javascript
-const response = await User.delete({
+// Interface:
+{
     alias: undefined,
     where: {},
     junction: 'and',
@@ -812,56 +429,93 @@ const response = await User.delete({
     encryption: {},
     debug: false,
     session: undefined
+}
+
+// Sample:
+const response = await User.delete({
+    where: {
+        joiningDate: {
+            between: {
+                gt: { date: { value: 'now', sub: '1Y' } }, 
+                lt: { date: { value: 'now', sub: '6M' } }
+            }
+        },
+        department: ['sales', 'marketing'],
+        userType: 'intern'
+    }
 })
 ```
-Below are the explanations for each of these properties:
 
-`alias` (optional) same as in `find` method (See [alias](#alias) for details) 
+Each of these properties is explained below:
 
-`where` (optional) is used to identify (filter) record(s) that needs to be **removed**/**deleted** from the database table (See [where](#where) for more details)
+   - `alias` same as explained [here](#alias)
+   - `where` same as explained [here](#where), used to filter record(s) to be removed
+   - `junction` same as explained [here](#junction)
+   - `having` same as explained [here](#having), used to filter record(s) to be removed
+   - `debug` same as explained [here](#debug)
+   - `encryption` same as explained [here](#encryption)
+   - `session` same as explained [here](#session)
 
-`junction` (optional) accepts one of the two string values `'and'` | `'or'` (See [junction](#junction) for details)
+### 3.4 Raw Query Method
 
-`groupBy` (optional) used to group records in the database table (See [groupBy](#groupby) for details)
+`rawQuery` method is the most powerful method among all, unlike other methods that are limited to the base mapping, this method is not tied to any particular table, but utilizes the connection pool to execute queries on that database itself. It is capable of executing any and all types of queries including **DDL, DML etc** (In `sqlite`, set `methodType: 'exec'`). It also supports execution of multiple SQL statements in one query. When multiple `SELECT` statements are executed (not supported by `sqlite`), `result` contains nested array one for each `SELECT` statement.
 
-`having` (optional) similar to `where` property `having` also helps in **filtering** the record(d) in the database that needs to be **removed**/**deleted** (See [having](#having) for more details)
+For `sqlite`, UnSQL supports various types of methods (as mentioned below) that can be set manually, each method has specific capabilities:
 
-`encryption` (optional) same as explained above (See [encryption](#encryption) for more details)
+| Method Type | Description                                                                           |
+| ----------- | ------------------------------------------------------------------------------------- |
+| `all`       | supports **Session Manager and SELECT query** returns *record(s) as array*            |
+| `run`       | supports **Session Manager, INSERT and UPDATE query**, *returns insertId and changes* |
+| `exec`      | supports **CREATE, DROP ALTER and similar query**, returns nothing                    |
 
-`debug` (optional) enables various **debug modes** (See [debug](#debug) for more details)
+It supports normal as well as parameterized (with placeholders) queries: 
+ - In `mysql`: 
+   - Positional placeholders: `??`, `?`, 
+   - Named placeholders: `:namedVariable`, 
+   - user defined variables: `@userVariable`, 
+ - In `postgresql`: 
+   - Positional placeholder: `$1`, `$2`, `$3`...
+ - In `sqlite`:
+   - Positional placeholder: `?`,
+   - Named placeholders: `:namedVariable` or `$namedVariable` or `@namedVariable`,
+   - Indexed placeholder: `$1`, `$2`, `$3`... or `?1`, `?2`, `?3`...
 
-`session` (optional) enables `UnSQL` to **re-use session transaction** provided by `SessionManager` across multiple executions
-
-### Raw Query Method
-
-`rawQuery` method allows you to **execute raw SQL queries** directly. This method is useful when you enjoy writing custom SQL queries or require any specific type of query that you are not able to figure out via. built-in methods. This method supports both type of placeholders: **positional placeholders** `??` | `?` and **named placeholders** `:variableName`, along with dynamically **prepared statement**, `debug` modes, and also can be chained with other built-in (or `rawQuery`) methods using `session` (see [`SessionManager`](#what-is-session-manager-in-unsql)). Below are the samples for both type of placeholders:
-
-1. **Positional Placeholders:** Expects `values` to be an array `['tableName', 'columnName', 'value' [, ...]]` that will be used to **prepare statement** by replacing positional placeholders. Here `??` is used for **table/column names** and `?` is used for **value**. The sequence of placeholders and value in `values` array must be same
 ```javascript
-const response = await User.rawQuery({
-    query: 'SELECT * FROM ?? WHERE ?? = ?',
-    values: ['users', 'userId', 1],
-    debug: true
-});
+// Sample: (dialect: 'mysql')
+const response = await User.rawQuery({ // here user model is used just to utilize 'pool'
+    sql: `CREATE TABLE IF NOT EXISTS users (
+            userId INT(11) PRIMARY KEY AUTO_INCREMENT,
+            firstName VARCHAR(45) DEFAULT NULL,
+            lastName VARCHAR(45) DEFAULT NULL,
+            email VARCHAR(255) UNIQUE DEFAULT NOT NULL,
+            password VARCHAR(255) DEFAULT NOT NULL,
+            createdOn TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            lastUpdatedOn TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            status TINYINT(1) DEFAULT 1
+        );
+        CREATE TABLE IF NOT EXISTS order_history (
+            orderId INT(11) PRIMARY KEY AUTO_INCREMENT,
+            amount DECIMAL (10,2) DEFAULT 0.00,
+            coupon VARCHAR(45) DEFAULT NULL,
+            discount DECIMAL (10,2) DEFAULT 0.00,
+            createdOn TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            lastUpdatedOn TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            status TINYINT(1) DEFAULT 0
+        );`,
+    methodType: 'query' // this supports multiple statements in single query string
+})
 ```
 
-1. **Named Placeholders:** Expects `values` to be an object `{ variableName: value [, ...] }` where `variableName` key must match the `:variableName` used in the query, this can be used to replace only the **value(s)** and does not support table/column name. In order to use named placeholders, set `namedPlaceholders: true` inside `createPool` | `createConnection` method configuration
-```javascript
-const response = await User.rawQuery({
-    query: 'SELECT * FROM users WHERE userId = :userId',
-    values: { userId: 1 },
-    debug: true
-});
-```
+### 3.5 Export Method
 
-### Export method
-
-`export` is a static, asynchronous method. As the name suggests, it is used to export record(s) from the database table into a dynamically generated **json file** (with same name as `table` property inside `config` property), by default inside `'exports_unsql'` directory. Record(s) can be filtered using `where` property and even columns can also be restricted using the `select` property. **This method only works when `devMode` inside `config` property is set to `true`**. This method is helpful in taking backups of the database table. `export` method takes in an object as its parameter with various properties as mentioned below:
+`export` is a *static, asynchronous* method that works when `devMode: true` is set in `config`, as it is used to **export record(s)** from the database table either **to a .json file** or **to another model class**, depending upon the value set in the `target` property. Interface and default values of this method are shown below:
 
 ```javascript
-await User.export({
-    target: User.config.table,
+// Interface:
+{
+    target: 'table_name',
     directory: 'exports_unsql',
+    alias: undefined,
     select: ['*'],
     join: [],
     where: {},
@@ -871,797 +525,770 @@ await User.export({
     limit: undefined,
     offset: undefined,
     mode: 'append',
+    encrypt: undefined,
+    encryption: undefined,
     debug: false
+}
+
+// Sample: Export to file (this will export all columns to '.json' file)
+const response = await User.export()
+
+// Sample: Export to model (limited columns to be exported)
+const response = await User.export({
+    select: ['firstName', 'lastName', 'email', 'password', 'department', 'salary'],
+    target: User2 // another model (can be inside any database)
 })
 ```
 
-Each of these properties is explained below:
+Each of these properties are explained below:
 
-`target` (optional) defines the target, *filename* for the dynamically generated **.json** file or valid `UnSQL` model class, to export record(d) into. Defaults to the `name` of the `table` property of this model class
+   - <span id="target">`target`</span> plays an important role, as it determines if the records will be exported **.to a json file** or to **another model class**. It defaults to the `table` name property inside `config` of the respective model class
+     - When set to a string value, record(s) will be exported to a **.json** file with that exact name,
+     - When another model class reference is passed as value, record(s) are exported (inserted in) to that model class
+   - `directory` determines the name of the folder that will be created (dynamically) to store the dynamically created .json file
+   - `alias` same as explained [here](#alias)
+   - `select` restricts the column(s) to be exported, also used to mutate values while exporting them including Decryption etc. Same as explained [here](#select)
+   - `join` used to associate another table to fetch record(s) together with this table while exporting. Same as explained [here](#join), used to filter record(s) to be removed
+   - `where` filter record(s) to be exported. Same as explained [here](#where), used to filter record(s) to be removed
+   - `junction` same as explained [here](#junction)
+   - `groupBy` same as explained [here](#groupBy)
+   - `having` filter record(s) to be exported. Same as explained [here](#having), used to filter record(s) to be removed
+   - `orderBy` same as explained [here](#orderBy)
+   - `limit` limits the number of record(s) to be exported, Same as explained [here](#limit)
+   - `offset` defines the starting index for the record(s) to be exported. Same as explained [here](#offset)
+   - `mode` (works when exporting to a json file) when the export is executed and the file already contains data, this property determines whether to `override` or `append` the contents to the file
+   - `encrypt` encrypts the columns mentioned as key in this object during export. Same as explained [here](#encrypt)
+   - `encryption` same as explained [here](#encryption)
+   - `debug` same as explained [here](#debug)
 
-`directory` (optional) used to change the default name of the dynamically generated directory that contains all exported `.json` files
+### 3.6 Reset Method
 
-`select` (optional) limits the columns that will be considered while exporting records, can also be used to manipulate record(s) of selected columns while exporting (see [select](#select) for details)
-
-`where` (optional) filter record(d) based on condition(s) for exporting (see [where](#where) for details)
-
-`groupBy` (optional) groups record(s) by column name(s) to be exported (see [group by](#groupby))
-
-`having` (optional) filter record(s) based on condition(s)/aggregate methods (See [having](#having) for details)
-
-`orderBy` (optional) re-order record(s) by column name(s) to be exported (see [group by](#groupby))
-
-`limit` (optional) limits the record(s) to be extracted
-
-`limit` (optional) sets the starting index of record(s) to be extracted
-
-`mode` (optional) defines the behavior of export, `'append'` will recursively add data if invoked multiple times, `'override'` as the name suggests will override the dynamically generated file if invoked multiple times
-
-`debug` (optional) enables various debug modes (see [Debug](#debug) for details)
-
-### Reset method
-
-`reset` is a static, asynchronous method. As the name suggests, this method resets the database table to its initial state by removing all record(s) and also setting the `auto increment` Id to zero (0). **This method only works when `devMode` is set to true and `safeMode` is set to `false`.** `export` method takes in an object as its parameter with only one (optional) property `debug` (see [debug](#debug) for details) as mentioned below:
+`reset` is a *static, asynchronous* method used to **clear all record(s)** in the model class and also **reset the auto increment ID (if any)** to their initial state. This only works when `devMode: true` and `safeMode: false` in `config`. This only expects one property `debug` in its parameter object. Interface is shown below:
 
 ```javascript
-await User.reset({ debug: false })
+const response = await User.reset({ debug: false })
 ```
 
-> **Caution: This method results in a destructive change and hence should be used with caution as changes cannot be reverted back**
+## 4. Built-in Constants, Units, Wrapper Objects and Comparator Objects
 
-### What are wrapper methods in UnSQL?
+UnSQL has various Constants (Reserved Keywords), Units (Date/Time), Wrapper Objects and Comparator Objects. Each of them are explained below:
 
-`UnSQL` provides various *built-in* methods to interact with data and perform specific tasks, each of these wrapper methods belong a certain *type*. All of the wrapper methods have object like interface (`key: value` pair) to interact with them, where `key` can be any one of the specially reserved keywords that represents its respective wrapper method. Below is the list of wrapper methods along with their respective keywords available inside `UnSQL`:
+### 4.1 Constants (Reserved Keywords)
 
-|           Keyword           | Wrapper Type | Description                                                                               |
-| :-------------------------: | :----------: | ----------------------------------------------------------------------------------------- |
-|  [`str`](#string-wrapper)   |    string    | performs string value related operations                                                  |
-|  [`num`](#numeric-wrapper)  |   numeric    | performs numeric value related operations                                                 |
-|   [`date`](#date-wrapper)   |     date     | performs date value related operations                                                    |
-|  [`and`](#and--or-wrapper)  |   junction   | performs junction override inside the `where` and `having`                                |
-|  [`or`](#and--or-wrapper)   |   junction   | performs junction override inside the `where` and `having`                                |
-|     [`if`](#if-wrapper)     | conditional  | checks **condition** and returns respective value (used with `select`, `where`, `having`) |
-|   [`case`](#case-wrapper)   | conditional  | checks **condition** and returns respective value (used with `select`, `where`, `having`) |
-|    [`sum`](#sum-wrapper)    |  aggregate   | calculates 'total' from set of values                                                     |
-|  [`avg`](#average-wrapper)  |  aggregate   | calculates 'average' from set of values                                                   |
-|  [`count`](#count-wrapper)  |  aggregate   | performs 'count' operation on set of values                                               |
-|  [`min`](#minimum-wrapper)  |  aggregate   | determines 'lowest' value among the provided values                                       |
-|  [`max`](#maximum-wrapper)  |  aggregate   | determines 'highest' value among the provided values                                      |
-|   [`json`](#json-wrapper)   |  sub-query   | creates a json object at the position it is invoked                                       |
-|  [`array`](#array-wrapper)  |  sub-query   | creates a json array at the position it is invoked                                        |
-|  [`refer`](#refer-wrapper)  |  sub-query   | fetch a column from another table at the position it is invoked                           |
-| [`concat`](#concat-wrapper) |    merge     | combines multiple values into one                                                         |
+`UnSQL` supports various built-in **constants** (supported by SQL) as mentioned below:
 
-> **Please note:** 
-> 1. *junction* type wrapper methods can only be used inside `where` and `having` property
-> 2. *aggregate* type wrapper methods can only be used inside `select` and `having` property and not with `where` property
-> 
+| Constant           | Description                                                                                        |
+| ------------------ | -------------------------------------------------------------------------------------------------- |
+| `currentDate`      | provides only current **date** in `YYYY-MM-DD` format                                              |
+| `currentTime`      | provides only current **time** in `hh:mm:ss` format                                                |
+| `now`              | provides both, current **date and time** in `YYYY-MM-DD hh:mm:ss` format, with configured timezone |
+| `currentTimestamp` | synonym for `now`                                                                                  |
+| `localTimestamp`   | similar to `now` or `timestamp` but in **reference to local timezone**                             |
+| `localTime`        | exactly same as `localTimestamp`                                                                   |
+| `utcTimestamp`     | provides `currentTimestamp` **in UTC format**                                                      |
+| `pi`               | provides value of mathematical constant **pi** i.e. **approx. `3.141593`**                         |
+| `isNull`           | provides SQL compatible `IS NULL` value                                                            |
+| `isNotNull`        | provides SQL compatible `IS NOT NULL` value                                                        |
 
-All the aforementioned wrappers are explained below along with their interface:
+### 4.2 Units (Date/Time)
 
-#### String wrapper
+**UnSQL** supports various **Date / Time Patterns and Units** for all sql dialects since the units and the format varies for each, unsql provides a unified symbols that are standard for all:
 
-**String wrapper** (keyword `str`) is used to perform string/text data related operations, it can be used directly/nested inside `select`, `where`, `having` properties. Below is the interface for string wrapper method along with the default values for each of its properties:
+- When using `format` | `fromPattern` (not supported by `sqlite`) property:
 
-```javascript
-const response = await User.find({
-    select: [
-        { 
-            str: {
-                value: 'string_value_goes_here',
-                replace: {
-                    target: null,
-                    with: null
-                }, 
-                reverse: false,
-                textCase: null, 
-                padding: {
-                    left: {
-                        length: null,
-                        pattern: null
+    | Keyword | Description                                            |
+    | :-----: | ------------------------------------------------------ |
+    |   `d`   | Day of the month, single digit (e.g., 1, 2, ..., 31)   |
+    |  `dd`   | Day of the month, double digit (e.g., 01, 02, ..., 31) |
+    |   `D`   | Day of the month with ordinal suffix (e.g., 1st, 2nd)  |
+    |  `dy`   | Abbreviated day of the week (e.g., Sun, Mon)           |
+    |  `Dy`   | Full day of the week (e.g., Sunday, Monday)            |
+    |  `dow`  | Day of week as number (0-6) Sunday = 0                 |
+    |  `doy`  | Day of year (001-366)                                  |
+    |   `M`   | Month as a single digit (e.g., 1, 2, ..., 12)          |
+    |  `MM`   | Month as a double digit (e.g., 01, 02, ..., 12)        |
+    |  `Mon`  | Abbreviated month name (e.g., Jan, Feb)                |
+    |  `MON`  | Full month name (e.g., January, February)              |
+    |   `y`   | Year, two digits (e.g., 24, 25)                        |
+    |   `Y`   | Year, four digits (e.g., 2024, 2025)                   |
+    |   `H`   | Hour (0-23), single digit                              |
+    |  `HH`   | Hour (00-23), double digit                             |
+    |   `h`   | Hour (1-12), single digit                              |
+    |  `hh`   | Hour (01-12), double digit                             |
+    |   `m`   | Minute (0-59), single digit                            |
+    |  `mm`   | Minute (00-59), double digit                           |
+    |   `s`   | Second (0-59), single digit                            |
+    |  `ss`   | Second (00-59), double digit                           |
+    |  `ms`   | Microseconds (000000-999999)                           |
+    |   `a`   | am or pm (lowercase)                                   |
+    |   `A`   | AM or PM (uppercase)                                   |
+    |   `w`   | Week number (00-53), Monday is the first day           |
+    |   `q`   | Quarter (1-4)                                          |
+    |  `TZ`   | Time zone name or abbreviation (e.g., UTC, EST)        |
+    |  `tz`   | Time zone offset from UTC (e.g., +0530, -0800)         |
+
+> **Please note:**
+> 1. Due to limited / difference in implementation in all three dialects, some of the keywords mentioned below are not supported by respective sql dialect:
+>       - MySQL: `tz`, `TZ`, `q`
+>       - SQLite: `tz`, `TZ`, `q`
+> 2. `fromPattern` property / feature is not supported by `sqlite`
+> 3. Aforementioned units are only for formatting / creating date from string pattern and not to be confused with the date units used for addition / subtraction date / time units.
+
+- When using `add` / `sub` property:
+
+    | MySQL | PostgreSQL    | SQLite                    | Unit        |
+    | ----- | ------------- | ------------------------- | ----------- |
+    | `f`   | `MICROSECOND` | `%f` (fractional seconds) | MICROSECOND |
+    | `s`   | `SECOND`      | `%S` (00-59)              | SECOND      |
+    | `m`   | `MINUTE`      | `%M` (00-59)              | MINUTE      |
+    | `h`   | `HOUR`        | `%H` (00-23)              | HOUR        |
+    | `d`   | `DAY`         | `%d` (01-31)              | DAY         |
+    | `w`   | `WEEK`        | *Not supported*           | WEEK        |
+    | `M`   | `MONTH`       | `%m` (01-12)              | MONTH       |
+    | `q`   | `QUARTER`     | *Not supported*           | QUARTER     |
+    | `y`   | `YEAR`        | `%Y` (4-digit)            | YEAR        |
+
+> **Please note:** You can use them in combination like `2d 5m 1M 10y` in `add` | `sub`
+
+### 4.3 Wrapper Objects
+
+UnSQL provides various built-in **special objects** to perform various specialized actions. Following is the list of special objects:
+
+|       Keyword       |    Type     | Description                                                       |
+| :-----------------: | :---------: | ----------------------------------------------------------------- |
+|    [`str`](#str)    |   string    | perform string based operations                                   |
+|    [`num`](#num)    |   numeric   | perform mathematical operations                                   |
+|   [`date`](#date)   |    date     | perform date related operations                                   |
+|    [`and`](#and)    |  junction   | perform junction override inside `where` and `having` property    |
+|    [ `or`](#or)     |  junction   | perform junction override inside `where` and `having` property    |
+|     [`if`](#if)     | conditional | checks **condition** and returns respective *true or false value* |
+|   [`case`](#case)   | conditional | checks multiple **conditions** and return respective *value*      |
+|    [`sum`](#sum)    |  aggregate  | **calculates total** from set of values                           |
+|  [`avg`](#average)  |  aggregate  | **calculates average** from set of values                         |
+|  [`count`](#count)  |  aggregate  | **performs count** operation on set of values                     |
+|  [`min`](#minimum)  |  aggregate  | **determines lowest value** among the provided values             |
+|  [`max`](#maximum)  |  aggregate  | **determines highest value** among the provided values            |
+|   [`json`](#json)   |  sub-query  | **performs json object/array** related operations                 |
+|  [`refer`](#refer)  |  sub-query  | fetch a column from another table at the position it is invoked   |
+| [`concat`](#concat) |    merge    | combines multiple values into one                                 |
+
+All objects are explained below:
+
+- #### **String wrapper** (Keyword <span id="str">`str`</span>): 
+  Performs string/text based operation(s) on `value` property. Interface with default properties is shown below:
+
+    ```javascript
+    // Interface:
+    {
+        str: {
+            value: 'some value / column containing text',
+            replace: {
+                target: null, // chars to be replaced
+                replaceWith: null // replace target with this
+            }, 
+            reverse: false, // rearrange characters in reverse order
+            textCase: null, // transform text case to 'upper' or 'lower'
+            padding: { // maintains min. no. of chars. by filing text
+                left: { // fill missing text to left direction
+                    length: null, // min. chars to maintain
+                    pattern: null // text to fill
+                },
+                right: { // fill missing text to right direction
+                    length: null, // min. chars to maintain
+                    pattern: null // text to fill
+                }
+            },
+            substr: { // create sub-string
+                start: 0, // start index for sub-string
+                length: null // length of the sub-string
+            },
+            trim: false, // remove whitespace from 'left' / 'right' or both
+            cast: null, // type cast 'value' into 'binary', 'unsigned', 'char' etc.
+            decrypt: null, // decrypt 'value' using properties inside this
+            encoding: 'utf8mb4', // convert decrypted buffer array using this
+            as: null, // local reference name to this object 'value'
+            compare: {} // compare 'value' returned, similar to 'where' and 'having'
+        }
+    }
+
+    // Sample:
+    const response = await User.find({
+        select: [
+            {
+                str: {
+                    value: 'firstName',
+                    textCase: 'upper'
+                }
+            },
+            {
+                str: {
+                    value: 'userBio',
+                    substr: {
+                        start: 1,
+                        length: 50
                     },
-                    right: {
-                        length: null,
-                        pattern: null
+                    as: 'shortBio' // (optional) rename to 'shortBio'
+                }
+            },
+            {
+                str: {
+                    value: 'email',
+                    decrypt: {
+                        secret: 'mySecret',
+                        iv: 'customIV'
                     }
-                },
-                substr: {
-                    start: 0,
-                    length: null
-                },
-                trim: false,
-                cast: null,
-                decrypt: null,
-                as: null,
-                compare: {}
+                }
             }
-        }
-    ]
-})
-```
-
-Each of these properties of **string wrapper** method are explained below:
-
-`value` (mandatory) accepts column name or string value. All the operations are performed on this value only
-
-`replace` (optional) accepts object with two properties `target` and `with`, both can accept either column name or string value
-- `target` is used to identify the string value that needs to be replaced,
-- `with` specifies the string value that will replace the `target` string
-
-`reverse` (optional) accepts boolean value, if set to `true`, reverses the order of the characters in `value` property 
-
-`textCase` (optional) transforms the characters of `value` property to the specified case `'upper'` | `'lower'`
-
-`padding` (optional) accepts object with two properties `left` and `right`. Each property further accepts an object with exactly two properties `pattern` (used to fill empty spaces) and `length` (defines minimum number of characters to be maintained in the `value` property)
-
-`substr` (optional) accepts object with two properties `start` (defines starting index) and `length` (number of characters in substring)
-
-`trim` (optional) removes/trims whitespace in `value` property based on the value `'left'` (from the beginning) | `'right'` (from the end) | `true` (both beginning and end)
-
-`cast` (optional) converts/casts `value` property to the specified *type* / *format* using either of the values `'char'`  | `'nchar'` | `'date'` | `'dateTime'` | `'signed'` | `'unsigned'` | `'decimal'` | `'binary'` | `'integer'`
-
-`decrypt` (optional) is an object with properties `secret`, `iv` (used with CBC mode when `dialect: 'mysql'`) and `sha` used to decrypt `value` property. Overrides configuration(s) provided in local and global `encryption` (see [encryption](#encryption) for details)
-
-`as` (optional) renames/provides local reference name to the `value` property
-
-`compare` (optional) used to compare the value returned by this wrapper method using `comparators`
-
-#### Numeric wrapper
-
-**Numeric wrapper** (keyword `num`) is used to perform mathematical operations on the numeric data, it can be used / nested inside `select`, `where`, `having` clause as a `value`. All the operations are executed sequentially, in order that follows **BODMAS** rule. Below is the interface for this wrapper method along with the default values for each of its properties:
-
-```javascript
-const response = await User.find({
-    select: [
-        { 
-            num: {
-                value: 'column containing number' || number,
-                decimal: null,
-                mod: null,
-                sub: 0,
-                add: 0,
-                multiplyBy: null,
-                divideBy: null,
-                power: null,
-                cast: null,
-                decrypt: null,
-                as: null,
-                compare: {}
-            } 
-        }
-    ]
-})
-```
-
-Each of these properties of **numeric wrapper** method are explained below:
-
-`value` (mandatory) accepts column name or numeric value. All the operations are performed on this value only
-
-`decimal` (optional) accepts `'floor'` | `'ceil'` | `'round'` | number as value. It determines the behavior of decimal values or limits the no. of decimal values
-
-`mod` (optional) accepts column name or numeric value. Performs 'modulus' operation of this value on `value` property
-
-`sub` (optional) accepts column name or numeric value. Performs 'subtraction' of this value from `value` property
-
-`add` (optional) accepts column name or numeric value. Performs 'addition' of this value to `value` property
-
-`multiplyBy` (optional) accepts column name or numeric value. Performs 'multiplication' of `value` property by this value
-
-`divideBy` (optional) accepts column name or numeric value. Performs 'division' of `value` property by this value
-
-`power` (optional) accepts column name or numeric value. Applies this value as 'power' of `value` property
-
-`cast` (optional) used to 'convert' or 'cast' string from `value` property to the specified *type* / *format*. It accepts either of the values `'char'`  | `'nchar'` | `'date'` | `'dateTime'` | `'signed'` | `'unsigned'` | `'decimal'` | `'binary'`
-
-`decrypt` (optional) is an object with properties `secret`, `iv` (used with CBC mode) and `sha` used to decrypt `value` property. Overrides configuration(s) provided in local and global `encryption` (see [encryption](#encryption) for details)
-
-> **Please note:** `mode` of encryption can only be set inside the `encryption` configuration of either **findObj** or `model` class and not inside `decrypt`
-
-`as` (optional) renames/provides local reference name to the `value` property
-
-`compare` (optional) used to compare the value returned by this wrapper method using `comparators`
-
-#### Date wrapper
-
-**Date wrapper** (keyword `date`) is used to perform date related operations on `value` property, it can be used nested inside `select`, `where`, `having` clause as a `value`. Below is the interface for this wrapper method along with the default values for each of its properties:
-
-```javascript
-const response = await User.find({
-    select: [
-        { 
-            date: { 
-                value: 'column containing date' || date,
-                add: 0,
-                sub: 0,
-                fromPattern: null,
-                cast: null,
-                decrypt: null,
-                format: null,
-                as: null,
-                compare: {}
-            } 
-        }
-    ]
-})
-```
-
-Each of these properties of **date wrapper** method are explained below:
-
-`value` (mandatory) accepts column name or date value. All the operations are performed on this value only
-
-`add` (optional) accepts number (representing 'days') or alpha numeric value (number along with `date` | `time` unit). Performs 'addition' of this value to `value` property
-
-`sub` (optional) accepts number (representing 'days') or alpha numeric value (number along with `date` | `time` unit). Performs 'subtraction' of this value from `value` property
-
-`fromPattern` (optional) accepts combination of `date` | `time` units arranged in a string pattern (see [Date Time Patterns](#date-time-patterns)), used to identify `date` | `time` element(s) in `value` property, this pattern is then used to create `'date'` | `'time'` | `'datetime'`
-
-```javascript
-const response = await User.find({
-    select: [
-        'userId',
-        {
-            date: {
-                value: '#march_10th@24',
-                fromPattern: '%M_%D@y',
-                as: 'dateCreated'              
-            }
-        }
-    ]
-})
-
-// output: 2024-03-10
-```
-
-`cast` (optional) used to 'convert' or 'cast' string from `value` property to the specified *type* / *format*. It accepts either of the values `'char'`  | `'nchar'` | `'date'` | `'dateTime'` | `'signed'` | `'unsigned'` | `'decimal'` | `'binary'`
-
-`decrypt` (optional) is an object with properties `secret`, `iv` (used with CBC mode) and `sha` used to decrypt `value` property. Overrides configuration(s) provided in local and global `encryption` (see [encryption](#encryption) for details)
-
-> **Please note:** `mode` of encryption can only be set inside the `encryption` configuration of either **findObj** or `model` class and not inside `decrypt`
-
-`format` (optional) is used to **format** `date` in `value` property to match the desired combination of date time patterns (see [Date Time Patterns](#date-time-patterns))
-
-```javascript
-const response = await User.find({
-    select: [
-        'userId',
-        {
-            date: {
-                value: 'joiningDate',
-                format: '%M %D, %Y',                
-            }
-        }
-    ]
-})
-
-// output: 'Month name' 'Day of the month (with suffix: 1st, 2nd, 3rd...)', 'Full Year (4-digits)'
-```
-
-`as` (optional) renames/provides local reference name to the `value` property
-
-`compare` (optional) used to compare the value returned by this wrapper method using `comparators`
-
-#### Date Time Patterns
-
-**Date Time Patterns** can be used with `format` and `fromPattern` properties of `date` wrapper but not with `add` and `sub` property. Below mentioned *date time patterns* (in any desired combination), along with white space `' '` or allowed special characters (`'$'`, `'@'`, `'#'`, `','`, `'-'`, `'_'`, `'/'`) can be used to:
-- Recognize parts of date within a regular string inside `value` property of `date` wrapper and can generate a valid date from it
-- Reformat the date inside the `value` property of the `date` wrapper into any desired format
-
-| Pattern | Description                                                                  |
-| :-----: | ---------------------------------------------------------------------------- |
-|  `%a`   | Abbreviated weekday name (Sun to Sat)                                        |
-|  `%b`   | Abbreviated month name (Jan to Dec)                                          |
-|  `%c`   | Numeric month name (0 to 12)                                                 |
-|  `%D`   | Day of the month as a numeric value, followed by suffix (1st, 2nd, 3rd, ...) |
-|  `%d`   | Day of the month as a numeric value (01 to 31)                               |
-|  `%e`   | Day of the month as a numeric value (0 to 31)                                |
-|  `%f`   | Microseconds (000000 to 999999)                                              |
-|  `%H`   | Hour (00 to 23)                                                              |
-|  `%h`   | Hour (00 to 12)                                                              |
-|  `%I`   | Hour (00 to 12)                                                              |
-|  `%i`   | Minutes (00 to 59)                                                           |
-|  `%j`   | Day of the year (001 to 366)                                                 |
-|  `%k`   | Hour (0 to 23)                                                               |
-|  `%l`   | Hour (1 to 12)                                                               |
-|  `%M`   | Month name in full (January to December)                                     |
-|  `%m`   | Month name as a numeric value (00 to 12)                                     |
-|  `%p`   | AM or PM                                                                     |
-|  `%r`   | Time in 12 hour AM or PM format (hh:mm:ss AM/PM)                             |
-|  `%S`   | Seconds (00 to 59)                                                           |
-|  `%s`   | Seconds (00 to 59)                                                           |
-|  `%T`   | Time in 24 hour format (hh:mm:ss)                                            |
-|  `%U`   | Week where Sunday is the 1st day of the week (00 to 53)                      |
-|  `%u`   | Week where Monday is the 1st day of the week (00 to 53)                      |
-|  `%V`   | Week where Sunday is the 1st day of the week (01 to 53). Used with `%X`      |
-|  `%v`   | Week where Monday is the 1st day of the week (01 to 53). Used with `%x`      |
-|  `%W`   | Weekday name in full (Sunday to Saturday)                                    |
-|  `%w`   | Day of the week where Sunday=0 and Saturday=6                                |
-|  `%X`   | Year for the week (Sunday being 1st day of the week). Used with `%V`         |
-|  `%x`   | Year for the week (Monday being 1st day of the week). Used with `%v`         |
-|  `%Y`   | Year (4-digit)                                                               |
-|  `%y`   | Year (2-digit)                                                               |
-
-#### Date Time Units
-
-Below **date time units** are only usable with `add` and `sub` property of `date` wrapper method and not with `format` and `fromPattern` property
-
-| Keyword | Unit               |
-| :-----: | ------------------ |
-|   `f`   | MICROSECOND        |
-|   `s`   | SECOND             |
-|   `i`   | MINUTE             |
-|   `h`   | HOUR               |
-|   `d`   | DAY                |
-|   `w`   | WEEK               |
-|   `m`   | MONTH              |
-|   `q`   | QUARTER            |
-|   `y`   | YEAR               |
-|  `smi`  | SECOND_MICROSECOND |
-|  `mmi`  | MINUTE_MICROSECOND |
-|  `ms`   | MINUTE_SECOND      |
-|  `hmi`  | HOUR_MICROSECOND   |
-|  `hs`   | HOUR_SECOND        |
-|  `hm`   | HOUR_MINUTE        |
-|  `dmi`  | DAY_MICROSECOND    |
-|  `ds`   | DAY_SECOND         |
-|  `dm`   | DAY_MINUTE         |
-|  `dh`   | DAY_HOUR           |
-|  `yM`   | YEAR_MONTH         |
-
-#### And / Or wrapper
-
-**and* wrapper** (keyword `and`) | **or wrapper** (keyword `or`) both are similar in interface as both accepts array of objects. The only difference in the two is that **and** wrapper joins each immediate child condition using 'and' clause (junction) whereas, **or** wrapper joins each immediate child condition using 'or' clause (junction). Both can be used / nested inside `where` and `having` properties only and not (directly) in `select` property
-
-```javascript
-const response = await User.find({
-    where: { 
-        and: [
-            { userId: 55 },
-            { department: 'sales' }
         ],
-        or: [
-            { userStatus: 0 },
-            { userStatus: 2 },
+        encryption: {
+            mode: 'aes-256-cbc'
+        }
+    })
+    ```
+
+    **Please note:**
+
+    1. **All properties are optional** and can be used in **any combination**
+    2. All operations are performed on `value` property
+    3. `reverse` and `padding` are not supported by `sqlite`
+    4. <span id="cast">`cast`</span> can be any of the values: 
+    - For `mysql`: 
+        - `'char'`  | `'nchar'` | `'date'` | `'dateTime'` | `'signed'` | `'unsigned'` | `'decimal'` | `'binary'`
+    - For `postgresql`:
+        - `'integer'` | `'text'` | `'timestamp'` | `'numeric'`
+    - For `sqlite`:
+        - `'integer'` | `'text'` | `'real'` | `'blob'`
+    5. <span id="decrypt">`decrypt`</span> is an important property that holds an object with following properties:
+    - <span id="secret">`secret`</span> is the **secret key** when provided here, will **override** all other **secret** properties defined (if any) on execution level `encryption` property or global level `encryption` (inside `config`)
+    - <span id="iv">`iv`</span> (Initialization Vector) only used with `mysql`. Should be same for Encryption/Decryption. `postgresql` manages `iv` internally and does not require to be entered manually.
+    - <span id="sha">`sha`</span> determines the **hash algorithm** to be used (defaults to `512`) only used by `mysql`. `postgresql` does not require this.
+    6. `sqlite` does not support built-in AES Encryption/Decryption hence will throw error if values are set
+    7. <span id="encoding">`encoding`</span> (only used with `mysql`) determines the character set to be used while decrypting data. It can be any character set supported by `mysql` like: `'utf8mb4'` (default) | `'latin1'` | `'ascii'` | `'utf8'` | `'ucs2'` | `'utf16'` etc
+    8. <span id="compare">`compare`</span> is similar to `where` and `having`, it compares value returned by this object to the condition specified in this object.
+    9. In `replace` property, due to limitation of implementation by SQL, `target` and `replaceWith` properties are always expected to be static string and never a column name, hence adding a prefix of `#` is not required for these properties
+
+- #### **Numeric Wrapper** (Keyword <span id="num">`num`</span>): 
+  Performs **Numerical/Mathematical** operation(s) on `value` property. Follows the rules of **BODMAS** when performing multiple operations. Interface with default properties is shown below:
+
+    ```javascript
+    // Interface:
+    { 
+        num: {
+            value: 'some number/ column containing number',
+            decimal: null, // limit no. of decimal or round-off: 'floor'/'ceil'/'round'
+            mod: null, // calculate modulus of 'value' by this number
+            sub: 0, // subtract this from 'value'
+            add: 0, // add this to 'value'
+            multiplyBy: null, // multiply 'value' by this number
+            divideBy: null, // divide 'value' by this number
+            power: null, // apply this as power of 'value'
+            cast: null, // type cast 'value' into 'binary', 'unsigned', 'char' etc.
+            decrypt: null, // decrypt 'value' using properties inside this
+            encoding: 'utf8mb4', // convert decrypted buffer array using this encoding
+            as: null, // local reference name to this object 'value'
+            compare: {} // compare 'value' returned, similar to 'where' and 'having'
+        } 
+    }
+
+    // Sample:
+    const response = await Specs.find({
+        select: [
+            { 
+                num: {
+                    value: 'calories',
+                    decimal: 2, // limit decimals to 2 places '.00'
+                    multiplyBy: 100,
+                    divideBy: 'quantity',
+                    as: 'unitCalories'
+                } 
+            }
         ]
-     }
-})
-```
+    })
+    ```
 
-> **Explanation:**
-> In the above sample, `'userId'`, `'department'` and `'userStatus'` represents columns in `user` table. Here, 'conditions' to check `'userId'` and `'department'` (inside `and` array) will be using **'and'** clause whereas, the two 'conditions' to check `'userStatus'` (inside `or` array) will be connected using **'or'** clause
-> **Please note:** 
-> 1. `and` | `or` wrappers directly cannot be used inside `select` property however, they can be used in-directly withing `json` | `array` | `refer` wrappers
-> 2. Since, `junction` is not provided hence conditions inside `and` and `or` clause will be using the default value `'and'` to connect with each other
-> 3. `and` and `or` clause can also be nested in any fashion as desired
+    **Please note:**
 
-#### If wrapper
+    1. **All properties are optional** and can be used in **any combination**
+    2. All operations are performed on `value` property
+    3. See [cast](#cast), [decrypt](#decrypt), [encoding](#encoding), [compare](#compare) for respective details
 
-**If wrapper** (keyword `if`) has a `check` property that accepts a conditional object to compare two values and returns either `true` or `false`. If the `check` property returns `true`, the value in `trueValue` property is returned by this wrapper, if `check` is `false` then the value in `falseValue` property is returned. `as` *(optional)* is used to provide a local reference name to the value returned by `if` wrapper method. Below is the interface for the `if` wrapper:
+- #### **Date Wrapper** (Keyword <span id="date">`date`</span>):
+  Performs **Date/Time** operation(s) on `value` property. Interface along with default properties is shown below:
 
-```javascript
-const response = await User.find({
-    select: [
-        { 
-            if: {
-                check: {},
-                trueValue: null,
-                falseValue: null,
-                as: null
+    ```javascript
+    // Interface:
+    { 
+        date: { 
+            value: 'column containing date' || date,
+            add: null, // add days as no. or any combination of days, months, years
+            sub: null, // sub. days as no. or any combination of days, months, years
+            fromPattern: null, // create date from any string (date) pattern
+            cast: null, // type cast 'value' into 'binary', 'unsigned', 'char' etc.
+            decrypt: null, // decrypt 'value' using properties inside this
+            encoding: 'utf8mb4', // convert decrypted buffer array using this encoding
+            format: null, // format 'value' to desired form using pattern defined here
+            as: null, // local reference name to this object 'value'
+            compare: {} // compare 'value' returned, similar to 'where' and 'having'
+        } 
+    }
+
+    // Sample:
+    const response = await User.find({
+        select: [
+            { 
+                date: { 
+                    value: 'joiningDate',
+                    add: '6M', // adds 6 months to 'joiningDate'
+                    format: 'null',
+                    as: 'probationEndDate'
+                } 
             }
+        ]
+    })
+    ```
+
+    **Please note:**
+
+    1. **All properties are optional** and can be used in **any combination**
+    2. All operations are performed on `value` property
+    3. `fromPattern` is not supported by `sqlite`
+    4. See [cast](#cast), [decrypt](#decrypt), [encoding](#encoding), [compare](#compare) for respective details
+
+- #### And (Keyword <span id="and">`and`</span>) / Or (Keyword <span id="or">`or`</span>) Wrappers
+    Both `and` wrapper and `or` wrapper are similar in interface as both accepts array of comparator objects, only difference is `and` wrapper joins these comparator objects with **and** clause and `or` wrapper joins these comparator objects using **or** clause. They override `junction` property for their immediate children comparator objects and can be nested inside each other to create complex conditions. Since there is no *interface*, below is a sample for **and / or wrapper**:
+
+    ```javascript
+    // Interface:
+    { and: [ {...}, {...}, ...] } // and wrapper
+    { or: [ {...}, {...}, ...] } // or wrapper
+
+    // Sample:
+    const response = await User.find({
+        where: {
+            or: [
+                { salary: { between: { gt: 5000, lt: 15000 } } }, // condition1
+                { role: 'intern' } // condition2
+            ],
+            userStatus: 1 // condition3
         }
-    ]
-})
-```
+    })
+    // creates: ((condition1 or condition2) and condition3)
+    ```
 
-#### Case wrapper
+    **Please note:**
+    
+    1. Both wrappers works only with `where` and `having` property
 
-**Case wrapper** (keyword `case`) is similar to `if` wrapper as it is also used to check the conditions provided inside `check` property and return respective value. However, a major difference here is that `if` wrapper is used to check **'single condition'** whereas `case` wrapper is used when you have **'multiple condition'** and corresponding value pairs. `check` property accepts an array of object(s), each object consists of exactly two `key: value` pairs, where `key` is `when` property that accepts object to check the condition and `then` property that holds the respective value (for each `when` property) to be returned when the condition is `true`. Below is the interface for the `if` wrapper:
+- #### If Wrapper (Keyword <span id="if">`if`</span>):
 
-```javascript
-const response = await User.find({
-    select: [
-        { 
-            case: {
-                check: [{ when: {}, then: null }],
-                else: null,
-                as: null
+    Creates a **if-else check** and returns appropriate value. Below is the interface and default properties:
+
+    ```javascript
+    // Interface:
+    {
+        if: {
+            check: {...}, // condition to be checked
+            trueValue:'', // returns this value if 'check' is true
+            falseValue: '', // returns this value if 'check' is false
+            as: null // local reference name to this object 'value'
+        }
+    }
+
+    // Sample:
+    const response = await User.find({
+        select: [
+            {
+                if: {
+                    check: { experience: { lt: 1 } },
+                    trueValue:'Fresher',
+                    falseValue: 'Experienced',
+                    as: 'level'
+                }
             }
-        }
-    ]
-})
-```
+        ]
+    })
+    ```
 
-#### Sum wrapper
+- #### Case Wrapper (Keyword <span id="case">`case`</span>):
 
-**Sum wrapper** (keyword `sum`) is used to calculate 'sum' of a set (group) of records. This is an aggregate method hence it will be applied not to single but group of records. It can be used / nested only inside `select` and `having` parameters, and not with `where` clause as a `value`. Below is the interface for this wrapper method along with the default values for each of its properties:
+    Similar to a **switch case**, `check` contains array of conditional objects, each object containing `when` (condition to be checked) and `then` (value to be returned if respective `when` is `true`). Also contains a default `else` value when no condition is `true`. Below is the interface with default values:
 
-```javascript
-{
-    sum: {
-        value:'',
-        cast: null,
-        compare: {},
+    ```javascript
+    // Interface:
+    {
+        case: [
+            { // conditional object
+                when: {...}, // condition to be checked
+                then: 'some value' // value if 'when' is true
+            },
+            ...
+        ],
+        else: 'default value', // if no condition in any of the 'when' is true
         as: null
     }
-}
-const response = await User.find({
-    select: [
-        { sum: {
-            value: 'salary',
-            cast: 'signed',
-            as: 'totalSalary'
+
+    // Sample:
+    const response = await User.find({
+        select: [
+            {
+                case: [
+                    {
+                        when: { experience: { lt: 2 } },
+                        then: 'Fresher'
+                    },
+                    {
+                        when: { experience: { between: { gt: 2, lt: 4 } } },
+                        then: 'Junior'
+                    },
+                    {
+                        when: { experience: { between: { gt: 4, lt: 7 } } },
+                        then: 'Mid-level'
+                    },
+                ],
+                else: 'Senior',
+                as: 'expertise'
+            }
+        ]
+    })
+    ```
+
+- #### Sum Wrapper (Keyword <span id="sum">`sum`</span>):
+
+    **Calculate total** based on column name or condition. Can be chained to compare using comparator object. Part of *aggregate methods*, is executed on group of record(s). Below is the interface and default values:
+
+    ```javascript
+    // Interface:
+    {
+        sum: {
+            value: 'some column', // or conditional object {...}
+            distinct: false, // when true, ignore duplicate column values
+            distinct: false, // when true, distinct column values will be considered
+            cast: null, // type cast value to 'signed', 'unsigned' etc
+            as: null, // local reference name to this object 'value'
+            compare: {} // comparator object
+        }
+    }
+
+    // Sample:
+    const response = await User.find({
+        select: [
+            { sum: {
+                value: 'salary',
+                cast: 'signed', // convert to 'singed' (number)
+                as: 'totalSalary'
+                }
+            }
+        ],
+        groupBy: ['department'],
+        having: {
+            sum: { 
+                value: 'salary',
+                compare: { gt: 5000 }
             }
         }
-    ],
-    groupBy: ['department'],
-    having: {
-        sum: { 
-            value: 'salary',
-            compare: {
-                gt: 5000
-            }
-         }
+    })
+    ```
+
+- #### Average Wrapper (Keyword <span id="avg">`avg`</span>):
+
+    **Calculate average** based on column name or condition. Can be chained to compare using comparator object. Part of *aggregate methods*, is executed on group of record(s). Below is the interface and default values:
+
+    ```javascript
+    // Interface:
+    {
+        avg: {
+            value: 'some column', // or conditional object {...}
+            distinct: false, // when true, distinct column values will be considered
+            cast: null, // type cast value to 'signed', 'unsigned' etc
+            as: null, // local reference name to this object 'value'
+            compare: {} // comparator object
+        }
     }
-})
-```
 
-> **Explanation:**
-> In the above sample, `'salary'` and `'department'` represents columns in `user` table. Here, inside `select` property, we are calculating sum of salaries, since we have used `groupBy` to group records using `'department'`, sum of salaries from each `'department'` will be calculated are returned with the local reference name `'totalSalary'`, then we are filtering to fetch all records only when 'totalSalary' is greater than 5000
-> **Please note:** 
-> 1. `cast` is used for type casting of `value` property into desired type
-> 2. `compare` property is available when `sum` is used inside `having` and not available when it is being used inside `select` clause
-> 3. `as` property is available when this wrapper is used inside `select` and not available when it is being used inside `having` clause
-> 4. `value` can either accept either a column name or number value or an object (simple or nested) as its value
-
-#### Average wrapper
-
-**Average wrapper** (keyword `avg`) is used to calculate 'average' of a set (group) of records. This is an aggregate method hence it will be applied not to single but group of records. It can be used / nested only inside `select` and `having` parameters, and not with `where` clause as a `value`. Below is the interface for this wrapper method along with the default values for each of its properties:
-
-```javascript
-const response = await User.find({
-    select: [
-        { avg: {
-            value: 'salary',
-            cast: 'unsigned',
-            as: 'averageSalary'
+    // Sample:
+    const response = await User.find({
+        select: [
+            {
+                avg: {
+                    value: 'salary',
+                    cast: 'unsigned',
+                    as: 'averageSalary',
+                }
+            }
+        ],
+        groupBy: ['department'],
+        having: {
+            avg: {
+                value: 'salary',
+                compare: { gt: 15000 }
             }
         }
-    ],
-    groupBy: ['department'],
-    having: {
-        avg: { 
-            value: 'salary',
-            compare: {
-                gt: 5000
-            }
-         }
+    })
+    ```
+
+- #### Count Wrapper (Keyword <span id="count">`count`</span>):
+
+    **Calculate count** based on column name or condition. Can be chained to compare using comparator object. Part of *aggregate methods*, is executed on group of record(s). Below is the interface and default values:
+
+    ```javascript
+    // Interface:
+    {
+        count: {
+            value: 'some column', // or conditional object {...}
+            distinct: false, // when true, distinct column values will be considered
+            cast: null, // type cast value to 'signed', 'unsigned' etc
+            as: null, // local reference name to this object 'value'
+            compare: {} // comparator object
+        }
     }
-})
-```
 
-> **Explanation:**
-> In the above sample, `'salary'` and `'department'` represents columns in `user` table. Here, inside `select` property, we are calculating *average* of salaries, since we have used `groupBy` to group records using `'department'`, average of salaries from each `'department'` will be calculated are returned with the local reference name `'averageSalary'`, then we are filtering to fetch all records only when 'averageSalary' is greater than 5000
-> **Please note:** 
-> 1. `compare` property is available when this wrapper is used inside `having` and not available when it is being used inside `select` clause
-> 2. `as` property is available when this wrapper is used inside `select` and not available when it is being used inside `having` clause
-> 3. `value` can either accept either a column name or number value or an object (simple or nested) as its value
+    // Sample:
+    const response = await User.find({
+        select: [
+            {
+                count: {
+                    value: '*',
+                    distinct: true,
+                    as: 'totalEmployees',
+                }
+            }
+        ],
+        groupBy: ['department']
+    })
+    ```
 
-#### Count wrapper
+- #### Min Wrapper (Keyword <span id="min">`min`</span>):
 
-**Count wrapper** (keyword `count`) is used to calculate 'count' among a set (group) of records. This is an aggregate method hence it will be applied not to single but group of records. It can be used / nested only inside `select` and `having` parameters, and not with `where` clause as a `value`. Below is the interface for this wrapper method along with the default values for each of its properties:
+    **Calculate lowest value** based on column name or condition. Can be chained to compare using comparator object. Part of *aggregate methods*, is executed on group of record(s). Below is the interface and default values:
 
-```javascript
-const response = await User.find({
-    select: [
-        { 
-            count: {
-                value: {
-                    userStatus: 1
+    ```javascript
+    // Interface:
+    {
+        min: {
+            value: 'some column', // or conditional object {...}
+            distinct: false, // when true, distinct column values will be considered
+            cast: null, // type cast value to 'signed', 'unsigned' etc
+            as: null, // local reference name to this object 'value'
+            compare: {} // comparator object
+        }
+    }
+
+    // sample
+    const response = await User.find({
+        select: [
+            {
+                min: {
+                    value: 'salary',
+                    cast: 'unsigned',
+                    as: 'lowestSalary'
+                }
+            }
+        ]
+    })
+    ```
+
+- #### Max Wrapper (Keyword <span id="max">`max`</span>):
+
+    **Calculate highest value** based on column name or condition. Can be chained to compare using comparator object. Part of *aggregate methods*, is executed on group of record(s). Below is the interface and default values:
+
+    ```javascript
+    // Interface:
+    {
+        max: {
+            value: 'some column', // or conditional object {...}
+            distinct: false, // when true, distinct column values will be considered
+            cast: null, // type cast value to 'signed', 'unsigned' etc
+            as: null, // local reference name to this object 'value'
+            compare: {} // comparator object
+        }
+    }
+
+    // Sample:
+    const response = await User.find({
+        select: [
+            {
+                max: {
+                    value: 'salary',
+                    distinct: true,
+                    cast: 'unsigned',
+                    as: 'highestSalary'
+                }
+            }
+        ]
+    })
+    ```
+
+- #### Json Wrapper (Keyword <span id="json">`json`</span>):
+
+    Can be used to **create** json object/array during execution or by using values from a sub-query or combination of both, **extract values** from json object/array, check if json contains certain value or not. Supports full sub-query properties (similar to `find` method). Part of *aggregate methods*, is executed on group of record(s). Below is the interface and default values:
+
+    ```javascript
+    // Interface:
+    {
+        json: {
+            value: {...}, // 'column name' or array [...]
+            table: null, // table in sub-query to refer value to be used to create json
+            alias: null, // local reference name for the table
+            join: [], // associate another table as child
+            where: {} // filter record(s) in sub-query
+            groupBy: [], // group record(s) in sub-query
+            having: {}, // filter record(s) in sub-query (also using aggregate methods)
+            orderBy: {}, // re-order record(s) in sub-query
+            limit: undefined, // limit record(s) in sub-query
+            offset: undefined, // reset start index in sub-query
+            extract: null, // extract values from json object / array
+            contains: null, // check if this value is contained in json object / array
+            aggregate: false, // when true, distinct column values will be considered
+            decrypt: null, // type cast value to 'signed', 'unsigned' etc
+            cast: null, // type cast value to 'signed', 'unsigned' etc
+            as: null, // local reference name to this object 'value'
+            compare: {} // comparator object
+        }
+    }
+
+    // Sample:
+    const response = await User.find({
+        alias: 'u',
+        select: [
+            {
+                json: {
+                    value: {
+                        orderId: 'orderId',
+                        purchaseDate: 'createdOn',
+                        total: 'amount',
+                        status: 'status'
+                    },
+                    table: 'order_history',
+                    where: {
+                        userId: 'u.userId'
+                    },
+                    aggregate: true,
+                    as: 'orders',
+                }
+            }
+        ]
+    })
+    ```
+
+    **Please note:**
+
+    1. If `value` is object, it will create json object
+    2. If `value` is array, it will crate json array
+    3. If `value` can also accept column name as string
+    4. `aggregate` can be set to `true` to combine multiple json objects/arrays
+
+- #### Refer Wrapper (Keyword <span id="refer">`refer`</span>)
+
+    Performs sub-query to extract value from another table, it is similar to have reference of entire `find` method as a special object, with all the properties (with additional `table` property) same as `find` method. Below is the interface and default values:
+
+    ```javascript
+    // Interface:
+    {
+        table: null, // table in sub-query to refer value to be used to create json
+        alias: null, // local reference name for the table
+        select: [], // column to be extracted
+        join: [], // associate another table as child
+        where: {} // filter record(s) in sub-query
+        groupBy: [], // group record(s) in sub-query
+        having: {}, // filter record(s) in sub-query (also using aggregate methods)
+        orderBy: {}, // re-order record(s) in sub-query
+        limit: undefined, // limit record(s) in sub-query
+        offset: undefined, // reset start index in sub-query
+        decrypt: null, // type cast value to 'signed', 'unsigned' etc
+        cast: null, // type cast value to 'signed', 'unsigned' etc
+        as: null, // local reference name to this object 'value'  
+    }
+
+    // Sample:
+    const response = await User.find({
+        alias: 'u',
+        select: [
+            ...,
+            {
+                refer: {
+                    select: ['departmentName'],
+                    from: 'departments_table',
+                    where: {
+                        departmentId: 'u.departmentId'
+                    }
+                }
+            }
+        ],
+        where: {
+            userStatus: 1
+        }
+    })
+    ```
+
+- #### Concat Wrapper (Keyword <span id="concat">`concat`</span>)
+
+    Used to combine (concat) multiple values using string `pattern`, it is similar to `str` but with multiple values.
+
+    ```javascript
+    // Interface:
+    {
+        concat: { 
+            value: [], // list of values / special objects to be combined
+            pattern: '', // pattern to be used to connect values
+            textCase: null, // transform text case to 'upper' or 'lower'
+            padding: { // maintains min. no. of chars. by filing text
+                left: { // fill missing text to left direction
+                    length: null, // min. chars to maintain
+                    pattern: null // text to fill
                 },
-                as: 'activeUsers'
-            }
+                right: { // fill missing text to right direction
+                    length: null, // min. chars to maintain
+                    pattern: null // text to fill
+                }
+            },
+            substr: { // create sub-string
+                start: 0, // start index for sub-string
+                length: null // length of the sub-string
+            },
+            trim: false, // remove whitespace from 'left' / 'right' or both
+            as: null, // local reference name to this object 'value'  
+            compare: {} // comparator object
         }
-    ]
-})
-```
-
-#### Minimum wrapper
-
-**Minimum wrapper** (keyword `min`) is used to calculate 'minimum' among a set (group) of records. This is an aggregate method hence it will be applied not to single but group of records. It can be used / nested only inside `select` and `having` parameters, and not with `where` clause as a `value`. Below is the interface for this wrapper method along with the default values for each of its properties:
-
-```javascript
-const response = await User.find({
-    select: [
-        { min: {
-            value: 'salary'
-            cast: 'unsigned',
-            as: 'minSalary'
-            }
-        }
-    ],
-    groupBy: ['department'],
-    having: {
-        min: { 
-            value: 'salary',
-            compare: {
-                gt: 5000
-            }
-         }
     }
-})
-```
 
-> **Explanation:**
-> In the above sample, `'salary'` and `'department'` represents columns in `user` table. Here, inside `select` property, we are calculating minimum of salaries, since we have used `groupBy` to group records using `'department'`, minimum salaries from each `'department'` will be calculated are returned with the local reference name `'minSalary'`, then we are filtering to fetch all records only when 'minSalary' is greater than 5000
-> **Please note:** 
-> 1. `compare` property is available when this wrapper is used inside `having` and not available when it is being used inside `select` clause
-> 2. `as` property is available when this wrapper is used inside `select` and not available when it is being used inside `having` clause
-> 3. `value` can either accept either a column name or number value or an object (simple or nested) as its value
-
-#### Maximum wrapper
-
-**Maximum wrapper** (keyword `max`) is used to calculate 'maximum' among a set (group) of records. This is an aggregate method hence it will be applied not to single but group of records. It can be used / nested only inside `select` and `having` parameters, and not with `where` clause as a `value`. Below is the interface for this wrapper method along with the default values for each of its properties:
-
-```javascript
-const response = await User.find({
-    select: [
-        { max: {
-            value: 'salary'
-            cast: 'unsigned',
-            as: 'maxSalary'
+    // Sample:
+    const response = await User.find({
+        select: [
+            {
+                concat: {
+                    value: ['firstName', 'lastName'],
+                    as: 'fullName'
+                }
             }
-        }
-    ],
-    groupBy: ['department'],
-    having: {
-        max: { 
-            value: 'salary',
-            compare: {
-                gt: 5000
-            }
-         }
-    }
-})
-```
-
-> **Explanation:**
-> In the above sample, `'salary'` and `'department'` represents columns in `user` table. Here, inside `select` property, we are calculating maximum of salaries, since we have used `groupBy` to group records using `'department'`, maximum salaries from each `'department'` will be calculated are returned with the local reference name `'maxSalary'`, then we are filtering to fetch all records only when 'maxSalary' is greater than 5000
-> **Please note:** 
-> 1. `compare` property is available when this wrapper is used inside `having` and not available when it is being used inside `select` clause
-> 2. `as` property is available when this wrapper is used inside `select` and not available when it is being used inside `having` clause
-> 3. `value` can either accept either a column name or number value or an object (simple or nested) as its value
-
-#### Json wrapper
-
-**Json wrapper** (keyword `json`) can be used to **extract specific value from json Object** (using `extract` property) or **create/attach json Object to record(s)** by passing Object/Array in `value` property, or even both. Below is the interface for this wrapper method along with the default values for each of its properties:
-
-```javascript
-const response = await User.find({
-    alias: 'u',
-    select: [
-        {
-            json: {
-                value: {},
-                table: null,
-                alias: null,
-                join: [],
-                where: {}
-                groupBy: [],
-                having: {},
-                orderBy: {},
-                limit: undefined,
-                offset: undefined,
-                as: null, // Defaults to 'json' (only inside select property) if no 'where' or 'having' property is set
-                extract: null,
-                compare: {}
-            }
-        }
-    ]
-})
-```
-
-Each of the properties is explained below:
-
-`value` accepts an object `key: value` pair(s) as value. `key` being a string value, `value` can be either string value or a column or any of the UnSQL reserved constants (see [reserved constants](#what-are-unsql-reserved-constants)) or number or nested object
-
-`table` (optional) reference to the child table from which the columns needs to be fetched
-
-`alias` (optional) provides local reference to the child table, see [alias](#alias)
-
-`join` (optional) used to associate another table, see [join](#join)
-
-`where` (optional) used to filter records, see [where](#where)
-
-`groupBy` (optional) groups record(s), see [group by](#groupby)
-
-`having` (optional) used to filter records, see [having](#having)
-
-`orderBy` (optional) re-orders record(s), see [order by](#orderby)
-
-`limit` (optional) limit record(s), see [limit](#limit)
-
-`offset` (optional) set starting index for record(s), see [offset](#offset)
-
-`as` (optional) is used to rename the json object name, if not provided defaults to 'json'
-
-`extract` (optional) available when **column name** containing valid **json object** is passed in `value` property, is used to extract a specified value from this json object. In order to extract any value inside nested json object, keys can be concatenated using `.` symbol
-
-`compare` (optional) used to compare the value returned by this wrapper method using `comparators`
-
-
-> **Please note:** 
-> 1. Using alias is always a good practice but, if the column names inside the two referenced tables are not ambiguous then alias can be excluded
-> 2. `as` property is available when this wrapper is used inside `having` and not available when it is being used inside `select` clause
-> 3. `value` can either accept either a column name or number value or an object (simple or nested) as its value
-
-#### Array wrapper
-
-**Array wrapper** (keyword `array`) can be used to **extract specific value from json Array** (using `extract` property) or **create/attach json Array to record(s)** by passing Object/Array in `value` property, or even both. This is similar to `json` wrapper however, it can also be used to create an array with multiple json objects. Below is the interface for this wrapper method along with the default values for each of its properties:
-
-```javascript
-const response = await User.find({
-    alias: 'u',
-    select: [
-        {
-            array: {
-                value: [] || {},
-                table: null,
-                alias: null,
-                join: [],
-                where: {},
-                groupBy: [],
-                having: {},
-                orderBy: {},
-                limit: undefined,
-                offset: undefined,
-                as: null, // Defaults to 'array' (only inside select property) if no 'where' or 'having' property is set
-                extract: null,
-                compare: {}
-            }
-        }
-    ]
-})
-```
-
-Each of the properties is explained below:
-
-`value` accepts an array of values or an object in `key: value` pair format as value. `key` being a string , `value` can be either string value or a column name or number or nested object
-
-`table` (optional) reference to the child table from which the columns needs to be fetched
-
-`alias` (optional) provides local reference to the child table, see [alias](#alias)
-
-`join` (optional) used to associate another table, see [join](#join)
-
-`where` (optional) used to filter records, see [where](#where)
-
-`groupBy` (optional) groups record(s), see [group by](#groupby)
-
-`having` (optional) used to filter records, see [having](#having)
-
-`orderBy` (optional) re-orders record(s), see [order by](#orderby)
-
-`limit` (optional) limit record(s), see [limit](#limit)
-
-`offset` (optional) set starting index for record(s), see [offset](#offset)
-
-`as` (optional) is used to rename the json object name, if not provided defaults to 'json'
-
-`extract` (optional) available when **column name** containing valid **json object** is passed in `value` property, is used to extract a specified value from this json object. In order to extract any value inside nested json object, keys can be concatenated using `.` symbol
-
-`compare` (optional) used to compare the value returned by this wrapper method using `comparators`
-
-> **Please note:** 
-> 1. Using alias is always a good practice but, if the column names inside the two referenced tables are not ambiguous then alias can be excluded
-
-#### Refer wrapper
-
-**Refer wrapper** (keyword `refer`) is used to run `'sub-query'` to fetch **single field** from any specific record from another `table`. It can be used / nested only inside `select`, `where` and `having` clause as a `value`. This method is helpful to fetch 1 record in a one-to-one relation. Below is the interface for this wrapper method along with the default values for each of its properties:
-
-```javascript
-const response = await User.find({
-    alias: 'u',
-    select: [
-        {
-            refer: {
-                select: ['*'],
-                table: 'table_name',
-                alias: null,
-                join: [],
-                where: null, 
-                groupBy: [], 
-                having: [], 
-                orderBy: {}, 
-                limit: undefined, 
-                offset: undefined,
-                as: null
-            }
-        }
-    ]
-})
-```
-
-Each of the properties is explained below:
-
-`value` accepts an array of values or an object in `key: value` pair format as value. `key` being a string value, `value` can be either string value or a column name or number or nested object
-
-`table` reference to the child table from which the columns needs to be fetched
-
-`alias` (optional) provides local reference to the child table, see [alias](#alias) for details
-
-`join` (optional) defines association of another table (as child), see [join](#join) for details
-
-`where` (optional) used to filter records, see [where](#where) for details
-
-`groupBy` (optional) used to group records, see [groupBy](#groupby) for details
-
-`having` (optional) used to filter records with aggregate wrapper methods support, see [having](#having) for details
-
-`orderBy` (optional) used to re-order records, see [orderBy](#orderby) for details
-
-`limit` (optional) used to limit no. of records, see [limit](#limit) for details
-
-`offset` (optional) used to change the starting index for the records to be fetched from, see [offset](#offset) for details
-
-`as` (optional) is used to rename the json array name, if not provided defaults to 'array'
-
-> **Please note:** This wrapper method is very important as it similar to actual `find` method inside `UnSQL`
-
-#### Concat Wrapper
-
-**Concat wrapper** (Keyword `concat`) is used to merge/combine multiple value(s)/columns together into one value. Accepts an array of value(s)/wrapper methods and merges them as one value using `pattern` property as the separator between these values. Below is the interface for this wrapper method along with the default values for each of its properties:
-
-```javascript
-const response = await User.find({
-    select: [
-        {
-            concat: { 
-                value: [],
-                pattern: '',
-                as: null,
-                compare: null
-            }
-        }
-    ]
-})
-```
-
-Each of the properties is explained below:
-
-`value` accepts an array of values, these values are similar to `select` (see [select](#select)) property of `find` method (see [find](#find-method))
-
-`pattern` used to connect values in the `value` property. Default is `''`
-
-`as` (optional) is used to provide local reference name to the value returned by this wrapper method
-
-`compare` (optional) used to compare the value returned by this wrapper method using `comparators`
-
-### What are comparators in UnSQL?
-
-**comparator** as the name suggests are used to compare two values. They have a layer of nested object `key: { comparator: value }` pair format like interface where the `key` is compared with the `value` based on the `comparator` used. `key` and `value` can be either string value or column name or number or boolean or any of the built-in wrapper methods. `UnSQL` provides various types of `comparator` as mentioned below:
-
-| Comparator     | Expression       | Description                                                                            |
-| -------------- | ---------------- | -------------------------------------------------------------------------------------- |
-| `eq`           | `=`              | compares if `key` **is equal** to `value`                                              |
-| `notEq`        | `!=`             | compares if `key` **is not equal** to `value`                                          |
-| `gt`           | `>`              | compares if `key` **is greater than** to `value`                                       |
-| `lt`           | `<`              | compares if `key` **is lower than** to `value`                                         |
-| `gtEq`         | `>=`             | compares if `key` **is greater than** to `value`                                       |
-| `ltEq`         | `<=`             | compares if `key` **is lower than** to `value`                                         |
-| `isNull`       | `IS NULL`        | checks if `key` **is null**                                                            |
-| `in`           | `IN`             | checks if `key` has an **exact match** in the provided set of values in `value`        |
-| `notIn`        | `NOT IN`         | checks if `key` **does not have exact match** in the provided set of values in `value` |
-| `like`         | `LIKE '%?%'`     | performs a **fuzzy search** if `value` **contains** `key` **at any position**          |
-| `notLike`      | `NOT LIKE '%?%'` | performs a **fuzzy search** if `value` **does not contain** `key` **at any position**  |
-| `startLike`    | `LIKE '?%'`      | performs a **fuzzy search** if `value` **begins with** `key`                           |
-| `notStartLike` | `NOT LIKE '?%'`  | performs a **fuzzy search** if `value` **does not begins with** `key`                  |
-| `endLike`      | `LIKE '%?'`      | performs a **fuzzy search** if `value` **ends with** `key`                             |
-| `notEndLike`   | `NOT LIKE '%?'`  | performs a **fuzzy search** if `value` **does not ends with** `key`                    |
-
-## What is Session Manager in UnSQL?
-
-### Session Manager
-
-`SessionManager` is a class that can be used to create an instance of a `session` object, which provides various *asynchronous* methods (as an interface) to manage the lifecycle of a persistent (reusable) instance of a `transaction` across multiple query executions. `SessionManager` becomes extremely important in cases where multiple inter-linked queries are executed in a chained fashion, one after the other and a mechanism to control all transactions at once if any one of them fails is required. Each lifecycle method is explained below:
+        ]
+    })
+    ```
+
+### 4.4 Comparator Objects
+
+UnSQL provides various objects to **compare different values**, as mentioned below:
+
+|   Comparator   |    Expression     | Description                                                               |
+| :------------: | :---------------: | ------------------------------------------------------------------------- |
+|      `eq`      |        `=`        | compares, `key` **is equal** to `value`                                   |
+|    `notEq`     |       `!=`        | compares, `key` **is not equal** to `value`                               |
+|      `gt`      |        `>`        | compares, `key` **is greater than** to `value`                            |
+|      `lt`      |        `<`        | compares, `key` **is lower than** to `value`                              |
+|     `gtEq`     |       `>=`        | compares, `key` **is greater than** to `value`                            |
+|     `ltEq`     |       `<=`        | compares, `key` **is lower than** to `value`                              |
+|   `between`    | `BETWEEN ? AND ?` | checks, `key` is in a range of values                                     |
+|      `in`      |       `IN`        | checks, `key` has an **exact match** in a set of values in `value`        |
+|    `notIn`     |     `NOT IN`      | checks, `key` **does not have exact match** in a set of values in `value` |
+|     `like`     |   `LIKE '%?%'`    | **fuzzy search**, `value` **contains** `key` **at any position**          |
+|   `notLike`    | `NOT LIKE '%?%'`  | **fuzzy search**, `value` **does not contain** `key` **at any position**  |
+|  `startLike`   |    `LIKE '?%'`    | **fuzzy search**, `value` **begins with** `key`                           |
+| `notStartLike` |  `NOT LIKE '?%'`  | **fuzzy search**, `value` **does not begins with** `key`                  |
+|   `endLike`    |    `LIKE '%?'`    | **fuzzy search**, `value` **ends with** `key`                             |
+|  `notEndLike`  |  `NOT LIKE '%?'`  | **fuzzy search**, `value` **does not ends with** `key`                    |
+
+## 5. Session Manager
+
+Session Manager is a special class, used to create an instance of `session` object. It also provides various *static asynchronous* methods to manage the lifecycle of a persistent (reusable) instance of *transaction* across multiple query execution as mentioned below:
 
 | Method     | Description                                                     |
 | ---------- | --------------------------------------------------------------- |
@@ -1670,182 +1297,58 @@ Each of the properties is explained below:
 | `commit`   | finalizes all changes, making them permanent (cannot be undone) |
 | `close`    | ends the transaction and closes the session                     |
 
-> **Please note:** Constructor requires `connection` or `pool` (recommended)
+> **Please note:** 
+> 1. Constructor requires `connection` or connection `pool` as parameter
+> 2. `rollback` and `commit` accept an optional boolean parameter, to close `session` (when `true`) at this point
+> 3. When trying to combine Session Manager with `rawQuery`, it will not work with `methodType: 'exec'` is set in `dialect: 'sqlite'` or when executing multiple SQL statements in single query
 
-## Examples
+## 6. Examples
 
-### How to find (read/retrieve) record(s) using UnSQL?
-
-#### Read all records:
+### 6.1 Find all Users
 
 ```javascript
-router.get('/users', async (req, res)=> {
-    const response = await User.find()
+router.get('/users', async (req, res) => {
 
-    // above code is similar to
-    // const response = await User.find({ })
-
+    const response = await User.find() // similar to await User.find({ })
+      // your code here
 })
 ```
 
-#### Fetch single user by userId:
+### 6.2 Find single User by Id
 
 ```javascript
-router.get('/users/:userId(\\d+)', async (req, res)=> {
-
+router.get('/users/:userId(\\d+)', async (req, res) => {
+    
     const { userId } = req.params
 
-    const response = await User.find({
-        where: { userId }
-    })
+    const response = await User.find({ where: { userId } })
+    // your code here
+})
+```
 
-    // above code is similar/shorthand for:
+### 6.3 Login User by email or mobile
+
+```javascript
+router.post('/users/login', async (req, res) => {
     
-    // 1. 
-    // const response = await User.find({
-    //     where: { userId: userId }
-    // })
-
-    // 2.
-    // const response = await User.find({
-    //     where: { userId: { eq: userId } }
-    // })
-})
-```
-
-#### Login example:
-
-```javascript
-router.post('/users/login', async (req, res)=> {
-
     const { loginId, password } = req.body
 
     const response = await User.find({
-        select: [ 'userId', 'userEmail', 'firstName', 'lastName', 'userPassword' ],
-        where: {
+        select: [...],
+        where: { 
             or: [
-                { userEmail: `#${loginId}` },
-                { userMob: `#${loginId}` }
+                { email: `#${loginId}` },
+                { mobile: `#${loginId}` }
             ]
-        }
+        } 
     })
-
-    // rest of the authentication logic goes here...
-
+    // your code here
 })
 ```
 
-#### Login example (user email was encrypted using AES-256-CBC encryption in the database):
+**Please note:** UnSQL uses `#` as prefixed to recognize string as *plain text* instead of *column name*
 
-```javascript
-router.post('/users/login', async (req, res)=> {
-
-    const { loginId, password } = req.body
-
-    const response = await User.find({
-        select: [ 'userId', 'userEmail', 'firstName', 'lastName', 'userPassword' ],
-        where: {
-            or: [
-                { str: { 
-                    value: 'userEmail',
-                    decrypt: {
-                        secret: '#your_secret',
-                        iv: '#your_initialization_vector'
-                    }
-                    compare: { eq: `#${loginId}` },
-                    },
-                },
-                { userMob: `#${loginId}` }
-            ]
-        },
-        encryption: {
-            mode: 'aes-256-cbc'
-        }
-    })
-
-    // rest of the authentication logic goes here...
-
-})
-```
-
-> **Explanation:** Here, `'userId'`, `'userEmail'`, `'firstName'`, `'lastName'`, `'userPassword'` are the column in the database table. `str` wrapper is used to **Decrypt** `'userEmail'` column using the `secret` and `iv` properties. **Encryption mode** is set to `'aes-256-cbc'` inside `encryption` property. After Decrypting `'userEmail'`, its value is then compared with the `loginId` received in the **request body**. Since `secret` `iv` and `loginId` are regular strings and not column names hence, they are prefixed with `#`.
-
-#### Fetch all users along with the list of recent 5 orders
-
-```javascript
-router.get('/users', async (req, res) => {
-
-    const response = await User.find({
-        select: ['userId', 'firstName',
-            {
-                array: {
-                    value: {
-                        orderId: 'orderId',
-                        placedOn: 'createdOn',
-                        amount: 'amount'
-                    },
-                    table: 'orders_placed',
-                    where: {
-                        userId: 'userId'
-                    },
-                    limit: 5,
-                    orderBy: { createdOn: 'desc' },
-                    as: 'order_history'
-                }
-            }
-        ]
-    })
-
-})
-```
-
-#### Extract value from a Json Array of values
-
-```javascript
-router.get('/users', async (req, res) => {
-
-    const response = await User.find({
-        select: ['userId', 'firstName',
-            {
-                array: {
-                    value: ['#Jabalpur', '#Delhi', '#Pune'],
-                    extract: 0
-                    as: 'city'
-                }
-            }
-        ]
-    })
-
-})
-
-// Output: city: 'Jabalpur'
-```
-
-#### Extract city (at any (*) index value) from a Json Array of Objects
-
-```javascript
-router.get('/users', async (req, res) => {
-
-    const response = await User.find({
-        select: ['userId', 'firstName',
-            {
-                array: {
-                    value: [{...}],
-                    extract: '[*].city'
-                    as: 'city'
-                }
-            }
-        ]
-    })
-
-})
-```
-
-> **Explanation:** In the above sample, `city` will be extracted from all objects in the array
->
-> **Please note:** `*` can be replace by a number to fetch city name from a record at that specific index number, else it will return `null` if value is not found or no object is found at that index
-
-#### Extract value from Json Object
+### 6.4 Extract value from a Json Array of values
 
 ```javascript
 router.get('/users', async (req, res) => {
@@ -1854,125 +1357,172 @@ router.get('/users', async (req, res) => {
         select: ['userId', 'firstName',
             {
                 json: {
-                    value: { ..., address: { city: ..., state: ... } },
-                    extract: 'address.city'
+                    value: ['#Jabalpur', '#Delhi', '#Pune'],
+                    extract: 0 // Output: city: 'Jabalpur'
                     as: 'city'
                 }
             }
         ]
     })
-
+    // your code here
 })
 ```
 
-### How to save (insert/update/upsert) data using UnSQL?
-
-#### insert data
+### 6.5 Extract value from a Json Object
 
 ```javascript
-router.post('/users', async (req, res)=> {
+router.get('/users', async (req, res) => {
 
-    const data = req.body
+    const response = await User.find({
+        select: ['userId', 'firstName',
+            {
+                json: {
+                    value: 'address',
+                    extract: 'permanent.city'
+                    as: 'city'
+                }
+            }
+        ]
+    })
+    // your code here
+})
+```
+
+### 6.6 Fetch Users with their last 10 Orders (Join sub-query)
+
+```javascript
+router.get('/users', async (req, res) => {
+
+    const response = await User.find({
+        alias: 'u',
+        select: ['userId', 'firstName',
+            {
+                json: { // creates custom json object
+                    value: {
+                        orderId: 'orderId',
+                        purchaseDate: 'createdOn',
+                        total: 'amount',
+                        discount: 'discount'
+                    },
+                    table: 'order_history',
+                    where: {
+                        userId: 'u.userId'
+                    },
+                    limit: 10,
+                    aggregate: true // wraps order object in array '[]'
+                    as: 'orders'
+                }
+            }
+        ]
+    })
+    // your code here
+})
+```
+
+### 6.7 Save User
+
+```javascript
+router.post('/users', async (req, res) => {
+
+    const data = req.body // {...} single user or [{...}] multiple users
 
     const response = await User.save({ data })
-
+    // your code here
 })
 ```
 
-#### update data
+### 6.8 Update User
 
 ```javascript
-router.put('/users/:userId(\\d+)', async (req, res)=> {
+router.put('/users/:userId(\\d+)', async (req, res) => {
 
     const { userId } = req.params
 
     const data = req.body
 
     const response = await User.save({ data, where: { userId } })
-
+    // your code here
 })
 ```
 
-#### upsert data
+### 6.9 Upsert User
 
 ```javascript
-router.post('/users', async (req, res)=> {
-
-    const { userId } = req.params
+router.post('/users', async (req, res) => {
 
     const data = req.body
 
-    // extract conflicting key (here 'userId') out of payload (data) and create a new object (here upsert) that holds remaining fields that needs to be updated on conflict
-    const { userId, ...upsert } = data
+    const { userId, ...upsert } = data // extracted Id to create update object (upsert)
 
     const response = await User.save({ data, upsert })
-
+    // your code here
 })
 ```
 
-### How to delete (remove) record(s) using UnSQL?
-
-#### delete specific record
+### 6.10 Delete User
 
 ```javascript
-router.delete('/users/:userId(\\d+)', async (req, res)=> {
+router.delete('/users/:userId(\\d+)', async (req, res) => {
 
     const { userId } = req.params
 
-    const response = await User.delete({
-        where: { userId }
-    })
-
+    const response = await User.delete({ where: { userId } })
+    // your code here
 })
 ```
 
-#### delete multiple record(s)
+### 6.11 Delete multiple users
 
 ```javascript
-router.delete('/users/:userId(\\d+)', async (req, res)=> {
-
-    const { userId } = req.params
+router.delete('/users', async (req, res) => {
 
     const response = await User.delete({
-        where: { 
-            department: ['#salesInterns', '#marketingInterns'],
-            {
-                date: {
-                    value: 'joiningDate',
-                    compare: {
-                        eq: {
-                            date: {
-                                value: 'currentDate',
-                                sub: '6m'
-                            }
-                        }
-                    }
-                }
-            }
+        where: {
+            departments: ['#sales', '#marketing']
         }
     })
-
+    // your code here
 })
 ```
 
-> **Explanation:** This will remove all record(s) in the `'salesInterns'` and `'marketInterns'` `'department'` having `'joiningDate'` 6 months (represented by `'6m'`) earlier to this date.
+**Please note:** UnSQL uses `#` as prefixed to recognize string as *plain text* instead of *column name*
 
-### How to use Session Manager?
+### 6.12 Delete all Users
 
-Let's assume we are creating an order for 'items' inside user 'bucket':
+```javascript
+router.delete('/users', async (req, res) => {
+
+    const response = await User.delete()
+    // your code here
+})
+```
+
+**Please note:** `saveMode: false` is required in model `config` to delete all users
+
+### 6.13 Reset User table
+
+```javascript
+router.delete('/users', async (req, res) => {
+
+    const response = await User.reset()
+    // your code here
+})
+```
+
+**Please note:** `saveMode: false` and `devMode: true` is required in model `config` to use `reset`
+
+### 6.14 Sample Session Manager
 
 ```javascript
 import { SessionManager } from 'unsql'
 import { pool } from './path/to/your/db/service'
 
-// Other imports/initializations and code goes here...
+// Other imports goes here...
 
 router.post('/orders', async (req,res) => {
 
-    // fetch 'userId' from path params
     const { userId } = req.params
 
-    // extract 'data' from body inside request object
     const data = req.body
 
     // create 'session' instance using 'SessionManager'
@@ -1982,10 +1532,8 @@ router.post('/orders', async (req,res) => {
    const initResp =  await session.init()
 
     // handle if session init failed
-    if (!initResp.success) {
-        return res.status(400).json(initResp)
-    }
-
+    if (!initResp.success) return res.status(400).json(initResp)
+    
     // fetch objects inside bucket, pass 'session' object to the query method
     const bucketResp = await Bucket.find({ where: { userId }, session })
 
@@ -2014,56 +1562,23 @@ router.post('/orders', async (req,res) => {
 })
 ```
 
-## FAQs
+## 7. FAQs
 
-### How to import UnSQL in model class?
+### 7.1 Difference between plain text and column name?
 
-`UnSQL` can be imported using any of the following:
+UnSQL uses `#` as prefix to identify if string is plain text, or column name if string does not start with `#`. The only exception is `target` and `replaceWith` properties inside `replace` due to the limited of implementation for these properties by SQL they only support plain text and not columns hence prefixing them with `#` is not required
 
-1. CommonJS import
-```javascript
-const { UnSQL } = require('unsql')
-```
+### 7.2 Priority of secret / iv / sha defined inside config / encryption / decrypt / encrypt?
 
-2. ES6 Module import
-```javascript
-import { UnSQL } from 'unsql'
-```
+When configurations like `secret` | `iv` | `sha` are declared in all places, `encryption` at method level will override `encryption` at `config`, similarly `decrypt` / `encrypt` inside special object will override all other.
 
-### How does UnSQL differentiates between a column name and string value?
+### 7.3 Does UnSQL support unified codebase for all SQL dialects?
 
-Any string value that **starts with a** `#` is considered as a **string value** and any other string that **does not start with** `#` is considered as a **column name**. This `#` is ignored while utilizing the actual string value. If your string value is some sort of code or any value that also has a **#** at the beginning then also an additional `#` as prefix is required else the **#** in your value will be ignored (e.g. `'#someCode'` is required to be written as `'##someCode'`)
+Yes, UnSQL is the only library that supports unified codebase across multiple SQL dialects so you don't have to update your code while switching between SQL dialect to another.
 
-```javascript
-const response = await User.find({
-    select: ['userId', 'firstName', 'lastName', '#test']
-    where: {
-        firstName: '#Siddharth'
-    }
-})
-```
-> **Explanation:** In the above example, `'userId'`, `'firstName'` and `'lastName'` are the column names hence does not start with `#` on the other hand `'test'` and `'Siddharth'` are the string values hence contains `#` as prefix to differentiate them with column names.
+### 7.4 Are the identifiers like column and table names case sensitive?
 
-### What are Reserved Constants in UnSQL?
-
-Apart from built-in methods, `UnSQL` also has various built-in **reserved constants** (supported by SQL database) as mentioned below:
-
-| Constant           | Description                                                                                        |
-| ------------------ | -------------------------------------------------------------------------------------------------- |
-| `currentDate`      | provides only current **date** in `YYYY-MM-DD` format                                              |
-| `currentTime`      | provides only current **time** in `hh:mm:ss` format                                                |
-| `now`              | provides both, current **date and time** in `YYYY-MM-DD hh:mm:ss` format, with configured timezone |
-| `currentTimestamp` | synonym for `now`                                                                                  |
-| `localTimestamp`   | similar to `now` or `timestamp` but in **reference to local timezone**                             |
-| `localTime`        | exactly same as `localTimestamp`                                                                   |
-| `utcTimestamp`     | provides `currentTimestamp` **in UTC format**                                                      |
-| `pi`               | provides value of mathematical constant **pi** i.e. **approx. `3.141593`**                         |
-| `isNull`           | provides SQL compatible `IS NULL` value                                                            |
-| `isNotNull`        | provides SQL compatible `IS NOT NULL` value                                                        |
-
-### Does UnSQL support SQL Json datatype?
-
-Yes UnSQL provides `json` and `array` wrappers to interact with **SQL json datatype** (`jsonb` for `'postgresql'`). `save` method supports insertion of `data` containing **json Object/Array** into SQL **json datatype** (`TEXT` in `sqlite`) column, UnSQL internally *stringify* the json data data before saving it.
+Yes, in case of `postgresql` and `sqlite`, identifiers like column names and table names are case sensitive by default. In case of `mysql` identifiers like table name and column name are case in-sensitive.
 
 ### Support
 ![npm](https://img.shields.io/badge/npm-CB3837?style=for-the-badge&logo=npm&logoColor=white) 

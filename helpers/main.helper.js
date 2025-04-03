@@ -99,6 +99,7 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', values,
             continue
         }
 
+        // if (key in conditions) {
         if (key in conditions) {
             let sql = ''
             if (parent && !(parent in conditions) && parent != 'refer') {
@@ -163,7 +164,7 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', values,
 
         sqlParts.push(prepWhere({ alias, where: val, parent: key, junction, values, encryption, ctx }))
     }
-    return sqlParts.join(junctions[junction])
+    return sqlParts.filter(Boolean).join(junctions[junction])
 }
 
 /**
@@ -1016,7 +1017,7 @@ const handlePlaceholder = ({ value, alias, junction = 'and', parent = null, encr
 }
 
 const handleAndOr = ({ key, val, alias, junction, parent, values, encryption, ctx }) => {
-    const mapResp = val.map(condition => prepWhere({ alias, where: condition, junction, parent, values, encryption, ctx })).join(junctions[key])
+    const mapResp = val.map(condition => prepWhere({ alias, where: condition, junction, parent, values, encryption, ctx })).filter(Boolean).join(junctions[key])
     return (mapResp.length > 1 ? `(${mapResp})` : mapResp)
 }
 
