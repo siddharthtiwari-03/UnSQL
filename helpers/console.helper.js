@@ -8,7 +8,7 @@ const colors = Object.freeze({
 })
 
 
-const handleQueryDebug = (debug, sql, values, prepared = null) => {
+const handleQueryDebug = (debug, sql, values, prepared = '') => {
     if (debug === true || debug === 'benchmark-query' || debug == 'query') {
         console.info(`\n${colors.blue}******************************************************************${colors.reset}`)
         console.info(`${colors.cyan}                       UnSQL Debug Query Begins${colors.reset}`)

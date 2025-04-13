@@ -132,7 +132,6 @@ class UnSQL_Legacy {
             const connection = await this.POOL.getConnection()
 
             await connection.beginTransaction()
-            console.log('sql', sql)
             try {
                 const [result] = await connection.query(sql, params)
 
@@ -198,5 +197,4 @@ class UnSQL_Legacy {
 
 }
 
-// exports = module.exports = UnSQL_Legacy
 module.exports = UnSQL_Legacy

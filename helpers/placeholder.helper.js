@@ -24,13 +24,8 @@ const prepPlaceholder = ({ value, alias = null, ctx = undefined }) => {
         }
         return constantFunctions[value]
     }
-    if (value === null || value === 'null' || value === 'NULL') {
-        return NULL
-    }
-    if (Date.parse(value) || parseInt(value) || parseFloat(value) || typeof value === 'boolean' || (typeof value === 'string' && value?.startsWith('#')) || value === ' ' || value === '') {
-        return ctx?.isPostgreSQL ? `$${ctx._variableCount++}` : '?'
-    }
-    value = value.trim()
+    if (value === null || value === 'null' || value === 'NULL') return NULL
+    if (Date.parse(value) || parseInt(value) || parseFloat(value) || typeof value === 'boolean' || (typeof value === 'string' && value?.startsWith('#')) || value === ' ' || value === '') return ctx?.isPostgreSQL ? `$${ctx._variableCount++}` : '?'
     return ctx.isMySQL ? '??' : prepName({ value, alias, ctx })
 }
 

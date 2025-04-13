@@ -66,14 +66,10 @@ class UnSQL {
 
         try {
             sqlParts.push(`SELECT ${prepSelect({ alias, select, values, encryption, ctx: this })} FROM ${this?.isMySQL ? '??' : `"${this.config?.table}"`}`)
-            if (this?.isMySQL) {
-                values.push(this.config.table)
-                if (alias) {
-                    sqlParts.push('??')
-                    values.push(alias)
-                }
-            } else if (alias) {
-                sqlParts.push(`"${alias}"`)
+            if (this.isMySQL) values.push(this.config?.table)
+            if (alias) {
+                if (this.isMySQL) values.push(alias)
+                sqlParts.push(this?.isMySQL ? '??' : `"${alias}"`)
             }
             if (join.length) sqlParts.push(prepJoin({ alias, join, values, encryption, ctx: this }))
             if (Object.keys(where).length > 0) sqlParts.push(`WHERE ${prepWhere({ alias, where, junction, values, encryption, ctx: this })}`)
@@ -84,16 +80,7 @@ class UnSQL {
             if (typeof offset === 'number') sqlParts.push(patchLimit(offset, values, this, 'OFFSET'))
 
             const debugMessage = 'Fetched records in'
-            switch (this?.config?.dialect) {
-                case 'mysql':
-                    return await executeMySQL({ sql: sqlParts.join(' '), values, encryption, debug, session, config: this?.config, debugMessage })
-                case 'postgresql':
-                    return await executePostgreSQL({ sql: sqlParts.join(' '), values, debug, config: this?.config, debugMessage })
-                case 'sqlite':
-                    return await executeSqlite({ sql: sqlParts.join(' '), values, config: this?.config, debug, methodType: 'all', debugMessage })
-                default:
-                    return { success: false, error: 'Invalid dialect provided in config' }
-            }
+            return await handleExecutions[this?.config?.dialect]({ sql: sqlParts.join(' '), values, encryption, debug, session, config: this.config, debugMessage, methodType: 'all' })
 
         } catch (error) {
             handleError(debug, error)
@@ -102,7 +89,7 @@ class UnSQL {
     }
 
     /**
-     * @method save 
+     * @method save
      * @description save method used in insert / update / upsert record(s) in the database table
      * @param {Object} saveParam (optional)
      * @param {string} [saveParam.alias] (optional) local reference name for table mapped to this model
@@ -138,15 +125,10 @@ class UnSQL {
         const sqlParts = []
 
         sqlParts.push(`${Object.keys(where).length ? 'UPDATE' : `INSERT ${Object.keys(upsert).length > 0 && this?.config?.dialect === 'sqlite' ? 'OR REPLACE ' : ''}INTO`} ${this?.isMySQL ? '??' : `"${this.config?.table}"`}`)
-
-        if (this?.isMySQL) {
-            values.push(this.config.table)
-            if (alias) {
-                sqlParts.push('??')
-                values.push(alias)
-            }
-        } else if (alias) {
-            sqlParts.push(`"${alias}"`)
+        if (this.isMySQL) values.push(this.config?.table)
+        if (alias) {
+            if (this.isMySQL) values.push(alias)
+            sqlParts.push(this?.isMySQL ? '??' : `"${alias}"`)
         }
 
         try {
@@ -155,30 +137,28 @@ class UnSQL {
                 // handle if data is array of json object(s)
                 case Array.isArray(data): {
                     console.info(colors.cyan, (data.length > 1000 ? 'Large dataset detected, p' : 'P') + 'lease wait while UnSQL prepares query for each record, this might take few seconds...', colors.reset)
-                    const insertColumns = []
+                    const insertColumns = new Set()
                     // loop over each json object for columns
                     for (let i = 0; i < data.length; i++) {
                         // extract keys from each object
                         Object.keys(data[i]).forEach(col => {
                             // track if col not already tracked
-                            if (!insertColumns.includes(col)) insertColumns.push(col)
+                            if (!insertColumns.has(col)) insertColumns.add(col)
                         })
                     }
                     // loop for columns ended
 
                     // this will patch placeholder for all columns in single array
-                    if (this?.isMySQL) {
-                        sqlParts.push('(??)')
-                        values.push(insertColumns)
-                    } else {
-                        sqlParts.push(`(${insertColumns.map(col => `"${col}"`).join(', ')})`)
-                    }
+                    sqlParts.push(`(${Array.from(insertColumns).map(col => {
+                        values.push(col)
+                        this?.isMySQL ? '??' : `"${col}"`
+                    }).join(', ')})`)
 
                     sqlParts.push('VALUES')
                     // loop over each entry (json object) for values
                     for (let i = 0; i < data.length; i++) {
                         const columnValues = []
-                        for (let j = 0; j < insertColumns.length; j++) { // loop over each property
+                        for (let j = 0; j < insertColumns.size; j++) { // loop over each property
                             let propSql = this?.isPostgreSQL ? `$${this._variableCount++}` : '?'
                             if (typeof data[i][insertColumns[j]] === 'object') {
                                 if (this?.isMySQL) {
@@ -207,10 +187,8 @@ class UnSQL {
                     // extract all columns from data object
                     const setEntries = Object.entries(data).map(([col, val]) => {
 
-                        const colPlaceholder = this?.isMySQL ? '??' : `"${col}"`
-                        let propSql = `${colPlaceholder} = `
-                        if (isVariable(colPlaceholder)) values.push(prepName({ value: col, alias, ctx: this }))
-
+                        let propSql = `${this?.isMySQL ? '??' : `"${col}"`} = `
+                        if (this.isMySQL) values.push(prepName({ value: col, alias, ctx: this }))
                         if (typeof val === 'object') {
                             if (this?.isMySQL) {
                                 propSql += '?'
@@ -237,11 +215,8 @@ class UnSQL {
                     if (Object.keys(upsert).length) { // if upsert object is provided
 
                         const duplicateEntries = Object.entries(upsert).map(([col, val]) => {
-                            let propSql = ''
-                            const colPlaceholder = (this?.isMySQL ? '??' : `"${col}"`)
-                            propSql += `${colPlaceholder} = `
-                            if (isVariable(colPlaceholder)) values.push(prepName({ value: col, alias, ctx: this }))
-
+                            let propSql = `${this.isMySQL ? '??' : `"${col}"`} = `
+                            if (this.isMySQL) values.push(prepName({ value: col, alias, ctx: this }))
                             if (typeof val === 'object') {
                                 if (this?.isMySQL) {
                                     values.push(JSON.stringify(val))
@@ -279,18 +254,7 @@ class UnSQL {
             }
 
             const debugMessage = `${(Object.keys(where).length > 0) || (Object.keys(having).length > 0) ? 'Updated' : 'Inserted'} records in`
-            switch (this?.config?.dialect) {
-                case 'mysql':
-                    return await executeMySQL({ sql: sqlParts.join(' '), values, encryption, debug, session, config: this?.config, debugMessage })
-                case 'postgresql':
-                    sqlParts.push('RETURNING *')
-                    return await executePostgreSQL({ sql: sqlParts.join(' '), values, debug, config: this?.config, debugMessage })
-                case 'sqlite':
-                    return await executeSqlite({ sql: sqlParts.join(' '), values, debug, config: this?.config, session, methodType: 'run', debugMessage })
-                default:
-                    return { success: false, error: 'Invalid dialect provided in config' }
-            }
-
+            return await handleExecutions[this.config.dialect]({ sql: sqlParts.join(' '), values, encryption, debug, session, config: this?.config, debugMessage, methodType: 'run' })
         } catch (error) {
             return { success: false, error }
         }
@@ -330,16 +294,11 @@ class UnSQL {
         }
 
         const values = []
-        const sqlParts = [`DELETE FROM ${(this?.isMySQL ? '??' : `"${this.config?.table}"`)}`]
-
-        if (this?.isMySQL) {
-            values.push(this.config.table)
-            if (alias) {
-                sqlParts.push('??')
-                values.push(alias)
-            }
-        } else if (alias) sqlParts.push(`"${alias}"`)
-
+        const sqlParts = [`DELETE FROM ${(this?.isMySQL ? `\`${this?.config?.table}\`` : `"${this?.config?.table}"`)}`]
+        if (alias) {
+            if (this.isMySQL) values.push(alias)
+            sqlParts.push(this?.isMySQL ? '??' : `"${alias}"`)
+        }
 
         if (Object.keys(where).length) sqlParts.push(`WHERE ${prepWhere({ alias, where, junction, values, encryption, ctx: this })}`)
 
@@ -348,16 +307,7 @@ class UnSQL {
         if (Object.keys(having).length) sqlParts.push(`HAVING ${prepWhere({ alias, where: having, junction, values, encryption, ctx: this })}`)
 
         const debugMessage = `Removed record(s) from '${this?.config?.table}' table`
-        switch (this?.config?.dialect) {
-            case 'mysql':
-                return await executeMySQL({ sql: sqlParts.join(' '), values, encryption, debug, session, config: this?.config, debugMessage })
-            case 'postgresql':
-                return await executePostgreSQL({ sql: sqlParts.join(' '), values, debug, config: this?.config, debugMessage })
-            case 'sqlite':
-                return await executeSqlite({ sql: sqlParts.join(' '), values, config: this?.config, debug, methodType: 'run', session, debugMessage })
-            default:
-                return { success: false, error: 'Invalid dialect provided in config' }
-        }
+        return await handleExecutions[this.config.dialect]({ sql: sqlParts.join(' '), values, encryption, debug, session, config: this.config, debugMessage, methodType: 'run' })
     }
 
     /**
@@ -368,22 +318,14 @@ class UnSQL {
      * @param {Array<any>|Object} [rawQueryParams.values] (optional) values to be interpolated in the query
      * @param {import("./defs/types").EncryptionConfig} [rawQueryParams.encryption] (optional) enables debug mode
      * @param {import("./defs/types").DebugTypes} [rawQueryParams.debug] (optional) enables debug mode
+     * @param {boolean} [rawQueryParams.multiQuery] (optional) flag if sql contains multiple queries (only in 'mysql'), default is false
      * @param {Object} [rawQueryParams.session] (optional) global session reference for transactions and rollback
      * @param {'run'|'all'|'exec'} [rawQueryParams.methodType=all] (optional) used only with 'sqlite'
      * @returns {Promise<{success:boolean, error?:object, result?:object}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
      */
-    static async rawQuery({ sql = '', values = [], debug = false, encryption = undefined, session = undefined, methodType = 'all' }) {
+    static async rawQuery({ sql = '', values = [], debug = false, encryption = undefined, session = undefined, multiQuery = false, methodType = 'all' }) {
         const debugMessage = `Executed raw query in`
-        switch (this?.config?.dialect) {
-            case 'mysql':
-                return await executeMySQL({ sql, values, encryption, debug, session, config: this?.config, debugMessage })
-            case 'postgresql':
-                return await executePostgreSQL({ sql, values, debug, config: this?.config, debugMessage })
-            case 'sqlite':
-                return await executeSqlite({ sql, values, debug, config: this?.config, methodType, debugMessage })
-            default:
-                return { success: false, error: 'Invalid dialect provided in config' }
-        }
+        return await handleExecutions[this?.config?.dialect || 'mysql']({ sql, values, encryption, debug, session, config: this.config, methodType, multiQuery, debugMessage })
     }
 
     /**
@@ -478,21 +420,10 @@ class UnSQL {
         const sql = `TRUNCATE ${this?.isMySQL ? '??' : `"${this.config?.table}"`}`
         const values = []
 
-        if (this?.isMySQL) values.push(this.config.table)
+        if (this.isMySQL) values.push(this.config.table)
 
         const debugMessage = `Reset '${this?.config?.table}' table record(s) in`
-
-        switch (this?.config?.dialect) {
-            case 'mysql':
-                return await executeMySQL({ sql, values, debug, config: this?.config, debugMessage })
-            case 'postgresql':
-                return await executePostgreSQL({ sql, values, debug, config: this?.config, debugMessage })
-            case 'sqlite':
-                return await executeSqlite({ sql, values, debug, config: this?.config, debugMessage })
-            default:
-                return { success: false, error: 'Invalid dialect provided in config' }
-        }
-
+        return await handleExecutions[this.config.dialect]({ sql, values, debug, config: this?.config, debugMessage })
     }
 
 }
@@ -506,38 +437,36 @@ class UnSQL {
  * @param {import("./defs/types").DebugTypes} [options.debug] enables debug mode
  * @param {Object} [options.session] global session reference for transactions and rollback
  * @param {Object} [options.config] global configuration object
- * @param {string} [options.debugMessage] global configuration object
+ * @param {string} [options.debugMessage] debug message to be displayed in console
+ * @param {boolean} [options.multiQuery] flag if sql contains multiple queries (only in 'mysql'), default is false
  * @param {import("./defs/types").EncryptionConfig} [options.encryption] enables encryption
  * @returns {Promise<{success:false, error:*}|{success:true, result:*}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'results'
  */
-const executeMySQL = async ({ sql, values, debug = false, session = undefined, config, encryption = undefined, debugMessage = '' }) => {
-    const conn = await (session?.conn || config?.pool?.getConnection() || config?.connection)
+const executeMySQL = async ({ sql, values, debug = false, session = undefined, config, encryption = undefined, multiQuery = false, debugMessage = '' }) => {
+    const connection = await (session?.connection || config?.pool?.getConnection() || config?.connection)
+    const isDebugging = debug === 'query' || debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true
     try {
-        if (!session?.conn) await conn?.beginTransaction()
-        if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.time(`${colors.blue}UnSQL benchmark:${colors.reset} ${colors.cyan}${debugMessage}${colors.reset}`)
+        const statement = await connection.format(sql, values)
+        handleQueryDebug(debug, sql, values, statement)
+        if (!session) await connection?.beginTransaction()
         if ((encryption?.mode && encryption?.mode != config?.dbEncryptionMode) || (config?.encryption?.mode && config?.encryption?.mode != config?.dbEncryptionMode)) {
             try {
-                const encPrepared = await conn.format('SET block_encryption_mode = ?', [encryption?.mode || config?.encryption?.mode])
-                const [encResp] = await conn.execute(encPrepared)
-                if (!session?.conn) await conn?.commit()
+                const [encResp] = await connection.execute('SET block_encryption_mode = ?', [encryption?.mode || config?.encryption?.mode])
             } catch (error) {
                 throw { message: `[Error]: ${error?.message} `, cause: `While setting encryption mode to: '${encryption?.mode || config?.encryption?.mode}'` }
             }
         }
-        const prepared = conn.format(sql, values)
-        handleQueryDebug(debug, sql, values, prepared)
-        const methodName = sql.endsWith(';') && sql.split(';').length > 1 ? 'query' : 'execute'
-        const [result] = await conn[methodName](prepared)
-        if (!session?.conn) await conn?.commit()
-        if (debug) console.info(colors.green, 'Query executed successfully!\n', colors.reset)
-        if (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true) console.timeEnd(`${colors.blue}UnSQL benchmark:${colors.reset} ${colors.cyan}${debugMessage}${colors.reset}\n`)
+        if (isDebugging) console.time(`${colors.blue}UnSQL benchmark:${colors.reset} ${colors.cyan}${debugMessage}${colors.reset}`)
+        const [result] = await connection[multiQuery ? 'query' : 'execute'](statement)
+        if (!session) await connection?.commit()
+        if (isDebugging) console.timeEnd(`${colors.blue}UnSQL benchmark:${colors.reset} ${colors.cyan}${debugMessage}${colors.reset}`)
         return { success: true, result }
     } catch (error) {
         handleError(debug, error)
-        if (conn && !session?.conn) await conn?.rollback()
+        if (connection && !session) await connection?.rollback()
         return { success: false, error }
     } finally {
-        if (config?.pool && !session?.conn) await conn?.release()
+        if (config?.pool && !session) await connection?.release()
     }
 }
 
@@ -550,15 +479,14 @@ const executeMySQL = async ({ sql, values, debug = false, session = undefined, c
  * @author Siddharth Tiwari <dev.unsql@gmail.com>
  */
 const executePostgreSQL = async ({ sql, values, debug = false, config, session = undefined, debugMessage = '' }) => {
-    const client = await (session?.conn || config?.pool?.connect())
+    const client = await (session?.connection || config?.pool?.connect())
     const isBenchmarking = debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true
     handleQueryDebug(debug, sql, values)
     try {
-        if (!session?.conn) await client.query('BEGIN')
+        if (!session) await client.query('BEGIN')
         if (isBenchmarking) console.time(`${colors.blue}UnSQL benchmark:${colors.reset} ${colors.cyan}${debugMessage}${colors.reset}`)
-        // const { rows, error } = await client.query(sql, values)
         const result = await client.query(sql, values)
-        if (!session?.conn) await client.query('COMMIT')
+        if (!session) await client.query('COMMIT')
 
         const payload = []
 
@@ -570,11 +498,11 @@ const executePostgreSQL = async ({ sql, values, debug = false, config, session =
         if (isBenchmarking) console.timeEnd(`${colors.blue}UnSQL benchmark:${colors.reset} ${colors.cyan}${debugMessage}${colors.reset}`)
         return { success: true, result: payload }
     } catch (error) {
-        if (!session?.conn) await client.query('ROLLBACK')
+        if (!session) await client.query('ROLLBACK')
         handleError(debug, error)
         return { success: false, error: { ...error, message: error.message } }
     } finally {
-        if (!session?.conn) await client.release()
+        if (!session) await client.release()
     }
 }
 
@@ -642,6 +570,12 @@ const handleDefaults = ctx => {
     return { success: true }
 }
 
+const handleExecutions = {
+    mysql: executeMySQL,
+    postgresql: executePostgreSQL,
+    sqlite: executeSqlite
+}
+
 const prepJsonbUpdate = (col, value, isUpdate) => isUpdate ? `${col}:: jsonb || '${JSON.stringify(value)}':: jsonb` : `'${JSON.stringify(value)}':: jsonb`
 
 /**
@@ -674,16 +608,16 @@ class SessionManager {
     async init() {
         switch (this?.dialect) {
             case 'mysql':
-                this.conn = await this?.pool?.getConnection() || this?.pool
-                await this?.conn?.beginTransaction()
+                this.connection = await this?.pool?.getConnection() || this?.pool
+                await this?.connection?.beginTransaction()
                 break
             case 'postgresql':
-                this.conn = await this?.pool?.connect()
-                await this?.conn?.query('BEGIN')
+                this.connection = await this?.pool?.connect()
+                await this?.connection?.query('BEGIN')
                 break
             case 'sqlite':
-                this.conn = await this?.pool
-                await this?.conn?.run('BEGIN')
+                this.connection = await this?.pool
+                await this?.connection?.run('BEGIN')
                 break
             default:
                 return { success: false, error: 'Invalid dialect provided in config' }
@@ -700,9 +634,9 @@ class SessionManager {
      * @memberof SessionManager
      */
     async rollback(close = true) {
-        if (this.dialect === 'mysql') await this?.conn?.rollback()
-        else if (this.dialect === 'postgresql') await this?.conn?.query('ROLLBACK')
-        else if (this.dialect === 'sqlite') await this?.conn?.run('ROLLBACK')
+        if (this.dialect === 'mysql') await this?.connection?.rollback()
+        else if (this.dialect === 'postgresql') await this?.connection?.query('ROLLBACK')
+        else if (this.dialect === 'sqlite') await this?.connection?.run('ROLLBACK')
         if (close) await this.close()
     }
 
@@ -716,9 +650,9 @@ class SessionManager {
     */
     async commit(close = true) {
         try {
-            if (this.dialect === 'mysql') await this.conn.commit()
-            else if (this.dialect === 'postgresql') await this.conn.query('COMMIT')
-            else if (this.dialect === 'sqlite') await this.conn.run('COMMIT')
+            if (this.dialect === 'mysql') await this.connection.commit()
+            else if (this.dialect === 'postgresql') await this.connection.query('COMMIT')
+            else if (this.dialect === 'sqlite') await this.connection.run('COMMIT')
         } catch (error) {
             await this.rollback()
             return { success: false, error }
@@ -735,8 +669,8 @@ class SessionManager {
      * @memberof SessionManager
      */
     async close() {
-        if (typeof this?.conn?.release === 'function') await this.conn?.release()
-        delete this.conn
+        if (typeof this?.connection?.release === 'function') await this.connection?.release()
+        delete this.connection
     }
 }
 

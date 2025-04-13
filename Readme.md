@@ -5,7 +5,7 @@
 ![NPM Downloads](https://img.shields.io/npm/dm/unsql)
 ![NPM License](https://img.shields.io/npm/l/unsql "UnSQL License")
 
-**UnSQL** is a lightweight, open-source JavaScript library that facilitates class based, schemaless interactions with the structured databases viz. `MySQL`, `PostgreSQL` and `SQLite` through dynamic query generation. It is compatible with javascript runtime environments like NodeJS and NextJS.
+**UnSQL** is a lightweight, open-source JavaScript library that facilitates class based, schemaless interactions with the structured databases viz. `MySQL`, `PostgreSQL` and `SQLite` through dynamic query generation. It is the only library that supports single codebase across all dialects. It is compatible with javascript runtime environments like NodeJS and NextJS.
 
 ## Table of Contents
 1. [Overview](#1-overview)
@@ -34,7 +34,7 @@
 
 ## 1. Overview
 
-**UnSQL** simplifies working with structured databases by dynamically generating SQLs under the hood. It provides developer friendly interface while eliminating the complexities of SQL. UnSQL also utilizes placeholders and prepared statements to prevent SQL-injections.
+**UnSQL** simplifies working with structured databases by dynamically generating SQLs under the hood. It provides developer friendly interface while eliminating the complexities of SQL. UnSQL also utilizes placeholders and parameterized SQL statements to prevent SQL-injections.
 
 ### 1.1 Breaking Changes
 
@@ -88,9 +88,12 @@ UnSQL can work with three different `dialect` of SQL (`'mysql'`, `'postgresql'` 
 import mysql2 from 'mysql2/promise'
 
 export const pool = createPool({
-    ...,
+    host: 'localhost', // or link to remote database
+    database: 'test_db',
+    user: 'your_username',
+    password: 'your_password',
     namedPlaceholders: true, // (optional) required if using rawQuery with named placeholders
-    multipleStatements: true // (optional) required if using Encryption/Decryption features
+    multipleStatements: true // (optional) required if using multiple statements in rawQuery
 })
 ```
 
@@ -101,7 +104,12 @@ export const pool = createPool({
 ```javascript
 import { Pool } from 'pg'
 
-export const pool = new Pool({...})
+export const pool = new Pool({
+    host: 'localhost',
+    database: 'test_db',
+    user: 'your_username',
+    password: 'your_password'
+})
 ```
 
 - **SQLite** (`dialect: 'sqlite'`)
@@ -460,6 +468,8 @@ Each of these properties is explained below:
 
 `rawQuery` method is the most powerful method among all, unlike other methods that are limited to the base mapping, this method is not tied to any particular table, but utilizes the connection pool to execute queries on that database itself. It is capable of executing any and all types of queries including **DDL, DML etc** (In `sqlite`, set `methodType: 'exec'`). It also supports execution of multiple SQL statements in one query. When multiple `SELECT` statements are executed (not supported by `sqlite`), `result` contains nested array one for each `SELECT` statement.
 
+In `mysql`, use `multiQuery: true` to enable execution of multiple SQL statements in single query
+
 For `sqlite`, UnSQL supports various types of methods (as mentioned below) that can be set manually, each method has specific capabilities:
 
 | Method Type | Description                                                                           |
@@ -502,7 +512,7 @@ const response = await User.rawQuery({ // here user model is used just to utiliz
             lastUpdatedOn TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             status TINYINT(1) DEFAULT 0
         );`,
-    methodType: 'query' // this supports multiple statements in single query string
+    multiQuery: true // this enables multiple SQL statements in single query string, only for MySQL
 })
 ```
 
@@ -961,8 +971,8 @@ All objects are explained below:
     {
         sum: {
             value: 'some column', // or conditional object {...}
-            distinct: false, // when true, ignore duplicate column values
-            distinct: false, // when true, distinct column values will be considered
+            distinct: false, // when true, ignore duplicate columns
+            ifNull: undefined, // provide default value if incase this method returns null
             cast: null, // type cast value to 'signed', 'unsigned' etc
             as: null, // local reference name to this object 'value'
             compare: {} // comparator object
@@ -974,6 +984,7 @@ All objects are explained below:
         select: [
             { sum: {
                 value: 'salary',
+                ifNull: 0,
                 cast: 'signed', // convert to 'singed' (number)
                 as: 'totalSalary'
                 }
@@ -983,6 +994,7 @@ All objects are explained below:
         having: {
             sum: { 
                 value: 'salary',
+                ifNull: 0,
                 compare: { gt: 5000 }
             }
         }
@@ -999,6 +1011,7 @@ All objects are explained below:
         avg: {
             value: 'some column', // or conditional object {...}
             distinct: false, // when true, distinct column values will be considered
+            ifNull: undefined, // provide default value if incase this method returns null
             cast: null, // type cast value to 'signed', 'unsigned' etc
             as: null, // local reference name to this object 'value'
             compare: {} // comparator object
@@ -1011,6 +1024,7 @@ All objects are explained below:
             {
                 avg: {
                     value: 'salary',
+                    ifNull: 0,
                     cast: 'unsigned',
                     as: 'averageSalary',
                 }
@@ -1036,6 +1050,7 @@ All objects are explained below:
         count: {
             value: 'some column', // or conditional object {...}
             distinct: false, // when true, distinct column values will be considered
+            ifNull: undefined, // provide default value if incase this method returns null
             cast: null, // type cast value to 'signed', 'unsigned' etc
             as: null, // local reference name to this object 'value'
             compare: {} // comparator object
@@ -1049,6 +1064,7 @@ All objects are explained below:
                 count: {
                     value: '*',
                     distinct: true,
+                    ifNull: 0,
                     as: 'totalEmployees',
                 }
             }
@@ -1067,6 +1083,7 @@ All objects are explained below:
         min: {
             value: 'some column', // or conditional object {...}
             distinct: false, // when true, distinct column values will be considered
+            ifNull: undefined, // provide default value if incase this method returns null
             cast: null, // type cast value to 'signed', 'unsigned' etc
             as: null, // local reference name to this object 'value'
             compare: {} // comparator object
@@ -1079,6 +1096,7 @@ All objects are explained below:
             {
                 min: {
                     value: 'salary',
+                    ifNull: 0,
                     cast: 'unsigned',
                     as: 'lowestSalary'
                 }
@@ -1097,6 +1115,7 @@ All objects are explained below:
         max: {
             value: 'some column', // or conditional object {...}
             distinct: false, // when true, distinct column values will be considered
+            ifNull: undefined, // provide default value if incase this method returns null
             cast: null, // type cast value to 'signed', 'unsigned' etc
             as: null, // local reference name to this object 'value'
             compare: {} // comparator object
@@ -1110,6 +1129,7 @@ All objects are explained below:
                 max: {
                     value: 'salary',
                     distinct: true,
+                    ifNull: 0,
                     cast: 'unsigned',
                     as: 'highestSalary'
                 }
@@ -1378,7 +1398,7 @@ router.get('/users', async (req, res) => {
             {
                 json: {
                     value: 'address',
-                    extract: 'permanent.city'
+                    extract: 'permanent.city' // this will extract 'city' from 'address' json object
                     as: 'city'
                 }
             }

@@ -48,6 +48,7 @@
  * @prop {Object} value
  * @prop {boolean} [distinct]
  * @prop {Object} [compare]
+ * @prop {string|number|boolean} [ifNull]
  * @prop {CastingTypes} [cast]
  * @prop {string} [as]
  */
@@ -146,14 +147,14 @@
  * when then object
  * @typedef {Object} WhenThenCondition
  * @prop {boolean|WhereObject} when
- * @prop {string|number|boolean} then
+ * @prop {ValuesObject} then
  */
 
 /**
  * Switch object
  * @typedef {Object} SwitchObject
  * @prop {Array<WhenThenCondition>} check
- * @prop {string|number|boolean} [else]
+ * @prop {ValuesObject} [else]
  * @prop {string} [as]
  */
 

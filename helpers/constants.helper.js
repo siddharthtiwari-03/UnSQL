@@ -9,6 +9,7 @@ const constantFunctions = Object.freeze({
     localTime: 'LOCALTIME',
     localTimestamp: 'LOCALTIMESTAMP',
     pi: 'PI()',
+    null: 'IS NULL',
     isNull: 'IS NULL',
     isNotNull: 'IS NOT NULL'
 })
