@@ -1003,10 +1003,7 @@ const handlePlaceholder = ({ value, alias, junction = 'and', parent = null, encr
     }
 }
 
-const handleAndOr = ({ key, val, alias, junction, parent, values, encryption, ctx }) => {
-    const mapResp = val.map(condition => prepWhere({ alias, where: condition, junction, parent, values, encryption, ctx })).filter(Boolean).join(junctions[key])
-    return (mapResp.length > 1 ? `(${mapResp})` : mapResp)
-}
+const handleAndOr = ({ key, val, alias, junction, parent, values, encryption, ctx }) => val.map(condition => prepWhere({ alias, where: condition, junction, parent, values, encryption, ctx })).filter(Boolean).map(condition => `(${condition})`).join(junctions[key])
 
 const handleBetween = ({ alias, val, junction, parent, values, encryption, ctx }) => {
     let sql = ''
