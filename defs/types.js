@@ -154,7 +154,7 @@
  * Switch object
  * @typedef {Object} SwitchObject
  * @prop {Array<WhenThenCondition>} check
- * @prop {ValuesObject} [else]
+ * @prop {ValuesObject} else
  * @prop {string} [as]
  */
 

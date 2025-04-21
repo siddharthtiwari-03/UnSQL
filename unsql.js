@@ -168,7 +168,11 @@ class UnSQL {
                                     propSql = prepJsonbUpdate(insertColumns[j], data[i][insertColumns[j]], (Object.keys(where).length || Object.keys(having).length))
                                 }
                             } else {
-                                values.push(data[i][insertColumns[j]])
+                                if (data[i][insertColumns[j]] === 'null' || !data[i][insertColumns[j]]) {
+                                    values.push(null)
+                                } else {
+                                    values.push(data[i][insertColumns[j]])
+                                }
                             }
 
                             propSql = prepEncryption({ placeholder: propSql, col: insertColumns[j], values, ctx: this, encrypt, encryption })
@@ -197,7 +201,7 @@ class UnSQL {
                                 propSql += prepJsonbUpdate(col, val, (Object.keys(where).length || Object.keys(having).length))
                             }
                         } else {
-                            values.push(val)
+                            values.push(val === 'null' ? null : val)
                             if (encrypt[col]) {
                                 propSql += prepEncryption({
                                     placeholder: (this?.isPostgreSQL ? `$${this._variableCount++}` : '?'), col, ctx: this, encrypt, encryption, values
@@ -224,7 +228,7 @@ class UnSQL {
                                     propSql += prepJsonbUpdate(col, val, (Object.keys(where).length || Object.keys(having).length))
                                 }
                             } else {
-                                values.push(val)
+                                values.push(val === 'null' ? null : val)
                                 if (encrypt[col]) {
                                     propSql += prepEncryption({
                                         placeholder: (this?.isPostgreSQL ? `$${this._variableCount++}` : '?'), col, ctx: this, encrypt, encryption, values
@@ -260,6 +264,7 @@ class UnSQL {
         }
     }
 
+
     /**
      * @method delete
      * @description delete method is used to remove record(s) from the database table
@@ -294,7 +299,8 @@ class UnSQL {
         }
 
         const values = []
-        const sqlParts = [`DELETE FROM ${(this?.isMySQL ? `\`${this?.config?.table}\`` : `"${this?.config?.table}"`)}`]
+        const sqlParts = [`DELETE FROM ${(this?.isMySQL ? '??' : `"${this?.config?.table}"`)}`]
+        if (this.isMySQL) values.push(this.config?.table)
         if (alias) {
             if (this.isMySQL) values.push(alias)
             sqlParts.push(this?.isMySQL ? '??' : `"${alias}"`)
@@ -444,7 +450,7 @@ class UnSQL {
  */
 const executeMySQL = async ({ sql, values, debug = false, session = undefined, config, encryption = undefined, multiQuery = false, debugMessage = '' }) => {
     const connection = await (session?.connection || config?.pool?.getConnection() || config?.connection)
-    const isDebugging = debug === 'query' || debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true
+    const isDebugging = debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true
     try {
         const statement = await connection.format(sql, values)
         handleQueryDebug(debug, sql, values, statement)

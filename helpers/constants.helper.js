@@ -1,6 +1,6 @@
 const checkConstants = value => (value != null && value.toString().includes('*')) || 'pi' === value || 'now' === value || 'currentDate' === value || 'currentTime' === value || 'currentTimestamp' === value || 'localTime' === value || 'localTimestamp' === value || 'utcTimestamp' === value || 'isNull' === value || 'isNotNull' === value || 'null' === value || 'NULL' === value || null === value
 
-const constantFunctions = Object.freeze({
+const constantFunctions = {
     now: 'NOW()',
     currentDate: 'CURRENT_DATE',
     currentTime: 'CURRENT_TIME',
@@ -12,9 +12,9 @@ const constantFunctions = Object.freeze({
     null: 'IS NULL',
     isNull: 'IS NULL',
     isNotNull: 'IS NOT NULL'
-})
+}
 
-const dataTypes = Object.freeze({
+const dataTypes = {
     date: 'DATE',
     dateTime: 'DATETIME',
     time: 'TIME',
@@ -24,14 +24,14 @@ const dataTypes = Object.freeze({
     signed: 'SIGNED',
     unsigned: 'UNSIGNED',
     binary: 'BINARY',
-})
+}
 
-const aggregateFunctions = Object.freeze({
+const aggregateFunctions = {
     sum: 'SUM',
     avg: 'AVG',
     count: 'COUNT',
     max: 'MAX',
     min: 'MIN',
-})
+}
 
 module.exports = { checkConstants, dataTypes, constantFunctions, aggregateFunctions }

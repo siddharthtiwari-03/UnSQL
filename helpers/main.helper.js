@@ -1,13 +1,19 @@
+const { colors } = require("./console.helper")
 const { checkConstants, dataTypes, aggregateFunctions, constantFunctions } = require("./constants.helper")
 const { prepName } = require("./name.helper")
 const { prepPlaceholder } = require("./placeholder.helper")
 
-const junctions = Object.freeze({
-    and: ' AND ',
-    or: ' OR '
-})
+const junctions = { and: ' AND ', or: ' OR ' }
 
-const conditions = Object.freeze({
+/**
+ * checks if placeholder is variable or not
+ * @function isVariable
+ * @param {*} value 
+ * @returns {boolean}
+ */
+const isVariable = value => (value.startsWith('$') || value.startsWith('#') || value === '?' || value === '??') && !checkConstants(value)
+
+const conditions = {
     eq: ' = ',
     gt: ' > ',
     lt: ' < ',
@@ -24,15 +30,15 @@ const conditions = Object.freeze({
     notEndLike: ' NOT LIKE ',
     in: ' IN ',
     notIn: ' NOT IN '
-})
+}
 
-const joinTypes = Object.freeze({
+const joinTypes = {
     left: 'LEFT',
     right: 'RIGHT',
     inner: 'INNER',
     cross: 'CROSS',
     fullOuter: 'FULL OUTER',
-})
+}
 
 /**
  * prepares select query using various 
@@ -46,31 +52,30 @@ const joinTypes = Object.freeze({
  * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
  */
 const prepSelect = ({ alias, select = [], values, encryption = undefined, ctx = undefined }) => {
+    if (!select || select.length === 0) return '*'
+
     const sqlParts = []
 
-    if (!select || select.length === 0) {
-        sqlParts.push('*')
-    } else {
-        for (const selectable of select) {
-            if (typeof selectable === 'object' && !Array.isArray(selectable)) {
-                const [key, val] = Object.entries(selectable)[0]
-                if (key in handleFunc) {
-                    sqlParts.push(handleFunc[key]({ alias, key, val, values, named: true, encryption, ctx }))
-                    continue
-                }
-                throw { message: `[Invalid]: Unknown object signature '${key}' detected`, cause: `Object signature '${key}' is not defined!` }
-            }
-
-            const placeholder = prepPlaceholder({ value: selectable, alias, ctx })
-            if (!isVariable(placeholder)) {
-                sqlParts.push(placeholder)
+    for (let i = 0; i < select.length; i++) {
+        const selectable = select[i]
+        if (typeof selectable === 'object' && !Array.isArray(selectable)) {
+            const [key, val] = Object.entries(selectable)[0]
+            if (key in handleFunc) {
+                sqlParts.push(handleFunc[key]({ alias, key, val, values, named: true, encryption, ctx }))
                 continue
             }
-
-            const name = prepName({ value: selectable, alias, ctx })
-            values.push(name)
-            sqlParts.push(placeholder.startsWith('$') ? `${placeholder} AS "${name}"` : placeholder)
+            throw { message: `[Invalid]: Unknown object signature '${key}' detected`, cause: `Object signature '${key}' is not defined!` }
         }
+
+        const placeholder = prepPlaceholder({ value: selectable, alias, ctx })
+        if (!isVariable(placeholder)) {
+            sqlParts.push(placeholder)
+            continue
+        }
+
+        const name = prepName({ value: selectable, alias, ctx })
+        values.push(name)
+        sqlParts.push(placeholder.startsWith('$') ? `${placeholder} AS "${name}"` : placeholder)
     }
     return sqlParts.join(', ')
 }
@@ -91,60 +96,11 @@ const prepSelect = ({ alias, select = [], values, encryption = undefined, ctx = 
 const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', values, encryption = undefined, ctx = undefined }) => {
     if (Object.keys(where).length == 0) return ''
     const sqlParts = []
+    const entries = Object.entries(where)
 
-    for (const [key, val] of Object.entries(where)) {
-
-        if (key in handleFunc) {
-            sqlParts.push(handleFunc[key]({ alias, key, val, parent, junction, values, encryption, ctx }))
-            continue
-        }
-
-        if (key in conditions) {
-            let sql = ''
-            if (parent && !(parent in conditions) && parent != 'refer') {
-                sql = prepPlaceholder({ value: parent, alias, ctx })
-                if (isVariable(sql)) values.push(prepName({ alias, value: parent, ctx }))
-            }
-
-            if (key === 'isNull' || key === 'isNotNull') {
-                sqlParts.push(sql)
-                continue
-            }
-
-            sql += conditions[key]
-
-            const valPlaceholder = handlePlaceholder({ value: val, alias, junction, values, parent, encryption, ctx })
-
-            const prefix = {
-                in: Array.isArray(val) ? `(${valPlaceholder})` : valPlaceholder,
-                notIn: Array.isArray(val) ? `(${valPlaceholder})` : valPlaceholder,
-                exists: valPlaceholder,
-                notExists: valPlaceholder,
-                like: ctx?.isPostgreSQL ? `'%' || ${valPlaceholder} || '%'` : `CONCAT("%", ${valPlaceholder}, "%")`,
-                notLike: ctx?.isPostgreSQL ? `'%' || ${valPlaceholder} || '%'` : `CONCAT("%", ${valPlaceholder}, "%")`,
-                startLike: ctx?.isPostgreSQL ? `${valPlaceholder} || '%'` : `CONCAT(${valPlaceholder}, "%")`,
-                notStartLike: ctx?.isPostgreSQL ? `${valPlaceholder} || '%'` : `CONCAT(${valPlaceholder}, "%")`,
-                endLike: ctx?.isPostgreSQL ? `'%' || ${valPlaceholder}` : `CONCAT("%", ${valPlaceholder})`,
-                notEndLike: ctx?.isPostgreSQL ? `'%' || ${valPlaceholder}` : `CONCAT("%", ${valPlaceholder})`
-            }
-
-            sql += `${prefix[key] || valPlaceholder}`
-            sqlParts.push(sql)
-            continue
-        }
-
-        if (Array.isArray(val)) {
-            const keyPlaceholder = prepPlaceholder({ value: key, alias, ctx })
-            if (isVariable(keyPlaceholder)) values.push(prepName({ alias, value: key, ctx }))
-            const valuePlaceholders = []
-            for (const value of val) {
-                const valPlaceholder = prepPlaceholder({ value, alias, ctx })
-                if (isVariable(valPlaceholder)) values.push(prepName({ alias, value, ctx }))
-                valuePlaceholders.push(valPlaceholder)
-            }
-            sqlParts.push(`${keyPlaceholder} IN (${valuePlaceholders.join(', ')})`)
-            continue
-        }
+    for (let i = 0; i < entries.length; i++) {
+        const key = entries[i][0]
+        const val = entries[i][1]
 
         if (typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean' || val === null) {
             const keyPlaceholder = prepPlaceholder({ value: key, alias, ctx })
@@ -161,6 +117,61 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', values,
             sqlParts.push(`${keyPlaceholder} = ${valPlaceholder}`)
             continue
         }
+
+        if (key in handleFunc) {
+            sqlParts.push(handleFunc[key]({ alias, key, val, parent, junction, values, encryption, ctx }))
+            continue
+        }
+
+        if (key in conditions) {
+            const microSql = []
+            if (parent && !(parent in conditions) && parent != 'refer') {
+                const parentPlaceholder = prepPlaceholder({ value: parent, alias, ctx })
+                microSql.push(parentPlaceholder)
+                if (isVariable(parentPlaceholder)) values.push(prepName({ alias, value: parent, ctx }))
+            }
+
+            if (key === 'isNull' || key === 'isNotNull') {
+                sqlParts.push(microSql.join(' '))
+                continue
+            }
+
+            microSql.push(conditions[key])
+
+            const valPlaceholder = handlePlaceholder({ value: val, alias, junction, values, parent, encryption, ctx })
+
+            const prefix = {
+                in: Array.isArray(val) ? `(${valPlaceholder})` : valPlaceholder,
+                notIn: Array.isArray(val) ? `(${valPlaceholder})` : valPlaceholder,
+                exists: valPlaceholder,
+                notExists: valPlaceholder,
+                like: ctx?.isPostgreSQL ? `'%' || ${valPlaceholder} || '%'` : `CONCAT("%", ${valPlaceholder}, "%")`,
+                notLike: ctx?.isPostgreSQL ? `'%' || ${valPlaceholder} || '%'` : `CONCAT("%", ${valPlaceholder}, "%")`,
+                startLike: ctx?.isPostgreSQL ? `${valPlaceholder} || '%'` : `CONCAT(${valPlaceholder}, "%")`,
+                notStartLike: ctx?.isPostgreSQL ? `${valPlaceholder} || '%'` : `CONCAT(${valPlaceholder}, "%")`,
+                endLike: ctx?.isPostgreSQL ? `'%' || ${valPlaceholder}` : `CONCAT("%", ${valPlaceholder})`,
+                notEndLike: ctx?.isPostgreSQL ? `'%' || ${valPlaceholder}` : `CONCAT("%", ${valPlaceholder})`
+            }
+
+            microSql.push(`${prefix[key] || valPlaceholder}`)
+            sqlParts.push(microSql.join(' '))
+            continue
+        }
+
+        if (Array.isArray(val)) {
+            const keyPlaceholder = prepPlaceholder({ value: key, alias, ctx })
+            if (isVariable(keyPlaceholder)) values.push(prepName({ alias, value: key, ctx }))
+            const valuePlaceholders = []
+            for (let j = 0; j < val.length; j++) {
+                const value = val[j]
+                const valPlaceholder = prepPlaceholder({ value, alias, ctx })
+                if (isVariable(valPlaceholder)) values.push(prepName({ alias, value, ctx }))
+                valuePlaceholders.push(valPlaceholder)
+            }
+            sqlParts.push(`${keyPlaceholder} IN (${valuePlaceholders.join(', ')})`)
+            continue
+        }
+
         sqlParts.push(prepWhere({ alias, where: val, parent: key, junction, values, encryption, ctx }))
     }
     return sqlParts.filter(Boolean).join(junctions[junction])
@@ -182,22 +193,21 @@ const prepJoin = ({ alias, join = [], values, encryption = undefined, ctx = unde
 
         const { type = null, select = [], table, alias: joinAlias = null, join: nestedJoin = [], where = {}, groupBy = [], having = {}, orderBy = {}, junction = 'and', using = [], limit = undefined, offset = undefined, as = null } = joinable
         if (!table) throw { message: `[Missing]: 'table' name to be associated is missing`, cause: "Missing 'table' property inside join object" }
-
         const sqlParts = []
         if (joinTypes[type]) sqlParts.push(joinTypes[type])
         sqlParts.push('JOIN')
         if (select.length || Object.keys(where).length || Object.keys(having).length || nestedJoin.length) {
-            sqlParts.push(`(SELECT ${prepSelect({ alias: joinAlias, select, values, encryption, ctx })} FROM ${ctx?.isMySQL ? `??` : `"${table}"`}`)
+            sqlParts.push(`(SELECT ${prepSelect({ alias: joinAlias, select, values, encryption, ctx })} FROM ${ctx?.isMySQL ? '??' : `"${table}"`}`)
             if (ctx.isMySQL) values.push(table)
             if (joinAlias) {
                 if (ctx.isMySQL) values.push(joinAlias)
-                sqlParts.push(ctx?.isMySQL ? `??` : `"${joinAlias}"`)
+                sqlParts.push(ctx?.isMySQL ? '??' : `"${joinAlias}"`)
             }
             if (nestedJoin.length) sqlParts.push(prepJoin({ alias: joinAlias, join: nestedJoin, values, encryption, ctx }))
             if (Object.keys(where).length > 0) sqlParts.push(`WHERE ${prepWhere({ alias: joinAlias, where, junction, values, encryption, ctx })}`)
-            if (groupBy.length) sqlParts.push(patchGroupBy({ groupBy, alias: joinAlias, values, ctx }))
+            if (groupBy.length) sqlParts.push(patchGroupBy({ groupBy, alias, values, ctx }))
             if (Object.keys(having).length > 0) sqlParts.push(`HAVING ${prepWhere({ alias: joinAlias, where: having, junction, values, encryption, ctx })}`)
-            if (Object.keys(orderBy).length) sqlParts.push(prepOrderBy({ alias: joinAlias, orderBy, values, ctx }))
+            if (Object.keys(orderBy).length > 0) sqlParts.push(prepOrderBy({ alias: joinAlias, orderBy, values, ctx }))
             if (typeof limit === 'number') sqlParts.push(patchLimit(limit, values, ctx))
             if (typeof offset === 'number') sqlParts.push(patchLimit(offset, values, ctx, 'OFFSET'))
             if (!as) throw { message: `Missing 'as' property with selective join association`, cause: `Every derived table must have its own alias ('as' property)` }
@@ -222,10 +232,17 @@ const prepJoin = ({ alias, join = [], values, encryption = undefined, ctx = unde
         } else if (typeof using === 'object') {
             const usingConditions = Object.entries(using).map(([parentColumn, childColumn]) => {
                 const parentPlaceholder = prepPlaceholder({ value: parentColumn, alias, ctx })
-                const childPlaceholder = prepPlaceholder({ value: childColumn, alias: as || joinAlias, ctx })
                 const parentColumnName = prepName({ value: parentColumn, alias, ctx })
-                const childColumnName = prepName({ value: childColumn, alias: joinAlias, ctx })
-                if (ctx?.isMySQL) values.push(parentColumnName, childColumnName)
+                if (ctx?.isMySQL) {
+                    values.push(parentColumnName)
+                }
+
+                if (typeof childColumn === 'object') {
+                    const resp = handlePlaceholder({ value: childColumn, alias: joinAlias, values, encryption, ctx })
+                    return `${parentPlaceholder} ${resp}`
+                }
+                const childPlaceholder = prepPlaceholder({ value: childColumn, alias: joinAlias, ctx })
+                if (ctx.isMySQL) values.push(prepName({ value: childColumn, alias: joinAlias, ctx }))
                 return `${parentPlaceholder} = ${childPlaceholder}`
             })
             sqlParts.push(`ON ${usingConditions.join(' AND ')}`)
@@ -250,7 +267,6 @@ const prepJson = ({ val, encryption = undefined, junction = 'and', values, named
 
     const sqlParts = []
     const { value, aggregate = false, table = null, alias = null, join = [], where = {}, groupBy = [], having = {}, orderBy = {}, limit = undefined, offset = undefined, as = null, extract = null, contains = null, compare = {} } = val
-
     if (table || Object.keys(where).length || Object.keys(having).length) sqlParts.push(`(SELECT`)
 
     let jsonSql = ''
@@ -287,7 +303,7 @@ const prepJson = ({ val, encryption = undefined, junction = 'and', values, named
         if (ctx.isMySQL) values.push(table)
         if (alias) {
             if (ctx.isMySQL) values.push(alias)
-            sqlParts.push(ctx?.isMySQL ? '??' : `"${alias}"`)
+            sqlParts.push(ctx.isMySQL ? '??' : `"${alias}"`)
         }
 
     }
@@ -433,7 +449,6 @@ const prepCase = ({ alias, val, junction = 'and', values, encryption = undefined
  * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
  */
 const prepConcat = ({ alias, val, junction = 'and', values, encryption = undefined, ctx = undefined }) => {
-
     const { value = [], pattern = '', substr = null, reverse = false, textCase = null, padding = {}, trim = false, as = null, compare = {} } = val
     const patternPlaceholder = prepPlaceholder({ value: pattern, alias, ctx })
     if (isVariable(patternPlaceholder)) values.push(prepName({ alias, value: pattern, ctx }))
@@ -473,7 +488,6 @@ const prepConcat = ({ alias, val, junction = 'and', values, encryption = undefin
             sql += ` AS "${as}"`
         }
     }
-
     return sql
 }
 
@@ -551,7 +565,7 @@ const prepString = ({ alias, val, junction = 'and', values, named = false, encry
     return sql
 }
 
-const dateUnits = Object.freeze({
+const dateUnits = {
     f: 'MICROSECOND',
     s: 'SECOND',
     m: 'MINUTE',
@@ -561,8 +575,7 @@ const dateUnits = Object.freeze({
     M: 'MONTH',
     q: 'QUARTER',
     y: 'YEAR',
-})
-
+}
 
 /**
  * performs various date operation(s) on the value attribute
@@ -782,17 +795,33 @@ const prepNumeric = ({ alias, val, junction = 'and', values, named = false, encr
  */
 const patchGroupBy = ({ groupBy, alias, values, ctx }) => {
     if (groupBy.length == 0) return ''
-    return 'GROUP BY ' + groupBy.map(gb => {
-        const col = prepName({ value: gb, alias, ctx })
-        if (ctx?.isMySQL) {
-            values.push(col)
-            return '??'
+
+    const sqlParts = []
+
+    for (let i = 0; i < groupBy.length; i++) {
+        const col = prepName({ value: groupBy[i], alias, ctx })
+        if (!ctx?.isMySQL) {
+            sqlParts.push(col)
+            continue
         }
-        return col
-    }).join(', ')
+        sqlParts.push('??')
+        values.push(col)
+
+    }
+
+    return `GROUP BY ${sqlParts.join(', ')}`
+
+    // return 'GROUP BY ' + groupBy.map(gb => {
+    //     const col = prepName({ value: gb, alias, ctx })
+    //     if (ctx?.isMySQL) {
+    //         values.push(col)
+    //         return '??'
+    //     }
+    //     return col
+    // }).join(', ')
 }
 
-const orderDirections = Object.freeze({ asc: 'ASC', desc: 'DESC' })
+const orderDirections = { asc: 'ASC', desc: 'DESC' }
 
 /**
  * patches order by clause
@@ -806,24 +835,23 @@ const orderDirections = Object.freeze({ asc: 'ASC', desc: 'DESC' })
  */
 const prepOrderBy = ({ alias, orderBy, values, ctx }) => {
     if (!Object.keys(orderBy).length) return ''
-    return 'ORDER BY ' + Object.entries(orderBy).map(([col, dir]) => {
-        const name = prepName({ alias, value: col, ctx })
-        const order = orderDirections[dir]
-        if (ctx.isMySQL) {
-            values.push(name)
-            return `?? ${order}`
-        }
-        return `${name} ${order}`
-    }).join(', ')
-}
 
-/**
- * checks if placeholder is variable or not
- * @function isVariable
- * @param {*} value 
- * @returns {boolean}
- */
-const isVariable = value => (value.startsWith('$') || value.startsWith('#') || value === '?' || value === '??') && !checkConstants(value)
+    const entries = Object.entries(orderBy)
+
+    const sqlParts = []
+
+    for (let i = 0; i < entries.length; i++) {
+        const name = prepName({ alias, value: entries[i][0], ctx })
+        const order = orderDirections[entries[i][1]]
+        if (!ctx?.isMySQL) {
+            sqlParts.push(`${name} ${order}`)
+            continue
+        }
+        values.push(name)
+        sqlParts.push(`?? ${order}`)
+    }
+    return `ORDER BY ${sqlParts.join(', ')}`
+}
 
 const prepJsonB = ({ value, aggregate = false, alias = null, values, ctx }) => {
     const patch = (val, values) => {
@@ -956,7 +984,7 @@ const prepDecryption = ({ placeholder, value, decrypt, encoding, values, encrypt
  */
 const patchLimit = (limit, values, ctx, key = 'LIMIT') => {
     values.push(limit)
-    return `${key} ${ctx?.isPostgreSQL ? `$${ctx._variableCount++}` : '?'}`
+    return `${key} ${ctx.isPostgreSQL ? `$${ctx._variableCount++}` : '?'}`
 }
 
 /**
@@ -994,8 +1022,12 @@ const prepSubStr = ({ length, start, sql, values, ctx }) => {
 const patchDateCast = value => !value ? '' : (value.includes('-') && value.includes(':') ? '::timestamp' : (value.includes('-') ? '::date' : (value.includes(':') ? '::time' : '')))
 
 const handlePlaceholder = ({ value, alias, junction = 'and', parent = null, encryption, ctx, values }) => {
-    if (Array.isArray(value)) return prepSelect({ select: value, values, alias, encryption, ctx })
-    if (typeof value === 'object' && value != null) return prepWhere({ alias, where: value, junction, parent, values, encryption, ctx })
+    if (Array.isArray(value)) {
+        return prepSelect({ select: value, values, alias, encryption, ctx })
+    }
+    if (typeof value === 'object' && value != null) {
+        return prepWhere({ alias, where: value, junction, parent, values, encryption, ctx })
+    }
     else {
         const placeholder = prepPlaceholder({ value, alias, ctx })
         if (isVariable(placeholder)) values.push(prepName({ value, alias, ctx }))
@@ -1055,7 +1087,7 @@ const replaceDatePatterns = ({ format, dialect = 'mysql' }) => {
     return format.replace(regex, match => formatMap[match][dialect])
 }
 
-const handleFunc = Object.freeze({
+const handleFunc = {
     and: handleAndOr,
     or: handleAndOr,
     between: handleBetween,
@@ -1073,6 +1105,6 @@ const handleFunc = Object.freeze({
     count: prepAggregate,
     max: prepAggregate,
     min: prepAggregate,
-})
+}
 
 module.exports = { prepSelect, prepWhere, prepJoin, prepOrderBy, isVariable, patchGroupBy, patchLimit, prepEncryption }
