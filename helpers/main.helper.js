@@ -102,22 +102,6 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', values,
         const key = entries[i][0]
         const val = entries[i][1]
 
-        if (typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean' || val === null) {
-            const keyPlaceholder = prepPlaceholder({ value: key, alias, ctx })
-            if (isVariable(keyPlaceholder)) values.push(prepName({ alias, value: key, ctx }))
-
-            if (val === 'isNull' || val === 'isNotNull' || val === null) {
-                sqlParts.push(`${keyPlaceholder} ${constantFunctions[val]}`)
-                continue
-            }
-
-            const valPlaceholder = prepPlaceholder({ value: val, alias, ctx })
-            if (isVariable(valPlaceholder)) values.push(prepName({ alias, value: val, ctx }))
-
-            sqlParts.push(`${keyPlaceholder} = ${valPlaceholder}`)
-            continue
-        }
-
         if (key in handleFunc) {
             sqlParts.push(handleFunc[key]({ alias, key, val, parent, junction, values, encryption, ctx }))
             continue
@@ -171,9 +155,27 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', values,
             sqlParts.push(`${keyPlaceholder} IN (${valuePlaceholders.join(', ')})`)
             continue
         }
+        
+        if (typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean' || val === null) {
+            const keyPlaceholder = prepPlaceholder({ value: key, alias, ctx })
+            if (isVariable(keyPlaceholder)) values.push(prepName({ alias, value: key, ctx }))
+
+            if (val === 'isNull' || val === 'isNotNull' || val === null) {
+                sqlParts.push(`${keyPlaceholder} ${constantFunctions[val]}`)
+                continue
+            }
+
+            const valPlaceholder = prepPlaceholder({ value: val, alias, ctx })
+            if (isVariable(valPlaceholder)) values.push(prepName({ alias, value: val, ctx }))
+
+            sqlParts.push(`${keyPlaceholder} = ${valPlaceholder}`)
+            continue
+        }
 
         sqlParts.push(prepWhere({ alias, where: val, parent: key, junction, values, encryption, ctx }))
     }
+
+    console.log('sql parts generated', sqlParts)
     return sqlParts.filter(Boolean).join(junctions[junction])
 }
 
