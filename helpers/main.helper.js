@@ -155,7 +155,7 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', values,
             sqlParts.push(`${keyPlaceholder} IN (${valuePlaceholders.join(', ')})`)
             continue
         }
-        
+
         if (typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean' || val === null) {
             const keyPlaceholder = prepPlaceholder({ value: key, alias, ctx })
             if (isVariable(keyPlaceholder)) values.push(prepName({ alias, value: key, ctx }))
@@ -405,11 +405,12 @@ const prepRefer = ({ val, parent = null, values, encryption = undefined, ctx = u
  */
 const prepIf = ({ alias, val, junction = 'and', values, encryption = undefined, ctx = undefined }) => {
     if (!ctx.isMySQL) throw { message: `'if' object is only available in 'mysql'`, cause: `'${ctx?.config?.dialect}' does not support 'if' condition`, suggestion: `Use 'switch' object, works the same` }
-    const { check = {}, trueValue = null, falseValue = null, as = null } = val
+    const { check = {}, trueValue = null, falseValue = null, cast = null, as = null } = val
     const ifPlaceholder = handlePlaceholder({ alias, value: check, junction, values, encryption, ctx })
-    const truePlaceholder = handlePlaceholder({ alias, value: trueValue, junction, values, encryption, ctx })
-    const falsePlaceholder = handlePlaceholder({ alias, value: falseValue, junction, values, encryption, ctx })
+    const truePlaceholder = trueValue == null || trueValue == 'null' ? null : handlePlaceholder({ alias, value: trueValue, junction, values, encryption, ctx })
+    const falsePlaceholder = falseValue == null || falseValue == 'null' ? null : handlePlaceholder({ alias, value: falseValue, junction, values, encryption, ctx })
     if (as && ctx?.isMySQL) values.push(as)
+    if (cast) return `CAST(IF(${ifPlaceholder}, ${truePlaceholder}, ${falsePlaceholder}) AS ${dataTypes[cast] || 'CHAR'})${as ? ` AS ${ctx?.isMySQL ? '?' : `"${as}"`}` : ''}`
     return `IF(${ifPlaceholder}, ${truePlaceholder}, ${falsePlaceholder})${as ? ` AS ${ctx?.isMySQL ? '?' : `"${as}"`}` : ''}`
 }
 
@@ -429,7 +430,7 @@ const prepCase = ({ alias, val, junction = 'and', values, encryption = undefined
     const conditionalPlaceholders = check.map(condition => {
         const { when, then } = condition
         const whenPlaceholder = handlePlaceholder({ alias, value: when, junction, values, encryption, ctx })
-        const thenPlaceholder = handlePlaceholder({ alias, value: then, junction, values, encryption, ctx })
+        const thenPlaceholder = then == null || then == 'null' ? null : handlePlaceholder({ alias, value: then, junction, values, encryption, ctx })
         return `WHEN ${whenPlaceholder} THEN ${thenPlaceholder}`
     })
 
@@ -437,6 +438,7 @@ const prepCase = ({ alias, val, junction = 'and', values, encryption = undefined
     if (isVariable(elsePlaceholder)) values.push(prepName({ alias, value: defaultElse, ctx }))
 
     if (as && ctx?.isMySQL) values.push(as)
+    if (cast) return `CAST(CASE ${conditionalPlaceholders.join(' ')} ELSE ${elsePlaceholder} END AS ${dataTypes[cast] || 'CHAR'})${as ? ` AS ${ctx?.isMySQL ? '?' : `"${as}"`}` : ''}`
     return `CASE ${conditionalPlaceholders.join(' ')} ELSE ${elsePlaceholder} END${as ? ` AS ${ctx?.isMySQL ? '?' : `"${as}"`}` : ''}`
 }
 
@@ -812,15 +814,6 @@ const patchGroupBy = ({ groupBy, alias, values, ctx }) => {
     }
 
     return `GROUP BY ${sqlParts.join(', ')}`
-
-    // return 'GROUP BY ' + groupBy.map(gb => {
-    //     const col = prepName({ value: gb, alias, ctx })
-    //     if (ctx?.isMySQL) {
-    //         values.push(col)
-    //         return '??'
-    //     }
-    //     return col
-    // }).join(', ')
 }
 
 const orderDirections = { asc: 'ASC', desc: 'DESC' }

@@ -136,109 +136,99 @@ class UnSQL {
             switch (true) {
                 // handle if data is array of json object(s)
                 case Array.isArray(data): {
-                    console.info(colors.cyan, (data.length > 1000 ? 'Large dataset detected, p' : 'P') + 'lease wait while UnSQL prepares query for each record, this might take few seconds...', colors.reset)
-                    const insertColumns = new Set()
-                    // loop over each json object for columns
-                    for (let i = 0; i < data.length; i++) {
-                        // extract keys from each object
-                        Object.keys(data[i]).forEach(col => {
-                            // track if col not already tracked
-                            if (!insertColumns.has(col)) insertColumns.add(col)
-                        })
-                    }
-                    // loop for columns ended
 
-                    // this will patch placeholder for all columns in single array
-                    sqlParts.push(`(${Array.from(insertColumns).map(col => {
-                        values.push(col)
-                        this?.isMySQL ? '??' : `"${col}"`
-                    }).join(', ')})`)
+                    const columnPlaceholders = []
+                    const valuePlaceholders = []
+                    const columnNames = new Set()
+                    const dataLength = data.length
+
+                    console.info(colors.cyan, (dataLength > 1000 ? 'Large dataset detected, p' : 'P') + 'lease wait while UnSQL prepares query for each record, this might take few seconds...', colors.reset)
+
+                    // loop over records
+                    for (let i = 0; i < dataLength; i++) {
+                        for (const column in data[i]) {
+                            if (!columnNames.has(column)) {
+                                columnPlaceholders.push(this.isMySQL ? '??' : `"${column}"`)
+                                if (this.isMySQL) values.push(column)
+                                columnNames.add(column)
+                            }
+                        }
+                    } // main loop ends
+
+                    sqlParts.push(`(${columnPlaceholders.join(', ')})`)
 
                     sqlParts.push('VALUES')
-                    // loop over each entry (json object) for values
-                    for (let i = 0; i < data.length; i++) {
-                        const columnValues = []
-                        for (let j = 0; j < insertColumns.size; j++) { // loop over each property
-                            let propSql = this?.isPostgreSQL ? `$${this._variableCount++}` : '?'
-                            if (typeof data[i][insertColumns[j]] === 'object') {
-                                if (this?.isMySQL) {
-                                    values.push(JSON.stringify(data[i][insertColumns[j]]))
-                                } else if (this?.isPostgreSQL) {
-                                    this._variableCount-- // revert back variable count since not being used
-                                    propSql = prepJsonbUpdate(insertColumns[j], data[i][insertColumns[j]], (Object.keys(where).length || Object.keys(having).length))
+
+                    for (let i = 0; i < dataLength; i++) {
+                        const row = []
+                        for (const column of columnNames) {
+                            if (typeof data[i][column] == 'object') {
+                                if (this.isPostgreSQL) row.push(prepJsonbUpdate(column, data[i][column], (Object.keys(where).length || Object.keys(having).length)))
+                                else if (this.isMySQL) {
+                                    row.push('?')
+                                    values.push(JSON.stringify(data[i][column]))
                                 }
-                            } else {
-                                if (data[i][insertColumns[j]] === 'null' || !data[i][insertColumns[j]]) {
-                                    values.push(null)
-                                } else {
-                                    values.push(data[i][insertColumns[j]])
-                                }
+                                continue
                             }
-
-                            propSql = prepEncryption({ placeholder: propSql, col: insertColumns[j], values, ctx: this, encrypt, encryption })
-                            columnValues.push(propSql)
-                        } // loop for columnValues ended
-
-                        // this prefixes ',' before each (except 1st) entry
-                        sqlParts.push(`${(i != 0 ? ', ' : '')}(${columnValues.join(', ')})`)
+                            row.push(this.isMySQL ? '?' : `$${this._variableCount++}`)
+                            values.push(data[i][column] == 'null' || data[i][column] == null || data[i][column] == undefined || data[i][column] == 'undefined' ? null : data[i][column])
+                        }
+                        valuePlaceholders.push(`(${row.join(', ')})`)
                     }
-                    // loop for values ended
-                    if (debug === true || debug === 'query' || debug === 'benchmark' || debug === 'benchmark-query') console.info(colors.cyan, `Query generated, inserting records`, colors.reset)
+
+                    sqlParts.push(valuePlaceholders.join(', '))
                     break
                 }
 
                 case typeof data === 'object': {
-                    // extract all columns from data object
-                    const setEntries = Object.entries(data).map(([col, val]) => {
 
-                        let propSql = `${this?.isMySQL ? '??' : `"${col}"`} = `
-                        if (this.isMySQL) values.push(prepName({ value: col, alias, ctx: this }))
-                        if (typeof val === 'object') {
-                            if (this?.isMySQL) {
-                                propSql += '?'
-                                values.push(JSON.stringify(val))
-                            } else if (this?.isPostgreSQL) {
-                                propSql += prepJsonbUpdate(col, val, (Object.keys(where).length || Object.keys(having).length))
-                            }
-                        } else {
-                            values.push(val === 'null' ? null : val)
-                            if (encrypt[col]) {
-                                propSql += prepEncryption({
-                                    placeholder: (this?.isPostgreSQL ? `$${this._variableCount++}` : '?'), col, ctx: this, encrypt, encryption, values
-                                })
-                            } else {
-                                propSql += this?.isPostgreSQL ? `$${this._variableCount++}` : '?'
-                            }
+                    const entries = Object.entries(data)
+                    const setEntries = []
+                    for (let i = 0; i < entries.length; i++) {
+                        const col = entries[i][0]
+                        const val = entries[i][1]
+                        const localSql = []
+                        localSql.push(this.isMySQL ? '?? =' : `"${col}" =`)
+                        if (this.isMySQL) values.push(col)
+                        if (typeof val == 'object' && this.isPostgreSQL) {
+                            localSql.push(prepJsonbUpdate(col, val, (Object.keys(where).length || Object.keys(having).length)))
+                            continue
                         }
-
-                        return propSql
-                    }) // loop for data object ended
+                        if (typeof val == 'object') values.push(JSON.stringify(val))
+                        else values.push(val == 'null' || val == 'undefined' || val == undefined ? null : val)
+                        if (encrypt[col]) {
+                            localSql.push(prepEncryption({ placeholder: (this?.isPostgreSQL ? `$${this._variableCount++}` : '?'), col, ctx: this, encrypt, encryption, values }))
+                            continue
+                        }
+                        localSql.push(this.isPostgreSQL ? `$${this._variableCount++}` : '?')
+                        setEntries.push(localSql.join(' '))
+                    }
 
                     sqlParts.push(`SET ${setEntries.join(', ')}`)
 
                     if (Object.keys(upsert).length) { // if upsert object is provided
 
-                        const duplicateEntries = Object.entries(upsert).map(([col, val]) => {
-                            let propSql = `${this.isMySQL ? '??' : `"${col}"`} = `
-                            if (this.isMySQL) values.push(prepName({ value: col, alias, ctx: this }))
-                            if (typeof val === 'object') {
-                                if (this?.isMySQL) {
-                                    values.push(JSON.stringify(val))
-                                } else if (this?.isPostgreSQL) {
-                                    propSql += prepJsonbUpdate(col, val, (Object.keys(where).length || Object.keys(having).length))
-                                }
-                            } else {
-                                values.push(val === 'null' ? null : val)
-                                if (encrypt[col]) {
-                                    propSql += prepEncryption({
-                                        placeholder: (this?.isPostgreSQL ? `$${this._variableCount++}` : '?'), col, ctx: this, encrypt, encryption, values
-                                    })
-                                }
-                                else propSql += this?.isPostgreSQL ? `$${this._variableCount++}` : '?'
+                        const upsertEntries = Object.entries(upsert)
+                        const duplicateEntries = []
+                        for (let i = 0; i < upsertEntries.length; i++) {
+                            const col = upsertEntries[i][0]
+                            const val = upsertEntries[i][1]
+                            const localSql = []
+                            localSql.push(this.isMySQL ? '?? =' : `"${col}" =`)
+                            if (this.isMySQL) values.push(col)
+                            if (typeof val == 'object' && this.isPostgreSQL) {
+                                localSql.push(prepJsonbUpdate(col, val, (Object.keys(where).length || Object.keys(having).length)))
+                                continue
                             }
-
-                            return propSql
-                        }) // upsert loop ended
+                            if (typeof val == 'object') values.push(JSON.stringify(val))
+                            else values.push(val == 'null' || val == 'undefined' || val == undefined ? null : val)
+                            if (encrypt[col]) {
+                                localSql.push(prepEncryption({ placeholder: (this?.isPostgreSQL ? `$${this._variableCount++}` : '?'), col, ctx: this, encrypt, encryption, values }))
+                                continue
+                            }
+                            localSql.push(this.isPostgreSQL ? `$${this._variableCount++}` : '?')
+                            duplicateEntries.push(localSql.join(' '))
+                        }
 
                         const conflictPrefix = {
                             mysql: 'ON DUPLICATE KEY UPDATE',
