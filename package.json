@@ -1,6 +1,6 @@
 {
   "name": "unsql",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "UnSQL can be defined as a light weight schemaless ORM. It provides clean and yet extensive interface to interact with MySQL Databases without getting into the complexities. It provides dynamic query generation through easy to understand Javascript based methods and data types, while structuring the actual sql in the background for you.",
   "keywords": [
     "unsql",
