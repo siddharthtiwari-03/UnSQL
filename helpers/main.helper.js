@@ -175,7 +175,6 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', values,
         sqlParts.push(prepWhere({ alias, where: val, parent: key, junction, values, encryption, ctx }))
     }
 
-    console.log('sql parts generated', sqlParts)
     return sqlParts.filter(Boolean).join(junctions[junction])
 }
 
@@ -426,7 +425,7 @@ const prepIf = ({ alias, val, junction = 'and', values, encryption = undefined, 
  @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
  */
 const prepCase = ({ alias, val, junction = 'and', values, encryption = undefined, ctx = undefined }) => {
-    const { check = [], else: defaultElse, as = null } = val
+    const { check = [], else: defaultElse, cast = null, as = null } = val
     const conditionalPlaceholders = check.map(condition => {
         const { when, then } = condition
         const whenPlaceholder = handlePlaceholder({ alias, value: when, junction, values, encryption, ctx })

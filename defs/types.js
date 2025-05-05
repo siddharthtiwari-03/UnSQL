@@ -126,6 +126,7 @@
  * @prop {boolean|WhereObject} check
  * @prop {*} trueValue
  * @prop {*} falseValue
+ * @prop {CastingTypes} [cast]
  * @prop {string} [as]
  */
 
@@ -155,6 +156,7 @@
  * @typedef {Object} SwitchObject
  * @prop {Array<WhenThenCondition>} check
  * @prop {ValuesObject} else
+ * @prop {CastingTypes} [cast]
  * @prop {string} [as]
  */
 

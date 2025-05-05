@@ -671,3 +671,4 @@ class SessionManager {
 }
 
 module.exports = { UnSQL, SessionManager }
+module.exports.default = UnSQL
