@@ -926,37 +926,40 @@ All objects are explained below:
     ```javascript
     // Interface:
     {
-        case: [
-            { // conditional object
-                when: {...}, // condition to be checked
-                then: 'some value' // value if 'when' is true
-            },
-            ...
-        ],
-        else: 'default value', // if no condition in any of the 'when' is true
-        as: null
+        case: {
+            check: [
+                    { // conditional object
+                        when: {...}, // condition to be checked
+                        then: 'some value' // value if 'when' is true
+                    },
+                    ...
+                ],
+            else: 'default value', // if no condition in any of the 'when' is true
+            as: null
+        }
     }
 
     // Sample:
     const response = await User.find({
         select: [
             {
-                case: [
-                    {
-                        when: { experience: { lt: 2 } },
-                        then: 'Fresher'
-                    },
-                    {
-                        when: { experience: { between: { gt: 2, lt: 4 } } },
-                        then: 'Junior'
-                    },
-                    {
-                        when: { experience: { between: { gt: 4, lt: 7 } } },
-                        then: 'Mid-level'
-                    },
-                ],
-                else: 'Senior',
-                as: 'expertise'
+                case: {
+                    check: [
+                        {
+                            when: { experience: { lt: 2 } },
+                            then: 'Fresher'
+                        },
+                        {
+                            when: { experience: { between: { gt: 2, lt: 4 } } },
+                            then: 'Junior'
+                        },
+                        {
+                            when: { experience: { between: { gt: 4, lt: 7 } } },
+                            then: 'Mid-level'
+                        }],
+                    else: 'Senior',
+                    as: 'expertise'
+                }
             }
         ]
     })
