@@ -436,7 +436,7 @@ class UnSQL {
  * @param {string} [options.debugMessage] debug message to be displayed in console
  * @param {boolean} [options.multiQuery] flag if sql contains multiple queries (only in 'mysql'), default is false
  * @param {import("./defs/types").EncryptionConfig} [options.encryption] enables encryption
- * @returns {Promise<{success:false, error:*}|{success:true, result:*}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'results'
+ * @returns {Promise<{success:false, error:*}|{success:true, result:*, meta?:*}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'results'
  */
 const executeMySQL = async ({ sql, values, debug = false, session = undefined, config, encryption = undefined, multiQuery = false, debugMessage = '' }) => {
     const connection = await (session?.connection || config?.pool?.getConnection() || config?.connection)
@@ -453,10 +453,10 @@ const executeMySQL = async ({ sql, values, debug = false, session = undefined, c
             }
         }
         if (isDebugging) console.time(`${colors.blue}UnSQL benchmark:${colors.reset} ${colors.cyan}${debugMessage}${colors.reset}`)
-        const [result] = await connection[multiQuery ? 'query' : 'execute'](statement)
+        const [result, meta] = await connection[multiQuery ? 'query' : 'execute'](statement)
         if (!session) await connection?.commit()
         if (isDebugging) console.timeEnd(`${colors.blue}UnSQL benchmark:${colors.reset} ${colors.cyan}${debugMessage}${colors.reset}`)
-        return { success: true, result }
+        return { success: true, result, meta }
     } catch (error) {
         handleError(debug, error)
         if (connection && !session) await connection?.rollback()
@@ -485,11 +485,21 @@ const executePostgreSQL = async ({ sql, values, debug = false, config, session =
         if (!session) await client.query('COMMIT')
 
         const payload = []
+        const meta = []
 
         if (Array.isArray(result)) {
-            payload.push(...result.map(({ rows }) => rows))
+            for (let i = 0; i < result.length; i++) {
+                const { rows, fields } = result[i]
+                if (rows && rows.length) {
+                    payload.push(...rows)
+                    meta.push(fields)
+                } else if (fields && fields.length) {
+                    meta.push(fields)
+                }
+            }
         } else {
             payload.push(...result.rows)
+            meta.push(result.fields)
         }
         if (isBenchmarking) console.timeEnd(`${colors.blue}UnSQL benchmark:${colors.reset} ${colors.cyan}${debugMessage}${colors.reset}`)
         return { success: true, result: payload }
@@ -529,8 +539,8 @@ async function executeSqlite({ sql, values, debug = false, config, methodType = 
         return {
             success: true,
             ...(methodType === 'all' && { result }),
-            ...(result?.lastID !== undefined && { insertId: result?.lastID }),
-            ...(result?.changes !== undefined && { changes: result?.changes })
+            ...('lastID' in result && { insertId: result?.lastID }),
+            ...('changes' in result && { changes: result?.changes })
         }
     } catch (error) {
         if (!session?.pool) await db.run('ROLLBACK')

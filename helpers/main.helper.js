@@ -592,7 +592,6 @@ const dateUnits = {
  * @returns {{sql:string, values:Array}} 'sql' with placeholder string and 'values' array to be injected at execution
  */
 const prepDate = ({ alias, val, junction = 'and', values, named = false, encryption = undefined, ctx = undefined }) => {
-
     // deconstruct different props from the val object
     const { value, add = 0, sub = 0, format = null, fromPattern = null, cast = null, decrypt = null, encoding = 'utf8mb4', as = ctx?.isPostgreSQL ? 'date' : null, compare = {} } = val
 
@@ -1077,8 +1076,34 @@ const replaceDatePatterns = ({ format, dialect = 'mysql' }) => {
         TZ: { mysql: '%Z', postgresql: 'TZ', sqlite: 'TZ' },
         tz: { mysql: '%z', postgresql: 'TZH:TZM', sqlite: 'tz' }
     }
-    const regex = new RegExp(`\\b(${Object.keys(formatMap).join("|")})\\b`, "g")
-    return format.replace(regex, match => formatMap[match][dialect])
+    const keys = Object.keys(formatMap).sort((a, b) => b.length - a.length)
+
+    let result = ''
+    for (let i = 0; i < format.length;) {
+        if (format[i] === '[') {
+            const end = format.indexOf(']', i)
+            if (end === -1) throw new Error('Unclosed [literal]')
+            result += format.slice(i + 1, end)
+            i = end + 1
+        } else {
+            let matched = false
+            for (let j = 0; j < keys.length; j++) {
+                const key = keys[j]
+                if (format.startsWith(key, i)) {
+                    result += formatMap[key][dialect]
+                    i += key.length
+                    matched = true
+                    break
+                }
+            }
+            if (!matched) {
+                result += format[i]
+                i++
+            }
+        }
+    }
+
+    return result
 }
 
 const handleFunc = {

@@ -1,11 +1,9 @@
 # UnSQL
 ![NPM Version](https://img.shields.io/npm/v/unsql "production (stable)")
-[![GitHub package.json version](https://img.shields.io/github/package-json/v/siddharthtiwari-03/unsql "latest (unstable)")](https://www.github.com/siddharthtiwari-03/unsql)
-[![GitHub Release](https://img.shields.io/github/v/release/siddharthtiwari-03/unsql?include_prereleases "latest (release)")](https://github.com/siddharthtiwari-03/UnSQL/releases)
 ![NPM Downloads](https://img.shields.io/npm/dm/unsql)
 ![NPM License](https://img.shields.io/npm/l/unsql "UnSQL License")
 
-**UnSQL** is a lightweight, open-source JavaScript library that facilitates class based, schemaless interactions with the structured databases viz. `MySQL`, `PostgreSQL` and `SQLite` through dynamic query generation. It is the only library that supports single codebase across all dialects. It is compatible with javascript runtime environments like NodeJS and NextJS.
+**UnSQL** is a lightweight, open-source JavaScript library that facilitates class based, schemaless interactions with the structured databases viz. `MySQL`, `PostgreSQL` and `SQLite` through dynamic query generation. It is the only library that supports single codebase across all dialects. It is compatible with javascript runtime environments like **NodeJS** and **NextJS**, **ElectronJS** (For cross-platform apps) and also works with serverless applications like AWS lambda (Through Lambda layers) and Vercel functions.
 
 ## Table of Contents
 1. [Overview](#1-overview)
@@ -56,7 +54,7 @@ import { UnSQL } from 'unsql'
 
 ### 1.2 What's New?
 
-**Version v2.1** brings support for **Multiple Dialects** along with **Unified codebase**, **Bug Fixes**, **Improved Code Suggestions**, brought back the **rawQuery Method**, enhanced **Session Manager** and better code optimization under the hood and much more
+**Version v2.1** brought support for **Multiple Dialects** along with **Unified codebase**, **Bug Fixes**, **Improved Code Suggestions**, brought back the **rawQuery Method**, enhanced **Session Manager** and better code optimization under the hood and much more
 
 ### 1.3 Key Features
 
@@ -67,7 +65,7 @@ import { UnSQL } from 'unsql'
 - **Reuse connections** supports connection `pool` for better performance
 - **Dynamic query generation** perform CRUDs without writing SQL
 - **Safer code** prevents SQL-injections with placeholders and prepared statements
-- **JSON as Response** including execution success/failure acknowledgement and `result` or `error`
+- **JSON as Response** including execution success/failure acknowledgement and `result` and `meta` (in case of `mysql` and `postgresql`) or `error`
 - **Transaction** based executions, handles rollbacks on failure
 - **Graceful Error Handling** no try-catch required, returns structured error message
 - **JSDoc-compatible** for type checking and code suggestions
@@ -139,7 +137,7 @@ export const pool = (async () => {
 
 ### 2.2 Installation
 
-**UnSQL** can be installed using any of the package managers viz. `npm` or `yarn`:
+**UnSQL** can be installed using any of the package managers viz. `npm` or `yarn` or `pnpm`:
 
 - Using `npm`
 
@@ -151,6 +149,12 @@ npm i unsql
 
 ```bash
 yarn add unsql
+```
+
+- Using `pnpm`
+
+```bash
+pnpm add unsql
 ```
 
 ### 2.3 Setup Guide
@@ -862,7 +866,8 @@ All objects are explained below:
     1. **All properties are optional** and can be used in **any combination**
     2. All operations are performed on `value` property
     3. `fromPattern` is not supported by `sqlite`
-    4. See [cast](#cast), [decrypt](#decrypt), [encoding](#encoding), [compare](#compare) for respective details
+    4. Regular string can be safely used inside `format` by wrapping them inside `[]`
+    5. See [cast](#cast), [decrypt](#decrypt), [encoding](#encoding), [compare](#compare) for respective details
 
 - #### And (Keyword <span id="and">`and`</span>) / Or (Keyword <span id="or">`or`</span>) Wrappers
     Both `and` wrapper and `or` wrapper are similar in interface as both accepts array of comparator objects, only difference is `and` wrapper joins these comparator objects with **and** clause and `or` wrapper joins these comparator objects using **or** clause. They override `junction` property for their immediate children comparator objects and can be nested inside each other to create complex conditions. Since there is no *interface*, below is a sample for **and / or wrapper**:
@@ -1603,15 +1608,32 @@ Yes, UnSQL is the only library that supports unified codebase across multiple SQ
 
 Yes, in case of `postgresql` and `sqlite`, identifiers like column names and table names are case sensitive by default. In case of `mysql` identifiers like table name and column name are case in-sensitive.
 
+### 7.5 Can UnSQL be used to build cross-platform applications?
+
+Yes, UnSQL can be used to create cross-platform applications via. NodeJS (Javascript) based frameworks like **ElectronJS**.
+
+### 7.5 Can UnSQL be used in serverless applications?
+
+Yes, UnSQL can be used in serverless applications like AWS Lambda deployed on a NodeJS based environment. Just like any other package, UnSQL needs to be added in a Lambda layer and this lambda layer needs to added to the desired lambda function.
+
 ### Support
-![npm](https://img.shields.io/badge/npm-CB3837?style=for-the-badge&logo=npm&logoColor=white) 
-![Yarn](https://img.shields.io/badge/yarn-%232C8EBB.svg?style=for-the-badge&logo=yarn&logoColor=white)
-![JavaScript](https://img.shields.io/badge/javascript-%23323330.svg?style=for-the-badge&logo=javascript&logoColor=%23F7DF1E)
-![NodeJs](https://img.shields.io/badge/Node%20js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
-![NextJs](https://img.shields.io/badge/next%20js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)
-![MySQL](https://img.shields.io/badge/MySQL-005C84?style=for-the-badge&logo=mysql&logoColor=white)
-![Postgres](https://img.shields.io/badge/postgres-%23316192.svg?style=for-the-badge&logo=postgresql&logoColor=white)
-![SQLite](https://img.shields.io/badge/sqlite-%2307405e.svg?style=for-the-badge&logo=sqlite&logoColor=white)
+![npm](https://img.shields.io/badge/npm-CB3837?logo=npm&logoColor=fff)
+![NPNM](https://img.shields.io/badge/pnpm-F69220?logo=pnpm&logoColor=fff)
+![Yarn](https://img.shields.io/badge/Yarn-2C8EBB?logo=yarn&logoColor=fff)
+![MySQL](https://img.shields.io/badge/MySQL-4479A1?logo=mysql&logoColor=fff)
+![Postgres](https://img.shields.io/badge/Postgres-%23316192.svg?logo=postgresql&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-%2307405e.svg?logo=sqlite&logoColor=white)
+![MariaDB](https://img.shields.io/badge/MariaDB-003545?logo=mariadb&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?logo=javascript&logoColor=000)
+![NodeJS](https://img.shields.io/badge/Node.js-6DA55F?logo=node.js&logoColor=white)
+![Express.js](https://img.shields.io/badge/Express.js-%23404d59.svg?logo=express&logoColor=%2361DAFB)
+![Next.js](https://img.shields.io/badge/Next.js-black?logo=next.js&logoColor=white)
+![Fastify](https://img.shields.io/badge/-Fastify-000000?style=flat&logo=fastify&logoColor=white)
+![Meteor.js](https://img.shields.io/badge/Meteor.js-%23d74c4c.svg?logo=meteor&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=fff)
+![AWS](https://img.shields.io/badge/AWS-%23FF9900.svg?logo=amazon-web-services&logoColor=white)
+![Vercel](https://img.shields.io/badge/Vercel-%23000000.svg?logo=vercel&logoColor=white)
+![Electron](https://img.shields.io/badge/Electron-2B2E3A?logo=electron&logoColor=fff)
 
 ## Author
 
