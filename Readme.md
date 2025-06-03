@@ -3,7 +3,7 @@
 ![NPM Downloads](https://img.shields.io/npm/dm/unsql)
 ![NPM License](https://img.shields.io/npm/l/unsql "UnSQL License")
 
-**UnSQL** is a lightweight, open-source JavaScript library that facilitates class based, schemaless interactions with the structured databases viz. `MySQL`, `PostgreSQL` and `SQLite` through dynamic query generation. It is the only library that supports single codebase across all dialects. It is compatible with javascript runtime environments like **NodeJS** and **NextJS**, **ElectronJS** (For cross-platform apps) and also works with serverless applications like AWS lambda (Through Lambda layers) and Vercel functions.
+**UnSQL** is a lightweight, open-source JavaScript library that facilitates class based, schemaless interactions with the structured databases viz. `MySQL`, `PostgreSQL` and `SQLite` through dynamic query generation. It is the only library that supports single codebase across all dialects. It is compatible with **NodeJS** based javascript runtime environments like **ExpressJS**, **Fastify** and **NextJS**, also works with serverless applications like AWS lambda (Through Lambda layers) and Vercel functions and can be used to create cross-platform apps using frameworks like **ElectronJS**.
 
 ## Table of Contents
 1. [Overview](#1-overview)
