@@ -85,7 +85,7 @@ UnSQL can work with three different `dialect` of SQL (`'mysql'`, `'postgresql'` 
 ```javascript
 import mysql2 from 'mysql2/promise'
 
-export const pool = createPool({
+export const pool = mysql2.createPool({
     host: 'localhost', // or link to remote database
     database: 'test_db',
     user: 'your_username',

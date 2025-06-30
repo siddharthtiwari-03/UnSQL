@@ -51,8 +51,7 @@ class UnSQL {
      * @param {import("./defs/types").DebugTypes} [findParam.debug] (optional) enables different debug modes
      * @param {Object} [findParam.session] (optional)
      * 
-     * @returns {Promise<{success:false, error?:object}|{success:true, result?:object[], insertId?:number, changes?:number}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
-     * 
+     * @returns {Promise<{success:boolean, error?:*, result?:*, meta?:*}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
      * @static
      * @memberof UnSQL
      */
@@ -103,7 +102,8 @@ class UnSQL {
      * @param {import("./defs/types").EncryptionConfig} [saveParam.encryption] (optional) defines query level encryption configurations
      * @param {import("./defs/types").DebugTypes} [saveParam.debug] (optional) enables various debug mode
      * @param {Object} [saveParam.session] (optional) enables various debug mode
-     * @returns {Promise<{success:boolean, error?:*, result?:*}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
+     * 
+     * @returns {Promise<{success:boolean, error?:object, insertId?:number, changes?:number}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
      * @static
      * @memberof UnSQL
      */
