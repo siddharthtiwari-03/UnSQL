@@ -432,7 +432,7 @@ const prepCase = ({ alias, val, junction = 'and', values, encryption = undefined
         const thenPlaceholder = then == null || then == 'null' ? null : handlePlaceholder({ alias, value: then, junction, values, encryption, ctx })
         return `WHEN ${whenPlaceholder} THEN ${thenPlaceholder}`
     })
-    const elsePlaceholder = defaultElse == null || defaultElse == 'null' ? null : handlePlaceholder({ alias, value: defaultElse, ctx })
+    const elsePlaceholder = defaultElse == null || defaultElse == 'null' ? null : handlePlaceholder({ alias, value: defaultElse, ctx, values })
 
     if (as && ctx?.isMySQL) values.push(as)
     if (cast) return `CAST(CASE ${conditionalPlaceholders.join(' ')} ELSE ${elsePlaceholder} END AS ${dataTypes[cast] || 'CHAR'})${as ? ` AS ${ctx?.isMySQL ? '?' : `"${as}"`}` : ''}`
