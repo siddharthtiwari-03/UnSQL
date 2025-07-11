@@ -535,7 +535,7 @@ const response = await User.rawQuery({ // here user model is used just to utiliz
     where: {},
     groupBy: [],
     having: {},
-    orderBy: [],
+    orderBy: {},
     limit: undefined,
     offset: undefined,
     mode: 'append',
@@ -1158,7 +1158,7 @@ All objects are explained below:
             table: null, // table in sub-query to refer value to be used to create json
             alias: null, // local reference name for the table
             join: [], // associate another table as child
-            where: {} // filter record(s) in sub-query
+            where: {}, // filter record(s) in sub-query
             groupBy: [], // group record(s) in sub-query
             having: {}, // filter record(s) in sub-query (also using aggregate methods)
             orderBy: {}, // re-order record(s) in sub-query
@@ -1216,7 +1216,7 @@ All objects are explained below:
         alias: null, // local reference name for the table
         select: [], // column to be extracted
         join: [], // associate another table as child
-        where: {} // filter record(s) in sub-query
+        where: {}, // filter record(s) in sub-query
         groupBy: [], // group record(s) in sub-query
         having: {}, // filter record(s) in sub-query (also using aggregate methods)
         orderBy: {}, // re-order record(s) in sub-query
