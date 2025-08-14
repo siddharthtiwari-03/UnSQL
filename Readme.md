@@ -1235,7 +1235,7 @@ All objects are explained below:
             {
                 refer: {
                     select: ['departmentName'],
-                    from: 'departments_table',
+                    table: 'departments_table',
                     where: {
                         departmentId: 'u.departmentId'
                     }

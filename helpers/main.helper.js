@@ -251,7 +251,7 @@ const prepJoin = ({ alias, join = [], values, encryption = undefined, ctx = unde
             throw { message: `[Invalid]: 'using' property can either be an array of column names or an array of objects in { parentColumnName: childColumnName } format`, cause: `Invalid format for 'using' property inside 'join'` }
         }
         return sqlParts.join(' ')
-    })
+    }).join(' ')
 }
 
 /**

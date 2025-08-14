@@ -50,12 +50,13 @@ class UnSQL {
      * @param {import("./defs/types").EncryptionConfig} [findParam.encryption] (optional) defines query level encryption configurations
      * @param {import("./defs/types").DebugTypes} [findParam.debug] (optional) enables different debug modes
      * @param {Object} [findParam.session] (optional)
+     * @param {boolean} [findParam.includeMeta] (optional)
      * 
      * @returns {Promise<{success:boolean, error?:*, result?:*, meta?:*}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
      * @static
      * @memberof UnSQL
      */
-    static async find({ alias = undefined, select = [], join = [], where = {}, junction = 'and', groupBy = [], having = {}, orderBy = {}, limit = undefined, offset = undefined, encryption = {}, debug = false, session = undefined } = {}) {
+    static async find({ alias = undefined, select = [], join = [], where = {}, junction = 'and', groupBy = [], having = {}, orderBy = {}, limit = undefined, offset = undefined, encryption = {}, debug = false, session = undefined } = {}, includeMeta = false) {
 
         const defaultResp = handleDefaults(this)
         if (!defaultResp?.success) return defaultResp
@@ -79,7 +80,7 @@ class UnSQL {
             if (typeof offset === 'number') sqlParts.push(patchLimit(offset, values, this, 'OFFSET'))
 
             const debugMessage = 'Fetched records in'
-            return await handleExecutions[this?.config?.dialect]({ sql: sqlParts.join(' '), values, encryption, debug, session, config: this.config, debugMessage, methodType: 'all' })
+            return await handleExecutions[this?.config?.dialect]({ sql: sqlParts.join(' '), values, encryption, debug, session, config: this.config, debugMessage, methodType: 'all', includeMeta })
 
         } catch (error) {
             handleError(debug, error)
@@ -435,10 +436,11 @@ class UnSQL {
  * @param {Object} [options.config] global configuration object
  * @param {string} [options.debugMessage] debug message to be displayed in console
  * @param {boolean} [options.multiQuery] flag if sql contains multiple queries (only in 'mysql'), default is false
+ * @param {boolean} [options.includeMeta] flag if sql contains multiple queries (only in 'mysql'), default is false
  * @param {import("./defs/types").EncryptionConfig} [options.encryption] enables encryption
  * @returns {Promise<{success:false, error:*}|{success:true, result:*, meta?:*}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'results'
  */
-const executeMySQL = async ({ sql, values, debug = false, session = undefined, config, encryption = undefined, multiQuery = false, debugMessage = '' }) => {
+const executeMySQL = async ({ sql, values, debug = false, session = undefined, config, encryption = undefined, multiQuery = false, debugMessage = '', includeMeta = false }) => {
     const connection = await (session?.connection || config?.pool?.getConnection() || config?.connection)
     const isDebugging = debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true
     try {
@@ -456,7 +458,7 @@ const executeMySQL = async ({ sql, values, debug = false, session = undefined, c
         const [result, meta] = await connection[multiQuery ? 'query' : 'execute'](statement)
         if (!session) await connection?.commit()
         if (isDebugging) console.timeEnd(`${colors.blue}UnSQL benchmark:${colors.reset} ${colors.cyan}${debugMessage}${colors.reset}`)
-        return { success: true, result, meta }
+        return { success: true, result, ...(includeMeta ? { meta } : {}) }
     } catch (error) {
         handleError(debug, error)
         if (connection && !session) await connection?.rollback()
