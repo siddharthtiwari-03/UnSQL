@@ -196,7 +196,7 @@ class UnSQL {
                             continue
                         }
                         if (typeof val == 'object') values.push(JSON.stringify(val))
-                        else values.push(val == 'null' || val == 'undefined' || val == undefined ? null : val)
+                        else values.push(val == null || val == 'null' || val == 'undefined' || val == undefined ? null : val)
                         if (encrypt[col]) {
                             localSql.push(prepEncryption({ placeholder: (this?.isPostgreSQL ? `$${this._variableCount++}` : '?'), col, ctx: this, encrypt, encryption, values }))
                             continue
@@ -222,7 +222,7 @@ class UnSQL {
                                 continue
                             }
                             if (typeof val == 'object') values.push(JSON.stringify(val))
-                            else values.push(val == 'null' || val == 'undefined' || val == undefined ? null : val)
+                            else values.push(val == 'null' || val == null || val == 'undefined' || val == undefined ? null : val)
                             if (encrypt[col]) {
                                 localSql.push(prepEncryption({ placeholder: (this?.isPostgreSQL ? `$${this._variableCount++}` : '?'), col, ctx: this, encrypt, encryption, values }))
                                 continue
