@@ -191,11 +191,11 @@ class UnSQL {
                         const localSql = []
                         localSql.push(this.isMySQL ? '?? =' : `"${col}" =`)
                         if (this.isMySQL) values.push(col)
-                        if (typeof val == 'object' && this.isPostgreSQL) {
+                        if (typeof val == 'object' && val != null && this.isPostgreSQL) {
                             localSql.push(prepJsonbUpdate(col, val, (Object.keys(where).length || Object.keys(having).length)))
                             continue
                         }
-                        if (typeof val == 'object') values.push(JSON.stringify(val))
+                        if (typeof val == 'object' && val != null) values.push(JSON.stringify(val))
                         else values.push(val == null || val == undefined || val === 'null' || val === 'undefined' ? null : val)
                         if (encrypt[col]) {
                             localSql.push(prepEncryption({ placeholder: (this?.isPostgreSQL ? `$${this._variableCount++}` : '?'), col, ctx: this, encrypt, encryption, values }))
@@ -217,11 +217,11 @@ class UnSQL {
                             const localSql = []
                             localSql.push(this.isMySQL ? '?? =' : `"${col}" =`)
                             if (this.isMySQL) values.push(col)
-                            if (typeof val == 'object' && this.isPostgreSQL) {
+                            if (typeof val == 'object' && val != null && this.isPostgreSQL) {
                                 localSql.push(prepJsonbUpdate(col, val, (Object.keys(where).length || Object.keys(having).length)))
                                 continue
                             }
-                            if (typeof val == 'object') values.push(JSON.stringify(val))
+                            if (typeof val == 'object' && val != null) values.push(JSON.stringify(val))
                             else values.push(val == null || val == undefined || val === 'null' || val === 'undefined' ? null : val)
                             if (encrypt[col]) {
                                 localSql.push(prepEncryption({ placeholder: (this?.isPostgreSQL ? `$${this._variableCount++}` : '?'), col, ctx: this, encrypt, encryption, values }))
