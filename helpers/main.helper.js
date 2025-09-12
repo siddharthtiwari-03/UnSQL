@@ -268,12 +268,16 @@ const prepJson = ({ val, encryption = undefined, junction = 'and', values, named
 
     const sqlParts = []
     const { value, aggregate = false, table = null, alias = null, join = [], where = {}, groupBy = [], having = {}, orderBy = {}, limit = undefined, offset = undefined, as = null, extract = null, contains = null, compare = {} } = val
+
+    const isAggregatedLimit = table && aggregate && (limit || offset)
+    const UnSQLJsonAlias = `UNSQL_JSON_ALIAS${table ? `_${table}` : ''}`
+
     if (table || Object.keys(where).length || Object.keys(having).length) sqlParts.push(`(SELECT`)
 
     let jsonSql = ''
     if (typeof value === 'string') {
-        const jsPlaceholder = prepPlaceholder({ value, alias, ctx })
-        if (isVariable(jsPlaceholder)) values.push(prepName({ alias, value, ctx }))
+        const jsPlaceholder = prepPlaceholder({ value, alias: isAggregatedLimit ? UnSQLJsonAlias : alias, ctx })
+        if (isVariable(jsPlaceholder)) values.push(prepName({ alias: isAggregatedLimit ? UnSQLJsonAlias : alias, value, ctx }))
         jsonSql = jsPlaceholder
     } else {
         if (ctx?.isPostgreSQL) {
@@ -282,7 +286,7 @@ const prepJson = ({ val, encryption = undefined, junction = 'and', values, named
             jsonSql = Object.entries(value).map(([k, v]) => {
                 const kPlaceholder = '?'
                 if (!Array.isArray(value)) values.push(k)
-                const vPlaceholder = handlePlaceholder({ value: v, alias, junction, values, encryption, ctx })
+                const vPlaceholder = handlePlaceholder({ value: v, alias: isAggregatedLimit ? UnSQLJsonAlias : alias, junction, values, encryption, ctx })
                 return (!Array.isArray(value) ? `${kPlaceholder}, ` : '') + vPlaceholder
             }).join(', ')
             if (Array.isArray(value)) jsonSql = `JSON_ARRAY(${jsonSql})`
@@ -295,29 +299,36 @@ const prepJson = ({ val, encryption = undefined, junction = 'and', values, named
         else if (ctx?.isSQLite) jsonSql = `JSON_GROUP_ARRAY(${jsonSql})`
     }
     jsonSql = prepJsonExtract(jsonSql, extract, values, ctx)
-    jsonSql = prepJsonContains({ jsonRef: jsonSql, contains, values, alias, ctx })
+    jsonSql = prepJsonContains({ jsonRef: jsonSql, contains, values, alias: isAggregatedLimit ? UnSQLJsonAlias : alias, ctx })
 
     sqlParts.push(jsonSql) // finally patching jsonSql (with all wrappers and methods) to main sql
 
     if (table) {
-        sqlParts.push(`FROM ${ctx?.isMySQL ? '??' : `"${table}"`}`)
+        sqlParts.push(`FROM`)
+        // will be patched only if aggregate with limit and offset are set
+        if (aggregate && (limit || offset)) sqlParts.push(`(SELECT * FROM`)
+        sqlParts.push(ctx?.isMySQL ? '??' : `"${table}"`)
         if (ctx.isMySQL) values.push(table)
+
         if (alias) {
             if (ctx.isMySQL) values.push(alias)
             sqlParts.push(ctx.isMySQL ? '??' : `"${alias}"`)
         }
 
+        if (join.length) sqlParts.push(prepJoin({ alias, join, values, encryption, ctx }))
+        if (Object.keys(where).length) sqlParts.push(`WHERE ${prepWhere({ alias, where, junction: 'and', values, encryption, ctx })}`)
+        if (groupBy.length > 0) sqlParts.push(patchGroupBy({ groupBy, alias, values, ctx }))
+        if (Object.keys(having).length) sqlParts.push(`HAVING ${prepWhere({ alias, where: having, junction: 'and', values, encryption, ctx })}`)
+        if (Object.keys(orderBy).length > 0) sqlParts.push(prepOrderBy({ alias, orderBy, values, ctx }))
+        if (typeof limit === 'number') sqlParts.push(patchLimit(limit, values, ctx))
+        if (typeof offset === 'number') sqlParts.push(patchLimit(offset, values, ctx, 'OFFSET'))
+
+        sqlParts.push(`)`)
+        // intermediate alias only patched only if aggregate with limit and offset are set
+        if (aggregate && (limit || offset)) {
+            sqlParts.push(`AS ${UnSQLJsonAlias})`)
+        }
     }
-
-    if (join.length) sqlParts.push(prepJoin({ alias, join, values, encryption, ctx }))
-    if (Object.keys(where).length) sqlParts.push(`WHERE ${prepWhere({ alias, where, junction: 'and', values, encryption, ctx })}`)
-    if (groupBy.length > 0) sqlParts.push(patchGroupBy({ groupBy, alias, values, ctx }))
-    if (Object.keys(having).length) sqlParts.push(`HAVING ${prepWhere({ alias, where: having, junction: 'and', values, encryption, ctx })}`)
-    if (Object.keys(orderBy).length > 0) sqlParts.push(prepOrderBy({ alias, orderBy, values, ctx }))
-    if (typeof limit === 'number') sqlParts.push(patchLimit(limit, values, ctx))
-    if (typeof offset === 'number') sqlParts.push(patchLimit(offset, values, ctx, 'OFFSET'))
-
-    if (table || Object.keys(where).length || Object.keys(having).length) sqlParts.push(`)`)
 
     if (as || named) {
         if (ctx?.isMySQL) {
