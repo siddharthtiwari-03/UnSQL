@@ -1,4 +1,3 @@
-// @ts-check
 const { colors, handleError, handleQueryDebug } = require("./helpers/console.helper")
 const { prepSelect, prepWhere, prepJoin, prepOrderBy, patchGroupBy, patchLimit, prepEncryption, isVariable } = require("./helpers/main.helper")
 const { prepName } = require("./helpers/name.helper")
@@ -97,7 +96,6 @@ class UnSQL {
      * @param {import("./defs/types").WhereObject} [saveParam.where] (optional) used to filter records to be updated
      * @param {'and'|'or'} [saveParam.junction] (optional) defines default behavior that is used to join different 'child properties' inside 'where' property, default value is 'and'
      * @param {Array<string>} [saveParam.groupBy] (optional) allows to group result based on single (or list of) column(s)
-     * @param {import("./defs/types").HavingObject} [saveParam.having] (optional) allows to perform comparison on the group of records, accepts nested conditions as object along with aggregate method wrappers viz. {sum:...}, {avg:...}, {min:...}, {max:...} etc
      * @param {Object} [saveParam.upsert] (optional) object data to be updated in case of 'duplicate key entry' found in the database
      * @param {{[column:string]:{secret?:string, iv?:string, sha?:import("./defs/types").EncryptionSHAs} }} [saveParam.encrypt] (optional) define encryption overrides for column(s)
      * @param {import("./defs/types").EncryptionConfig} [saveParam.encryption] (optional) defines query level encryption configurations
@@ -108,7 +106,7 @@ class UnSQL {
      * @static
      * @memberof UnSQL
      */
-    static async save({ alias = undefined, data = [], where = {}, junction = 'and', groupBy = [], having = {}, upsert = {}, encrypt = {}, encryption = {}, debug, session }) {
+    static async save({ alias = undefined, data = [], where = {}, junction = 'and', groupBy = [], upsert = {}, encrypt = {}, encryption = {}, debug, session }) {
 
         patchDefaults(this)
 
@@ -265,7 +263,6 @@ class UnSQL {
      * @param {import("./defs/types").WhereObject} [deleteParam.where] (optional) filter record(s) to be updated
      * @param {'and'|'or'} [deleteParam.junction] (optional) defines default behavior that is used to join different 'child properties' inside 'where' property, default value is 'and'
      * @param {Array<string>} [deleteParam.groupBy] (optional) allows to group result based on single (or list of) column(s)
-     * @param {import("./defs/types").HavingObject} [deleteParam.having] (optional) allows to perform comparison on the group of records, accepts nested conditions as object along with aggregate method wrappers viz. {sum:...}, {avg:...}, {min:...}, {max:...} etc
      * @param {import("./defs/types").EncryptionConfig} [deleteParam.encryption] (optional) defines query level encryption configurations
      * @param {import("./defs/types").DebugTypes} [deleteParam.debug] (optional) enables various debug mode
      * @param {Object} [deleteParam.session] (optional) global session reference for transactions and rollback
@@ -275,7 +272,7 @@ class UnSQL {
      * @static
      * @memberof UnSQL
      */
-    static async delete({ alias = undefined, where = {}, junction = 'and', groupBy = [], having = {}, debug = false, encryption = undefined, session = undefined } = {}) {
+    static async delete({ alias = undefined, where = {}, junction = 'and', groupBy = [], debug = false, encryption = undefined, session = undefined } = {}) {
 
         patchDefaults(this)
 

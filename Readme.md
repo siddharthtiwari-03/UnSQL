@@ -364,7 +364,7 @@ Each of these properties is explained below:
 
 ### 3.2 Save Method
 
-`save` is a *static, asynchronous* method, used to **insert | update | upsert** record(s) into the database. It can *insert | update* single or even multiple records (in bulk) in single execution. It also supports data Encryption during this process. When only `data` property is set, this method operates in **insert mode**, when along with `data`, any or both of `where` and `having` are also set, this method operates in **update mode**, and when along with `data`, `upsert` property is set, this method operates in **upsert mode**. Interface along with default values for this method is shown below:
+`save` is a *static, asynchronous* method, used to **insert | update | upsert** record(s) into the database. It can *insert | update* single or even multiple records (in bulk) in single execution. It also supports data Encryption during this process. When only `data` property is set, this method operates in **insert mode**, when along with `data`, `where` is also set, this method operates in **update mode**, and when along with `data`, `upsert` property is set, this method operates in **upsert mode**. Interface along with default values for this method is shown below:
 
 ```javascript
 const response = await User.save({
@@ -373,7 +373,6 @@ const response = await User.save({
     where: {},
     junction: 'and',
     groupBy: [],
-    having: {},
     upsert: {},
     encrypt: {},
     encryption: {},
@@ -418,7 +417,6 @@ Each of these properties is explained below:
    - `where` same as explained [here](#where), used to filter record(s) to be updated
    - `junction` same as explained [here](#junction)
    - `groupBy` same as explained [here](#groupBy)
-   - `having` same as explained [here](#having), used to filter record(s) to be updated
    - <span id="encrypt">`encrypt`</span> accepts `key: value` pair, where `key` can be column name and `value` is another object that holds *configurations* like `secret`, `iv` and `sha` that will be used to encrypt this column. When no properties are set i.e. `value` is set as `{}`, in such a case, *configurations* defined in `encryption` property (local or global) is used. This property helps encrypting different columns with different `secret`
    - `debug` same as explained [here](#debug)
    - `encryption` same as explained [here](#encryption)
@@ -428,7 +426,7 @@ Each of these properties is explained below:
 
 ### 3.3 Delete Method
 
-`delete` is a *static, asynchronous* method, used to remove record(s) from the database. `where` and `having` properties are used to *filter* record(s) that will be removed, if no *conditions* are provided in `where` and (or) `having` property, this method will remove all records in the database. `safeMode` property (when set to `true`) in the `config` property of the model class helps prevent accidental *delete all* of the records. Interface for this method along with default values is shown below:
+`delete` is a *static, asynchronous* method, used to remove record(s) from the database. `where` property is used to *filter* record(s) that will be removed, if no *conditions* are provided in `where` property, this method will remove all records in the database. `safeMode` property (when set to `true`) in the `config` property of the model class helps prevent accidental *delete all* of the records. Interface for this method along with default values is shown below:
 
 ```javascript
 // Interface:
@@ -437,7 +435,6 @@ Each of these properties is explained below:
     where: {},
     junction: 'and',
     groupBy: [],
-    having: {},
     encryption: {},
     debug: false,
     session: undefined
@@ -463,7 +460,6 @@ Each of these properties is explained below:
    - `alias` same as explained [here](#alias)
    - `where` same as explained [here](#where), used to filter record(s) to be removed
    - `junction` same as explained [here](#junction)
-   - `having` same as explained [here](#having), used to filter record(s) to be removed
    - `debug` same as explained [here](#debug)
    - `encryption` same as explained [here](#encryption)
    - `session` same as explained [here](#session)
@@ -721,7 +717,7 @@ All objects are explained below:
             decrypt: null, // decrypt 'value' using properties inside this
             encoding: 'utf8mb4', // convert decrypted buffer array using this
             as: null, // local reference name to this object 'value'
-            compare: {} // compare 'value' returned, similar to 'where' and 'having'
+            compare: {} // compare 'value' returned, similar to 'where'
         }
     }
 
@@ -778,7 +774,7 @@ All objects are explained below:
     - <span id="sha">`sha`</span> determines the **hash algorithm** to be used (defaults to `512`) only used by `mysql`. `postgresql` does not require this.
     6. `sqlite` does not support built-in AES Encryption/Decryption hence will throw error if values are set
     7. <span id="encoding">`encoding`</span> (only used with `mysql`) determines the character set to be used while decrypting data. It can be any character set supported by `mysql` like: `'utf8mb4'` (default) | `'latin1'` | `'ascii'` | `'utf8'` | `'ucs2'` | `'utf16'` etc
-    8. <span id="compare">`compare`</span> is similar to `where` and `having`, it compares value returned by this object to the condition specified in this object.
+    8. <span id="compare">`compare`</span> is similar to `where`, it compares value returned by this object to the condition specified in this object.
     9. In `replace` property, due to limitation of implementation by SQL, `target` and `replaceWith` properties are always expected to be static string and never a column name, hence adding a prefix of `#` is not required for these properties
 
 - #### **Numeric Wrapper** (Keyword <span id="num">`num`</span>): 
@@ -800,7 +796,7 @@ All objects are explained below:
             decrypt: null, // decrypt 'value' using properties inside this
             encoding: 'utf8mb4', // convert decrypted buffer array using this encoding
             as: null, // local reference name to this object 'value'
-            compare: {} // compare 'value' returned, similar to 'where' and 'having'
+            compare: {} // compare 'value' returned, similar to 'where'
         } 
     }
 
@@ -842,7 +838,7 @@ All objects are explained below:
             encoding: 'utf8mb4', // convert decrypted buffer array using this encoding
             format: null, // format 'value' to desired form using pattern defined here
             as: null, // local reference name to this object 'value'
-            compare: {} // compare 'value' returned, similar to 'where' and 'having'
+            compare: {} // compare 'value' returned, similar to 'where'
         } 
     }
 
