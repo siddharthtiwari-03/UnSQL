@@ -728,7 +728,7 @@ const prepNumeric = ({ alias, val, junction = 'and', values, named = false, encr
     if (isVariable(sql)) values.push(prepName({ alias, value, ctx }))
 
     // envelop decrypt
-    if (decrypt) sql = prepDecryption({ placeholder, value, decrypt, values, encoding, encryption, ctx })
+    if (decrypt) sql = prepDecryption({ placeholder: sql, value, decrypt, values, encoding, encryption, ctx })
 
     // apply power
     if (power != null) {
