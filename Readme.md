@@ -372,7 +372,6 @@ const response = await User.save({
     data,
     where: {},
     junction: 'and',
-    groupBy: [],
     upsert: {},
     encrypt: {},
     encryption: {},
@@ -416,7 +415,6 @@ Each of these properties is explained below:
    - <span id="data">`data`</span> (required) this is the actual data that will be **inserted | updated** into the database. It can either be a **single object** (supports **insert | update | upsert**) or an **array of objects** (supports **only insert**)
    - `where` same as explained [here](#where), used to filter record(s) to be updated
    - `junction` same as explained [here](#junction)
-   - `groupBy` same as explained [here](#groupBy)
    - <span id="encrypt">`encrypt`</span> accepts `key: value` pair, where `key` can be column name and `value` is another object that holds *configurations* like `secret`, `iv` and `sha` that will be used to encrypt this column. When no properties are set i.e. `value` is set as `{}`, in such a case, *configurations* defined in `encryption` property (local or global) is used. This property helps encrypting different columns with different `secret`
    - `debug` same as explained [here](#debug)
    - `encryption` same as explained [here](#encryption)
@@ -434,7 +432,6 @@ Each of these properties is explained below:
     alias: undefined,
     where: {},
     junction: 'and',
-    groupBy: [],
     encryption: {},
     debug: false,
     session: undefined

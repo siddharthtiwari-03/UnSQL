@@ -5,11 +5,11 @@ const { prepName } = require("./name.helper")
  * prepares placeholder depending upon the 'value' parameter
  * @function prepPlaceholder
  * @param {object} options
- * @param {string|boolean|number|Date} options.value string / number / boolean / array of string to generate a placeholder for
- * @param {string} [options.alias] alias for the value
- * @param {object} [options.ctx] string / number / boolean / array of string to generate a placeholder for
+ * @param {string|boolean|number|Date|Record<string, any>} options.value string / number / boolean / array of string to generate a placeholder for
+ * @param {string|null} [options.alias] alias for the value
+ * @param {any} [options.ctx] string / number / boolean / array of string to generate a placeholder for
  * 
- * @returns {('?'|'??'|string)} placeholder or a constant function name
+ * @returns {'?'|'??'|string|number|boolean|null} placeholder or a constant function name
  */
 const prepPlaceholder = ({ value, alias = null, ctx = undefined }) => {
     if (typeof value === 'string' && value.includes('*')) {
@@ -22,10 +22,10 @@ const prepPlaceholder = ({ value, alias = null, ctx = undefined }) => {
             else if (value === 'localTime') return `TIME('now', 'localtime')`
             else if (value === 'localTimestamp') return `DATETIME('now', 'localtime')`
         }
-        return constantFunctions[value]
+        return constantFunctions[String(value)]
     }
-    if (value === null || value === 'null' || value === 'NULL') return NULL
-    if (Date.parse(value) || parseInt(value) || parseFloat(value) || typeof value === 'boolean' || (typeof value === 'string' && value?.startsWith('#')) || value === ' ' || value === '') return ctx?.isPostgreSQL ? `$${ctx._variableCount++}` : '?'
+    if (value === null || value === 'null' || value === 'NULL') return null
+    if (typeof value === 'number' || typeof value === 'boolean' || (typeof value === 'string' && (value?.startsWith('#') || Date.parse(value) || parseInt(value) || parseFloat(value))) || value === ' ' || value === '') return ctx?.isPostgreSQL ? `$${ctx._variableCount++}` : '?'
     return ctx.isMySQL ? '??' : prepName({ value, alias, ctx })
 }
 

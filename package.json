@@ -10,6 +10,7 @@
     "mysql"
   ],
   "main": "unsql.js",
+  "types": "types/unsql.d.ts",
   "author": "Siddharth Tiwari <dev.unsql@gmail.com>",
   "contributors": [
     "Siddharth Tiwari <dev.unsql@gmail.com>"
@@ -18,7 +19,8 @@
     "helpers/",
     "defs/",
     "unsql.js",
-    "legacy.js"
+    "legacy.js",
+    "types/"
   ],
   "exports": {
     "./legacy": "./legacy.js",
@@ -34,5 +36,10 @@
   "bugs": {
     "url": "https://github.com/siddharthtiwari-03/UnSQL/issues"
   },
-  "homepage": "https://github.com/siddharthtiwari-03/UnSQL#readme"
+  "homepage": "https://github.com/siddharthtiwari-03/UnSQL#readme",
+  "devDependencies": {
+    "@types/node": "^24.9.1",
+    "eslint": "^9.38.0",
+    "typescript": "^5.9.3"
+  }
 }

@@ -1,5 +1,11 @@
+/**
+ * 
+ * @param {*} value 
+ * @returns 
+ */
 const checkConstants = value => (value != null && value.toString().includes('*')) || 'pi' === value || 'now' === value || 'currentDate' === value || 'currentTime' === value || 'currentTimestamp' === value || 'localTime' === value || 'localTimestamp' === value || 'utcTimestamp' === value || 'isNull' === value || 'isNotNull' === value || 'null' === value || 'NULL' === value || null === value
 
+/** @type {Record<string, string>} */
 const constantFunctions = {
     now: 'NOW()',
     currentDate: 'CURRENT_DATE',
@@ -14,6 +20,7 @@ const constantFunctions = {
     isNotNull: 'IS NOT NULL'
 }
 
+/** @type {Record<string, string>} */
 const dataTypes = {
     date: 'DATE',
     dateTime: 'DATETIME',
@@ -26,6 +33,7 @@ const dataTypes = {
     binary: 'BINARY',
 }
 
+/** @type {Record<string, string>} */
 const aggregateFunctions = {
     sum: 'SUM',
     avg: 'AVG',

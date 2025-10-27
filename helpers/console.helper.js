@@ -7,6 +7,13 @@ const colors = {
     cyan: "\x1b[36m",
 }
 
+/**
+ * 
+ * @param {import("../defs/types").DebugTypes} debug 
+ * @param {string} sql 
+ * @param {Array<*>} values 
+ * @param {string} prepared 
+ */
 const handleQueryDebug = (debug, sql, values, prepared = '') => {
     if (debug === true || debug === 'benchmark-query' || debug == 'query') {
         console.info(`\n${colors.blue}******************************************************************${colors.reset}`)
@@ -21,7 +28,11 @@ const handleQueryDebug = (debug, sql, values, prepared = '') => {
     }
 }
 
-
+/**
+ * 
+ * @param {import("../defs/types").DebugTypes} debug 
+ * @param {*} error 
+ */
 const handleError = (debug, error) => {
     if (debug === true || debug === 'benchmark-error' || debug == 'error') {
         console.error(`\n${colors.red}******************************************************************${colors.reset}`)

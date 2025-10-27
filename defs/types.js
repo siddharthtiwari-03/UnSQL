@@ -17,7 +17,7 @@
 
 /**
  * debug types
- * @typedef {'query'|'error'|'benchmark'|'benchmark-query'|'benchmark-error'|boolean} DebugTypes
+ * @typedef {'query'|'error'|'benchmark'|'benchmark-query'|'benchmark-error'|boolean|undefined} DebugTypes
  */
 
 /**
@@ -36,7 +36,7 @@
  * @prop {boolean} [safeMode=true] protects accidental execution of 'delete-all'
  * @prop {boolean} [devMode=false] prevents 'reset' of data, enables Export/Import of records
  * @prop {Object} [connection] mysql 'connection' object
- * @prop {Object} [pool] mysql connection 'pool' object
+ * @prop {*} [pool] mysql connection 'pool' object
  * @prop {'mysql'|'postgresql'|'sqlite'} [dialect='mysql'] dialect to be used
  * @prop {'unknown'|EncryptionModes} [dbEncryptionMode='unknown'] dialect to be used
  * @prop {EncryptionConfig} [encryption] defines Encryption/Decryption config for this model
@@ -162,7 +162,7 @@
 
 /**
  * value options
- * @typedef {string|number|boolean|WrapperMethods} ValueOptions
+ * @typedef {string|number|boolean|Date|WrapperMethods} ValueOptions
  */
 
 /**
@@ -193,26 +193,28 @@
 /**
  * json base object
  * @typedef {Object} JsonObject
- * @prop {string|{[key:string]: ValuesObject}|Array} value
+ * @prop {string|{[key:string]: ValuesObject}|Array<*>} value
  * @prop {boolean} [aggregate]
  * @prop {string} [extract]
  * @prop {string|number|boolean|Array<string|number|boolean>} [contains]
  * @prop {ComparatorObjects} [compare]
  * @typedef {PartialQuery & JsonObject} BaseJson
-*/
+ */
 
 /**
  * sub-query object
  * @typedef {Object} SubQuery
  * @prop {SelectObject} [select]
+ * @prop {'and'|'or'} [junction]
  * @typedef {PartialQuery & SubQuery} BaseQuery
  */
 
 /**
- * sub-query object
+ * join object
  * @typedef {Object} JoinQuery
  * @prop {SelectObject} [select]
  * @prop {'left'|'right'|'inner'|'fullOuter'|'cross'} [type]
+ * @prop {'and'|'or'} [junction]
  * @prop {string[]|{[column:string]:string}} using
  * @typedef {PartialQuery & JoinQuery} BaseJoin
  */
@@ -249,10 +251,9 @@
  * @prop {BaseAggregate} [avg]
  */
 
-
 /**
  * select types
- * @typedef {ValuesObject|AggregateWrappers} selectTypes
+ * @typedef {ValueOptions|AggregateWrappers} selectTypes
  */
 
 /**
@@ -280,7 +281,13 @@
  * @typedef {BaseJoin[]} JoinObject
  */
 
-// Composite definitions end here
+/**
+ * Logical junction types
+ * @typedef {'and'|'or'} JunctionKeys
+ */
 
+/**
+ * @typedef {'and'|'or'|'between'|'if'|'case'|'count'|'sum'|'min'|'max'|'avg'} HandleFuncKey
+ */
 
 exports.unused = {}
