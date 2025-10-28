@@ -3,7 +3,7 @@
 ![NPM Downloads](https://img.shields.io/npm/dm/unsql)
 ![NPM License](https://img.shields.io/npm/l/unsql "UnSQL License")
 
-**UnSQL** is a lightweight, open-source JavaScript library that facilitates class based, schemaless interactions with the structured databases viz. `MySQL`, `PostgreSQL` and `SQLite` through dynamic query generation. It is the only library that supports single codebase across all dialects. It is compatible with **NodeJS** based javascript runtime environments like **ExpressJS**, **Fastify** and **NextJS**, also works with serverless applications like AWS lambda (Through Lambda layers) and Vercel functions and can be used to create cross-platform apps using frameworks like **ElectronJS**.
+**UnSQL** is a scalable, lightweight, open-source JavaScript library that facilitates class based (schemaless) interactions with the structured databases viz. `MySQL`, `PostgreSQL` and `SQLite` through dynamic query generation. It is the only library that supports single codebase across all dialects. It is compatible with **NodeJS** based javascript (and typescript) runtime environments like **ExpressJS**, **Fastify** and **NextJS**, also works with serverless applications like AWS lambda (Through Lambda layers) and Vercel functions and can be used to create cross-platform apps using frameworks like **ElectronJS**.
 
 ## Table of Contents
 1. [Overview](#1-overview)
@@ -53,6 +53,8 @@ import { UnSQL } from 'unsql'
 > [Documentation for v1.x](https://github.com/siddharthtiwari-03/UnSQL/tree/legacy "Open v1.x documentation") can be found on GitHub
 
 ### 1.2 What's New?
+
+**Version v2.2** brought enhancements towards support in typescript environments towards better type hinting and built-in **types** support along with standard '*.d.ts' files for a seamless typescript integration, code optimizations and more
 
 **Version v2.1** brought support for **Multiple Dialects** along with **Unified codebase**, **Bug Fixes**, **Improved Code Suggestions**, brought back the **rawQuery Method**, enhanced **Session Manager** and better code optimization under the hood and much more
 

@@ -1152,7 +1152,7 @@ const handleBetween = ({ alias, val, junction, parent, values, encryption, ctx }
 
 /** @param {*} params */
 const replaceDatePatterns = ({ format, dialect = 'mysql' }) => {
-    
+
     /** 
      * @type {Record<string, *>}
      */

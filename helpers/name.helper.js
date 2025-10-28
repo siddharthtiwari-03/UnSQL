@@ -1,60 +1,4 @@
-// const sanitizeSql = (input) => {
-//     const sqlKeywords = /SELECT |INSERT |UPDATE |DELETE |DROP |UNION |;|\\'|\\\"|\-\-|\/\*|\*\/|\%|CONCAT|CHAR|SLEEP|WAITFOR DELAY/i // Basic blacklist
-//     const matched = RegExp(sqlKeywords).exec(input)?.[0]
-//     if (!!matched) throw new Error('SQL injection detected! while sanitizing: ' + input + ', threat type detected: ' + matched, { cause: 'SQL injection with keyword: ' + matched + ' detected' })
-//     // More complex regular expressions can be added, but they are not foolproof.
-//     return input; // No obvious SQL injection detected
-// }
-
-// // New function for escaping internal quotes
-// const escapeIdentifier = (input) => {
-//     // Escapes a double quote (") by replacing it with two double quotes ("")
-//     // This is the standard for PostgreSQL/SQLite identifier escaping.
-//     return input.replace(/"/g, '""');
-// }
-
-// /**
-//  * prepares name to be injected against a placeholder during query execution / preparing statement
-//  * @function prepName
-//  * @param {object} nameBuilder
-//  * @param {string} [nameBuilder.alias] local reference for the table name
-//  * @param {*} nameBuilder.value actual value to prepare name for
-//  * @param {*} [nameBuilder.ctx] context reference
-//  * @returns {string} prepared name to replace the placeholder
-//  */
-// const prepName = ({ alias, value, ctx = undefined }) => {
-//     if (typeof value === 'string' && value?.startsWith('#')) return value.substring(1)
-//     if (typeof value == 'string' && value.trim() == '') return value
-//     if (typeof value === 'number' || typeof value === 'boolean') return value
-//     if (!isNaN(Date.parse(value)) || !isNaN(parseInt(value))) return value
-
-//     // 1. Process dot-separated identifiers (table.column)
-//     if (value.includes('.')) {
-//         const [table, column] = value.split('.')
-//         // Apply escaping to both parts
-//         const safeTable = escapeIdentifier(sanitizeSql(table))
-//         const safeColumn = escapeIdentifier(sanitizeSql(column))
-
-//         return !ctx?.isMySQL
-//             ? `"${safeTable}"."${safeColumn}"` // PostgreSQL/SQLite
-//             : value // MySQL (handled by ??)
-//     }
-
-//     // 2. Process single identifiers
-//     const prefix = alias ? `${!ctx?.isMySQL ? `"${escapeIdentifier(alias)}"` : alias}.` : ''
-
-//     // Apply escaping to the single identifier
-//     const safeValue = escapeIdentifier(sanitizeSql(value))
-
-//     return !ctx?.isMySQL
-//         ? `${prefix}"${safeValue}"` // PostgreSQL/SQLite
-//         : `${prefix}\`${safeValue}\`` // MySQL (using backticks)
-// }
-
-// module.exports = { prepName }
-// ** CRITICAL SECURITY FIX: Expanded Blacklist (Secondary Defense) **
-// Corrected to remove extraneous spaces around pipe separators and inside hex range
-const sqlKeywords = /--|;|'|"|`|SELECT\s|INSERT\s|UPDATE\s|DELETE\s|DROP\s|UNION\s|EXCEPT\s|INTERSECT\s|OR\s|AND\s|XOR\s|EXEC|CALL|XP_CMDSHELL|WAITFOR\s|BENCHMARK|SLEEP\s|FROM\s|WHERE\s|ORDER\s|GROUP\s|CAST\(|CONVERT\(|CHAR\(|\/\*|\*\/|0x[0-9A-Fa-f]+|%/ig
+const sqlKeywords = new RegExp("--|;|'|\"|SELECT\\s|INSERT\\s|UPDATE\\s|DELETE\\s|DROP\\s|UNION\\s|EXCEPT\\s|INTERSECT\\s|OR\\s|AND\\s|XOR\\s|EXEC|CALL|XP_CMDSHELL|WAITFOR\\s|BENCHMARK|SLEEP\\s|FROM\\s|WHERE\\s|ORDER\\s|GROUP\\s|CAST\\(|CONVERT\\(|CHAR\\(|/\\*|\\*/|0x[0-9A-Fa-f]+|%", "ig")
 
 /**
  * Checks for known SQL injection patterns (Blacklist).
@@ -65,9 +9,9 @@ const sqlKeywords = /--|;|'|"|`|SELECT\s|INSERT\s|UPDATE\s|DELETE\s|DROP\s|UNION
  */
 const sanitizeSql = (input) => {
     // Escape and Sanitize must be called on raw value before quoting
-    const matched = RegExp(sqlKeywords).exec(input)?.[0]
+    const matched = sqlKeywords.exec(input)?.[0]
     if (matched) {
-        throw { error: 'SQL injection detected! while sanitizing: ' + input + ', threat type detected: ' + matched }
+        throw new Error(`SQL injection detected! while sanitizing: ${input}, threat type detected: ${matched}`)
     }
     return input;
 }
@@ -82,7 +26,7 @@ const validateIdentifierCharacters = (value) => {
     // Strong Whitelist: Allow only A-Z, a-z, 0-9, and underscore (_).
     const isValid = /^[a-zA-Z0-9_]+$/.test(value)
     if (!isValid) {
-        throw { error: `Invalid characters detected in SQL identifier: ${value}. Only alphanumeric characters and underscore are allowed.` }
+        throw new Error(`Invalid characters detected in SQL identifier: ${value}. Only alphanumeric characters and underscore are allowed.`)
     }
 }
 
@@ -142,7 +86,7 @@ const prepName = ({ alias, value, ctx = undefined }) => {
 
     return !ctx?.isMySQL
         ? `${prefix}"${safeValue}"` // PostgreSQL/SQLite: Quoted and escaped
-        : `${prefix}\`${safeValue}\`` // MySQL: Uses backticks or relies on '??' elsewhere
+        : `${prefix}${safeValue}` // MySQL: Uses backticks will be patched automatically during preparing the statement
 }
 
 module.exports = {
