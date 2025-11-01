@@ -24,7 +24,10 @@
   ],
   "exports": {
     "./legacy": "./legacy.js",
-    ".": "./unsql.js",
+    ".": {
+      "types": "./types/unsql.d.ts",
+      "default": "./unsql.js"
+    },
     "./next": "./unsql.js",
     "./package.json": "./package.json"
   },
