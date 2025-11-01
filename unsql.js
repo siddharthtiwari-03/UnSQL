@@ -305,7 +305,7 @@ class UnSQL {
      * @description rawQuery method is used to execute raw SQL query on the database
      * @param {Object} rawQueryParams
      * @param {string} rawQueryParams.sql (required) SQL query to be executed
-     * @param {Array<*>} rawQueryParams.values (optional) values to be interpolated in the query
+     * @param {Array<*>} [rawQueryParams.values] (optional) values to be interpolated in the query
      * @param {import("./defs/types").EncryptionConfig} [rawQueryParams.encryption] (optional) enables debug mode
      * @param {import("./defs/types").DebugTypes} [rawQueryParams.debug] (optional) enables debug mode
      * @param {boolean} [rawQueryParams.multiQuery] (optional) flag if sql contains multiple queries (only in 'mysql'), default is false
