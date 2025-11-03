@@ -353,15 +353,15 @@ Each of these properties is explained below:
   - <span id="encryption">`encryption`</span> defines configurations (similar to `encryption` inside [`config`](#231-config-property) property) but limited to a specific execution (local level)
   - <span id="debug">`debug`</span> enables various debug modes and prints to console: dynamically generated query (un-prepared and prepared statements), values to be injected, errors, benchmarks, based on the selected mode as explained below:
 
-      | Mode               | Description                                                         |
-      | ------------------ | ------------------------------------------------------------------- |
-      | `'query'`          | logs **prepared**, **un-prepared**, **values**                      |
-      | `'error'`          | logs entire error object in the console                             |
-      | `'benchmark'`      | logs out the time taken to execute the query                        |
-      | `benchmark-query'` | enables combination of `'query'` and `'benchmark'` modes            |
-      | `benchmark-error'` | enables combination of `'error'` and `'benchmark'` modes            |
-      | `true`             | enables all three modes i.e. `'query'`, `'error'` and `'benchmark'` |
-      | `false`            | (default) disables all debug modes                                  |
+      | Mode               | Description                                                            |
+      | ------------------ | ---------------------------------------------------------------------- |
+      | `'query'`          | logs **un-prepared** and **prepared** statements along with **values** |
+      | `'error'`          | logs entire **error object** in the console                            |
+      | `'benchmark'`      | logs out the time taken to execute the query                           |
+      | `benchmark-query'` | enables combination of `'query'` and `'benchmark'` modes               |
+      | `benchmark-error'` | enables combination of `'error'` and `'benchmark'` modes               |
+      | `true`             | enables all three modes i.e. `'query'`, `'error'` and `'benchmark'`    |
+      | `false`            | (default) disables all debug modes                                     |
   - <span id="session">`session`</span> reference of `SessionManager` object, used to **override the transaction/commit/rollback features** to be controlled *externally*
 
 ### 3.2 Save Method
@@ -448,8 +448,8 @@ const response = await User.delete({
                 lt: { date: { value: 'now', sub: '6M' } }
             }
         },
-        department: ['sales', 'marketing'],
-        userType: 'intern'
+        department: ['#sales', '#marketing'],
+        userType: '#intern'
     }
 })
 ```
@@ -511,7 +511,7 @@ const response = await User.rawQuery({ // here user model is used just to utiliz
             lastUpdatedOn TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             status TINYINT(1) DEFAULT 0
         );`,
-    multiQuery: true // this enables multiple SQL statements in single query string, only for MySQL
+    multiQuery: true // this enables multiple SQL statements in single query string, (MySQL only)
 })
 ```
 
