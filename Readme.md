@@ -405,8 +405,10 @@ response = {
 3. Sqlite returns
 response = {
     success: true,
-    insertId: 1, // in case of 'save', last 'inserted' Id
-    changes: 1 // in case of 'update'
+    result: {
+        insertId: 1, // in case of 'save', last 'inserted' Id
+        changes: 1 // in case of 'update'
+    }
 }
 */
 ```

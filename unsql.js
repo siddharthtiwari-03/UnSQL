@@ -53,7 +53,7 @@ class UnSQL {
      * @param {SessionManager} [findParam.session] (optional)
      * @param {boolean} [findParam.includeMeta] (optional)
      * 
-     * @returns {Promise<{success:boolean, error?:*, result?:*, meta?:*}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
+     * @returns {Promise<{success:boolean, error?:*, result?:Array<*>|*, meta?:*}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
      * @static
      * @memberof UnSQL
      */
@@ -104,7 +104,7 @@ class UnSQL {
      * @param {import("./defs/types").DebugTypes} [saveParam.debug] (optional) enables various debug mode
      * @param {SessionManager} [saveParam.session] (optional) enables various debug mode
      * 
-     * @returns {Promise<{success:boolean, error?:object|*, insertId?:number, changes?:number}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
+     * @returns {Promise<{success:boolean, error?:*, result?:Array<*>|{insertId?:number, changes?:number}|{fieldCount?: number,affectedRows?: number, insertId: number, info?: string, serverStatus?: number, warningStatus?: number,changedRows?: number}}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
      * @static
      * @memberof UnSQL
      */
@@ -311,7 +311,7 @@ class UnSQL {
      * @param {boolean} [rawQueryParams.multiQuery] (optional) flag if sql contains multiple queries (only in 'mysql'), default is false
      * @param {*} [rawQueryParams.session] (optional) global session reference for transactions and rollback
      * @param {'run'|'all'|'exec'} [rawQueryParams.methodType=all] (optional) used only with 'sqlite'
-     * @returns {Promise<{success:boolean, error?:object, result?:object}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
+     * @returns {Promise<{success:boolean, error?:object, result?:*}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
      */
     static async rawQuery({ sql = '', values = [], debug = false, encryption = undefined, session = undefined, multiQuery = false, methodType = 'all' }) {
         const debugMessage = `Executed raw query in`
@@ -433,7 +433,7 @@ class UnSQL {
  * @param {boolean} [options.multiQuery] flag if sql contains multiple queries (only in 'mysql'), default is false
  * @param {boolean} [options.includeMeta] flag if sql contains multiple queries (only in 'mysql'), default is false
  * @param {import("./defs/types").EncryptionConfig} [options.encryption] enables encryption
- * @returns {Promise<{success:false, error:*}|{success:true, result:*, meta?:*}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'results'
+ * @returns {Promise<{success:false, error:*}|{success:true, result:Array<*>|*, meta?:*}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'results'
  */
 const executeMySQL = async ({ sql, values, debug = false, session = undefined, config, encryption = undefined, multiQuery = false, debugMessage = '', includeMeta = false }) => {
     const connection = await (session?.connection || config?.pool?.getConnection() || config?.connection)
@@ -474,7 +474,7 @@ const executeMySQL = async ({ sql, values, debug = false, session = undefined, c
  * @param {import("./defs/types").ConfigObject} params.config
  * @param {SessionManager} [params.session]
  * @param {string} [params.debugMessage]
- * @returns {Promise<{success:true, result:*}|{success:false, error:*}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
+ * @returns {Promise<{success:true, result:Array<*>|*}|{success:false, error:*}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
  * @author Siddharth Tiwari <dev.unsql@gmail.com>
  */
 const executePostgreSQL = async ({ sql, values, debug = false, config, session = undefined, debugMessage = '' }) => {
@@ -528,7 +528,7 @@ const executePostgreSQL = async ({ sql, values, debug = false, config, session =
  * @param {'all'|'run'|'exec'} [options.methodType=all]
  * @param {string} [options.debugMessage]
  * @param {*} [options.session]
- * @returns {Promise<{success:boolean, result?:Array<*>, insertId?:number, changes?:number, error?:*}>}
+ * @returns {Promise<{success:boolean, result?:Array<*>|{insertId?:number, changes?:number}, error?:*}>}
  */
 async function executeSqlite({ sql, values, debug = false, config, methodType = 'all', session = undefined, debugMessage = '' }) {
     const db = await (session?.pool || config?.pool)
@@ -544,8 +544,13 @@ async function executeSqlite({ sql, values, debug = false, config, methodType = 
         return {
             success: true,
             ...(methodType === 'all' && { result }),
-            ...('lastID' in result && { insertId: result?.lastID }),
-            ...('changes' in result && { changes: result?.changes })
+            ...(('lastID' in result || 'changes' in result) && {
+                result: {
+                    ...('lastID' in result && { insertId: result?.lastID }),
+                    ...('changes' in result && { changes: result?.changes })
+                }
+            }),
+
         }
     } catch (/** @type {*} */ error) {
         if (!session?.pool) await db.run('ROLLBACK')

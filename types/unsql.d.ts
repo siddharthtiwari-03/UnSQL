@@ -40,7 +40,7 @@ export class UnSQL {
      * @param {SessionManager} [findParam.session] (optional)
      * @param {boolean} [findParam.includeMeta] (optional)
      *
-     * @returns {Promise<{success:boolean, error?:*, result?:*, meta?:*}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
+     * @returns {Promise<{success:boolean, error?:*, result?:Array<*>|*, meta?:*}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
      * @static
      * @memberof UnSQL
      */
@@ -64,7 +64,7 @@ export class UnSQL {
     }, includeMeta?: boolean): Promise<{
         success: boolean;
         error?: any;
-        result?: any;
+        result?: Array<any> | any;
         meta?: any;
     }>;
     /**
@@ -81,7 +81,7 @@ export class UnSQL {
      * @param {import("./defs/types").DebugTypes} [saveParam.debug] (optional) enables various debug mode
      * @param {SessionManager} [saveParam.session] (optional) enables various debug mode
      *
-     * @returns {Promise<{success:boolean, error?:object|*, insertId?:number, changes?:number}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
+     * @returns {Promise<{success:boolean, error?:*, result?:Array<*>|{insertId?:number, changes?:number}|{fieldCount?: number,affectedRows?: number, insertId: number, info?: string, serverStatus?: number, warningStatus?: number,changedRows?: number}}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
      * @static
      * @memberof UnSQL
      */
@@ -103,9 +103,19 @@ export class UnSQL {
         session?: SessionManager | undefined;
     }): Promise<{
         success: boolean;
-        error?: object | any;
-        insertId?: number;
-        changes?: number;
+        error?: any;
+        result?: Array<any> | {
+            insertId?: number;
+            changes?: number;
+        } | {
+            fieldCount?: number;
+            affectedRows?: number;
+            insertId: number;
+            info?: string;
+            serverStatus?: number;
+            warningStatus?: number;
+            changedRows?: number;
+        };
     }>;
     /**
      * @method delete
@@ -147,7 +157,7 @@ export class UnSQL {
      * @param {boolean} [rawQueryParams.multiQuery] (optional) flag if sql contains multiple queries (only in 'mysql'), default is false
      * @param {*} [rawQueryParams.session] (optional) global session reference for transactions and rollback
      * @param {'run'|'all'|'exec'} [rawQueryParams.methodType=all] (optional) used only with 'sqlite'
-     * @returns {Promise<{success:boolean, error?:object, result?:object}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
+     * @returns {Promise<{success:boolean, error?:object, result?:*}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
      */
     static rawQuery({ sql, values, debug, encryption, session, multiQuery, methodType }: {
         sql: string;
@@ -160,7 +170,7 @@ export class UnSQL {
     }): Promise<{
         success: boolean;
         error?: object;
-        result?: object;
+        result?: any;
     }>;
     /**
      * export record(s) from the table
