@@ -1566,7 +1566,7 @@ router.post('/orders', async (req,res) => {
     const orderResp = await Order.save({ data, session })
 
     // attach 'orderId' to each item
-    const items =  bucketResp.result.map(item => item.orderId = orderResp.insertId )
+    const items =  bucketResp.result.map(item => item.orderId = orderResp.result.insertId )
 
     // save order 'items' and pass 'session' object to the query method
     const itemsResp = await OrderItems.save({ data: items, session })
@@ -1583,7 +1583,7 @@ router.post('/orders', async (req,res) => {
 
     // commit changes if no errors were encountered
     await session.commit()
-    return res.status(201).json({ success: true, message: 'Order placed successfully!', orderId: orderResp.insertId })
+    return res.status(201).json({ success: true, message: 'Order placed successfully!', orderId: orderResp.result.insertId })
 })
 ```
 
