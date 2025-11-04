@@ -36,6 +36,8 @@
 
 ### 1.1 Breaking Changes
 
+With **version v2.2.4**, breaking only for for SQLite dialect, the **insertId** and **changes** values have been moved inside the **result** object. So the updated response object for a successful save (insert) will now look like: ``` { success:true, result: { insertId, changes } } ```
+
 With the release of **version v2.0**, UnSQL has been re-written from scratch to cater modern challenges, including enhanced security and including new features all while also keeping the interface clean and simple, improving the overall developer experience. If your project is still using version v1.x then it is recommended you switch your `import/require` from `'unsql'` to `'unsql/legacy'`, as shown below:
 
 ```javascript
