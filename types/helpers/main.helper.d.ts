@@ -62,7 +62,7 @@ export function prepJoin({ alias, join, values, encryption, ctx }: {
  * @param {Object} options
  * @param {{[column:string]:'asc'|'desc'}} options.orderBy
  * @param {string} [options.alias]
- * @param {Array<*>} [options.values]
+ * @param {Array<*>} options.values
  * @param {*} [options.ctx]
  * @returns {string}
  */
@@ -71,7 +71,7 @@ export function prepOrderBy({ alias, orderBy, values, ctx }: {
         [column: string]: "asc" | "desc";
     };
     alias?: string | undefined;
-    values?: any[] | undefined;
+    values: Array<any>;
     ctx?: any;
 }): string;
 /**
@@ -87,14 +87,14 @@ export function isVariable(value: any): boolean;
  * @param {Object} options
  * @param {Array<*>} options.groupBy
  * @param {string} [options.alias]
- * @param {Array<*>} [options.values]
+ * @param {Array<*>} options.values
  * @param {*} [options.ctx]
  * @returns {string}
  */
 export function patchGroupBy({ groupBy, alias, values, ctx }: {
     groupBy: Array<any>;
     alias?: string | undefined;
-    values?: any[] | undefined;
+    values: Array<any>;
     ctx?: any;
 }): string;
 /**

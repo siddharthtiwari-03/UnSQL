@@ -414,7 +414,7 @@ const prepRefer = ({ val, parent = null, values, encryption = undefined, ctx = u
     if (Object.keys(where).length) sqlParts.push(`WHERE ${prepWhere({ alias, where, junction, parent, values, encryption, ctx })}`)
     if (groupBy.length) sqlParts.push(patchGroupBy({ groupBy, alias, values, ctx }))
     if (Object.keys(having).length) sqlParts.push(`HAVING ${prepWhere({ alias, where: having, junction, values, encryption, ctx })}`)
-    if (Object.keys(orderBy).length) sqlParts.push(prepOrderBy({ alias, orderBy, ctx }))
+    if (Object.keys(orderBy).length) sqlParts.push(prepOrderBy({ alias, orderBy, values, ctx }))
     if (typeof limit === 'number') sqlParts.push(patchLimit(limit, values, ctx))
     if (typeof offset === 'number') sqlParts.push(patchLimit(offset, values, ctx, 'OFFSET'))
     if (as && ctx?.isMySQL) values.push(as)
@@ -852,7 +852,7 @@ const prepNumeric = ({ alias, val, junction = 'and', values, named = false, encr
  * @param {Object} options
  * @param {Array<*>} options.groupBy
  * @param {string} [options.alias]
- * @param {Array<*>} [options.values]
+ * @param {Array<*>} options.values
  * @param {*} [options.ctx]
  * @returns {string}
  */
@@ -868,7 +868,7 @@ const patchGroupBy = ({ groupBy, alias, values, ctx }) => {
             continue
         }
         sqlParts.push('??')
-        values?.push(col)
+        values.push(col)
 
     }
 
@@ -883,17 +883,14 @@ const orderDirections = { asc: 'ASC', desc: 'DESC' }
  * @param {Object} options
  * @param {{[column:string]:'asc'|'desc'}} options.orderBy
  * @param {string} [options.alias]
- * @param {Array<*>} [options.values]
+ * @param {Array<*>} options.values
  * @param {*} [options.ctx]
  * @returns {string}
  */
 const prepOrderBy = ({ alias, orderBy, values, ctx }) => {
     if (!Object.keys(orderBy).length) return ''
-
     const entries = Object.entries(orderBy)
-
     const sqlParts = []
-
     for (let i = 0; i < entries.length; i++) {
         const name = prepName({ alias, value: entries[i][0], ctx })
         const order = orderDirections[entries[i][1]]
@@ -901,7 +898,7 @@ const prepOrderBy = ({ alias, orderBy, values, ctx }) => {
             sqlParts.push(`${name} ${order}`)
             continue
         }
-        values?.push(name)
+        values.push(name)
         sqlParts.push(`?? ${order}`)
     }
     return `ORDER BY ${sqlParts.join(', ')}`
