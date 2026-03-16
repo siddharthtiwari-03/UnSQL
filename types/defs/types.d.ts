@@ -14,7 +14,7 @@ export type CastingTypes = "char" | "nchar" | "date" | "dateTime" | "signed" | "
 /**
  * debug types
  */
-export type DebugTypes = "query" | "error" | "benchmark" | "benchmark-query" | "benchmark-error" | boolean | undefined;
+export type DebugTypes = "query" | "error" | "benchmark" | "benchmark-query" | "benchmark-error" | "sandbox" | boolean | undefined;
 /**
  * set configuration for Encryption/Decryption
  */
@@ -55,7 +55,7 @@ export type ConfigObject = {
     /**
      * mysql 'connection' object
      */
-    connection?: Object | undefined;
+    connection?: any;
     /**
      * mysql connection 'pool' object
      */

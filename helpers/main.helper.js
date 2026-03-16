@@ -7,7 +7,6 @@ const junctions = { and: ' AND ', or: ' OR ' }
 
 /**
  * checks if placeholder is variable or not
- * @function isVariable
  * @param {*} value 
  * @returns {boolean}
  */
@@ -15,22 +14,22 @@ const isVariable = value => (value.startsWith('$') || value.startsWith('#') || v
 
 /** @type {{ [key: string]: string }} */
 const conditions = {
-    eq: ' = ',
-    gt: ' > ',
-    lt: ' < ',
-    gtEq: ' >= ',
-    ltEq: ' <= ',
-    notEq: ' != ',
-    exists: ' EXISTS ',
-    notExists: ' NOT EXISTS',
-    like: ' LIKE ',
-    notLike: ' NOT LIKE ',
-    startLike: ' LIKE ',
-    endLike: ' LIKE ',
-    notStartLike: ' NOT LIKE ',
-    notEndLike: ' NOT LIKE ',
-    in: ' IN ',
-    notIn: ' NOT IN '
+    eq: '=',
+    gt: '>',
+    lt: '<',
+    gtEq: '>=',
+    ltEq: '<=',
+    notEq: '!=',
+    exists: 'EXISTS',
+    notExists: 'NOT EXISTS',
+    like: 'LIKE',
+    notLike: 'NOT LIKE',
+    startLike: 'LIKE',
+    endLike: 'LIKE',
+    notStartLike: 'NOT LIKE',
+    notEndLike: 'NOT LIKE',
+    in: 'IN',
+    notIn: 'NOT IN'
 }
 
 /** @type {{ [key: string]: string }} */
@@ -44,7 +43,6 @@ const joinTypes = {
 
 /**
  * prepares select query using various 
- * @function prepSelect
  * @param {Object} selectParam
  * @param {string} [selectParam.alias] (optional) local reference name of the table
  * @param {import("../defs/types").SelectObject} selectParam.select array of columns / values / wrapper methods
@@ -89,19 +87,17 @@ const prepSelect = ({ alias, select = [], values, encryption = undefined, ctx = 
 
 /**
  * prepares where statement
- * @function prepWhere
  * @param {Object} whereParam
- * @param {string} [whereParam.alias] (optional) local reference name of the table
+ * @param {string?} [whereParam.alias] (optional) local reference name of the table
  * @param {import("../defs/types").WhereObject|import("../defs/types").HavingObject} [whereParam.where] (optional) allows to filter records using various conditions
  * @param {string|null} [whereParam.parent] (optional) reference of parent key
- * @param {'and'|'or'} [whereParam.junction] (optional) clause used to connect multiple where conditions
  * @param {Array<*>} whereParam.values reference of global values array
  * @param {import("../defs/types").EncryptionConfig} [whereParam.encryption] (optional) defines query level encryption configurations
  * @param {*} [whereParam.ctx] (optional) local reference name of the table
  * @returns {string} 'sql' with placeholder string and 'values' array to be injected at execution
  */
-const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', values, encryption = undefined, ctx = undefined }) => {
-    if (Object.keys(where).length == 0) return ''
+const prepWhere = ({ alias, where = {}, parent = null, values, encryption = undefined, ctx = undefined }) => {
+    if (!hasKeys(where)) return ''
     const sqlParts = []
     const entries = Object.entries(where)
 
@@ -110,7 +106,7 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', values,
         const val = entries[i][1]
 
         if (key in handleFunc) {
-            sqlParts.push(handleFunc[key]({ alias, key, val, parent, junction, values, encryption, ctx }))
+            sqlParts.push(handleFunc[key]({ alias, key, val, parent, values, encryption, ctx }))
             continue
         }
 
@@ -122,14 +118,14 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', values,
                 if (isVariable(parentPlaceholder)) values.push(prepName({ alias, value: parent, ctx }))
             }
 
-            if (key === 'isNull' || key === 'isNotNull') {
+            if (key === 'isNull' || key === 'isNotNull' || key === 'notNull') {
                 sqlParts.push(microSql.join(' '))
                 continue
             }
 
             microSql.push(conditions[key])
 
-            const valPlaceholder = handlePlaceholder({ value: val, alias, junction, values, parent, encryption, ctx })
+            const valPlaceholder = handlePlaceholder({ value: val, alias, values, parent, encryption, ctx })
 
             /** @type {{ [key: string]: string | number | boolean | null }} */
             const prefix = {
@@ -168,7 +164,7 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', values,
             const keyPlaceholder = prepPlaceholder({ value: key, alias, ctx })
             if (isVariable(keyPlaceholder)) values.push(prepName({ alias, value: key, ctx }))
 
-            if (val === 'isNull' || val === 'isNotNull' || val === null) {
+            if (val === 'isNull' || val === 'isNotNull' || val === 'notNull' || val === null) {
                 sqlParts.push(`${keyPlaceholder} ${constantFunctions[val]}`)
                 continue
             }
@@ -180,15 +176,14 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', values,
             continue
         }
 
-        sqlParts.push(prepWhere({ alias, where: val, parent: key, junction, values, encryption, ctx }))
+        sqlParts.push(prepWhere({ alias, where: val, parent: key, values, encryption, ctx }))
     }
 
-    return sqlParts.filter(Boolean).join(junctions[junction])
+    return sqlParts.filter(Boolean).join(' AND ')
 }
 
 /**
  * prepares join query statement
- * @function prepJoin
  * @param {Object} joinParam
  * @param {string} [joinParam.alias] (optional) local reference name of the table
  * @param {import("../defs/types").JoinObject} joinParam.join array of joining conditions
@@ -200,12 +195,13 @@ const prepWhere = ({ alias, where = {}, parent = null, junction = 'and', values,
 const prepJoin = ({ alias, join = [], values, encryption = undefined, ctx = undefined }) => {
     return join.map(joinable => {
 
-        const { type = null, select = [], table, alias: joinAlias = undefined, join: nestedJoin = [], where = {}, groupBy = [], having = {}, orderBy = {}, junction = 'and', using = [], limit = undefined, offset = undefined, as = null } = joinable
+        const { type = null, select = [], table, alias: joinAlias = undefined, join: nestedJoin = [], where = {}, groupBy = [], having = {}, orderBy = {}, using = [], limit = undefined, offset = undefined, as = null } = joinable
         if (!table) throw { message: `[Missing]: 'table' name to be associated is missing`, cause: "Missing 'table' property inside join object" }
         const sqlParts = []
         if (type && joinTypes[type]) sqlParts.push(joinTypes[type])
         sqlParts.push('JOIN')
-        if (select.length || Object.keys(where).length || Object.keys(having).length || nestedJoin.length) {
+        const nestedSubQuery = select.length || hasKeys(where) || hasKeys(having) || nestedJoin.length
+        if (nestedSubQuery) {
             sqlParts.push(`(SELECT ${prepSelect({ alias: joinAlias, select, values, encryption, ctx })} FROM ${ctx?.isMySQL ? '??' : `"${table}"`}`)
             if (ctx.isMySQL) values.push(table)
             if (joinAlias) {
@@ -213,10 +209,10 @@ const prepJoin = ({ alias, join = [], values, encryption = undefined, ctx = unde
                 sqlParts.push(ctx?.isMySQL ? '??' : `"${joinAlias}"`)
             }
             if (nestedJoin.length) sqlParts.push(prepJoin({ alias: joinAlias, join: nestedJoin, values, encryption, ctx }))
-            if (Object.keys(where).length > 0) sqlParts.push(`WHERE ${prepWhere({ alias: joinAlias, where, junction, values, encryption, ctx })}`)
+            if (hasKeys(where)) sqlParts.push(`WHERE ${prepWhere({ alias: joinAlias, where, values, encryption, ctx })}`)
             if (groupBy.length) sqlParts.push(patchGroupBy({ groupBy, alias, values, ctx }))
-            if (Object.keys(having).length > 0) sqlParts.push(`HAVING ${prepWhere({ alias: joinAlias, where: having, junction, values, encryption, ctx })}`)
-            if (Object.keys(orderBy).length > 0) sqlParts.push(prepOrderBy({ alias: joinAlias, orderBy, values, ctx }))
+            if (hasKeys(having)) sqlParts.push(`HAVING ${prepWhere({ alias: joinAlias, where: having, values, encryption, ctx })}`)
+            if (hasKeys(orderBy)) sqlParts.push(prepOrderBy({ orderBy, values, ctx }))
             if (typeof limit === 'number') sqlParts.push(patchLimit(limit, values, ctx))
             if (typeof offset === 'number') sqlParts.push(patchLimit(offset, values, ctx, 'OFFSET'))
             if (!as) throw { message: `Missing 'as' property with selective join association`, cause: `Every derived table must have its own alias ('as' property)` }
@@ -231,7 +227,7 @@ const prepJoin = ({ alias, join = [], values, encryption = undefined, ctx = unde
             }
         }
 
-        if (!using.length && !Object.keys(using).length) throw { message: 'Common column(s) to associate tables is missing', cause: "Missing conditions for association in 'using' clause" }
+        if (!using.length && !hasKeys(using)) throw { message: 'Common column(s) to associate tables is missing', cause: "Missing conditions for association in 'using' clause" }
 
         if (Array.isArray(using)) {
             sqlParts.push(`USING (${using.map(column => {
@@ -240,8 +236,8 @@ const prepJoin = ({ alias, join = [], values, encryption = undefined, ctx = unde
             }).join(', ')})`)
         } else if (typeof using === 'object') {
             const usingConditions = Object.entries(using).map(([parentColumn, childColumn]) => {
-                const parentPlaceholder = prepPlaceholder({ value: parentColumn, alias, ctx })
-                const parentColumnName = prepName({ value: parentColumn, alias, ctx })
+                const parentPlaceholder = prepPlaceholder({ value: parentColumn, alias: nestedSubQuery ? as : alias, ctx })
+                const parentColumnName = prepName({ value: parentColumn, alias: nestedSubQuery ? as : alias, ctx })
                 if (ctx?.isMySQL) {
                     values.push(parentColumnName)
                 }
@@ -256,7 +252,7 @@ const prepJoin = ({ alias, join = [], values, encryption = undefined, ctx = unde
             })
             sqlParts.push(`ON ${usingConditions.join(' AND ')}`)
         } else {
-            throw { message: `[Invalid]: 'using' property can either be an array of column names or an array of objects in { parentColumnName: childColumnName } format`, cause: `Invalid format for 'using' property inside 'join'` }
+            throw { message: `[Invalid]: 'using' property can either be an array of column names or object in { parentColumnName: childColumnName } format`, cause: `Invalid format for 'using' property inside 'join'` }
         }
         return sqlParts.join(' ')
     }).join(' ')
@@ -264,18 +260,16 @@ const prepJoin = ({ alias, join = [], values, encryption = undefined, ctx = unde
 
 /**
  * prepares sub query that generates json object / array with aggregate wrapper (optional)
- * @function prepJson
  * @param {Object} jsonParam object with different properties that help generate a json object / array
  * @param {'json'|'array'} [jsonParam.key] (optional) alias reference for the table name
  * @param {import("../defs/types").BaseJson} jsonParam.val accepts values related to sub-query
- * @param {'and'|'or'|undefined} jsonParam.junction accepts values related to sub-query
  * @param {Array<*>} jsonParam.values accepts values related to sub-query
  * @param {boolean} jsonParam.named accepts values related to sub-query
  * @param {import("../defs/types").EncryptionConfig} [jsonParam.encryption] (optional) inherits encryption config from its parent level
  * @param {*} [jsonParam.ctx] context reference to parent class
  * @returns {string} 'sql' with placeholder string to be injected at execution
  */
-const prepJson = ({ val, encryption = undefined, junction = 'and', values, named = false, ctx = undefined }) => {
+const prepJson = ({ val, encryption = undefined, values, named = false, ctx = undefined }) => {
 
     const sqlParts = []
     const { value, aggregate = false, table = null, alias = undefined, join = [], where = {}, groupBy = [], having = {}, orderBy = {}, limit = undefined, offset = undefined, as = null, extract = null, contains = null, compare = {} } = val
@@ -283,7 +277,7 @@ const prepJson = ({ val, encryption = undefined, junction = 'and', values, named
     const isAggregatedLimit = table && aggregate && (limit || offset)
     const UnSQLJsonAlias = `UNSQL_JSON_ALIAS${table ? `_${table}` : ''}`
 
-    if (table || Object.keys(where).length || Object.keys(having).length) sqlParts.push(`(SELECT`)
+    if (table || hasKeys(where) || hasKeys(having)) sqlParts.push(`(SELECT`)
 
     /** @type {*} */
     let jsonSql = ''
@@ -298,7 +292,7 @@ const prepJson = ({ val, encryption = undefined, junction = 'and', values, named
             jsonSql = Object.entries(value).map(([k, v]) => {
                 const kPlaceholder = '?'
                 if (!Array.isArray(value)) values.push(k)
-                const vPlaceholder = handlePlaceholder({ value: v, alias: isAggregatedLimit ? UnSQLJsonAlias : alias, junction, values, encryption, ctx })
+                const vPlaceholder = handlePlaceholder({ value: v, alias: isAggregatedLimit ? UnSQLJsonAlias : alias, values, encryption, ctx })
                 return (!Array.isArray(value) ? `${kPlaceholder}, ` : '') + vPlaceholder
             }).join(', ')
             if (Array.isArray(value)) jsonSql = `JSON_ARRAY(${jsonSql})`
@@ -328,10 +322,10 @@ const prepJson = ({ val, encryption = undefined, junction = 'and', values, named
         }
 
         if (join.length) sqlParts.push(prepJoin({ alias, join, values, encryption, ctx }))
-        if (Object.keys(where).length) sqlParts.push(`WHERE ${prepWhere({ alias, where, junction: 'and', values, encryption, ctx })}`)
+        if (hasKeys(where)) sqlParts.push(`WHERE ${prepWhere({ alias, where, values, encryption, ctx })}`)
         if (groupBy.length > 0) sqlParts.push(patchGroupBy({ groupBy, alias, values, ctx }))
-        if (Object.keys(having).length) sqlParts.push(`HAVING ${prepWhere({ alias, where: having, junction: 'and', values, encryption, ctx })}`)
-        if (Object.keys(orderBy).length > 0) sqlParts.push(prepOrderBy({ alias, orderBy, values, ctx }))
+        if (hasKeys(having)) sqlParts.push(`HAVING ${prepWhere({ alias, where: having, values, encryption, ctx })}`)
+        if (hasKeys(orderBy)) sqlParts.push(prepOrderBy({ orderBy, values, ctx }))
         if (typeof limit === 'number') sqlParts.push(patchLimit(limit, values, ctx))
         if (typeof offset === 'number') sqlParts.push(patchLimit(offset, values, ctx, 'OFFSET'))
 
@@ -350,27 +344,25 @@ const prepJson = ({ val, encryption = undefined, junction = 'and', values, named
             sqlParts.push(`AS ${as || 'json'}`)
         }
     }
-    if (Object.keys(compare).length) sqlParts.push(prepWhere({ alias, where: compare, junction, values, encryption, ctx }))
+    if (hasKeys(compare)) sqlParts.push(prepWhere({ alias, where: compare, values, encryption, ctx }))
     return sqlParts.join(' ')
 }
 
 /**
  * prepares aggregate functions
- * @function prepAggregate
  * @param {Object} aggParam object with different properties that help generate aggregate method
  * @param {string} [aggParam.alias] (optional) local reference name of the table
  * @param {string} aggParam.key refers the name of the aggregate method, viz. 'sum', 'avg', 'min', 'max' etc.
  * @param {import("../defs/types").BaseAggregate} aggParam.val accepts values related to aggregate method
  * @param {*} [aggParam.parent] reference of previous placeholder
- * @param {'and'|'or'|undefined} [aggParam.junction] junction clause for conditions
  * @param {Array<*>} aggParam.values reference of previous placeholder
  * @param {import("../defs/types").EncryptionConfig} [aggParam.encryption] (optional) inherits encryption config from its parent level
  * @param {*} [aggParam.ctx] context reference to parent class
  * @returns {string} 'sql' with placeholder string to be injected at execution
  */
-const prepAggregate = ({ alias, key, val, parent = null, junction = 'and', values, encryption = undefined, ctx = undefined }) => {
+const prepAggregate = ({ alias, key, val, parent = null, values, encryption = undefined, ctx = undefined }) => {
     const { value, distinct = false, cast = null, ifNull = undefined, compare = {}, as = null } = val
-    const placeholder = handlePlaceholder({ alias, value, parent, junction, values, encryption, ctx })
+    const placeholder = handlePlaceholder({ alias, value, parent, values, encryption, ctx })
     let sql = `${aggregateFunctions[key]}(${distinct ? 'DISTINCT ' : ''}${placeholder})`
     if (ifNull != undefined) {
         const nullPlaceholder = prepPlaceholder({ value: ifNull, alias, ctx })
@@ -384,25 +376,23 @@ const prepAggregate = ({ alias, key, val, parent = null, junction = 'and', value
         sql += ` AS ${ctx?.isMySQL ? '?' : as}`
         if (ctx?.isMySQL) values.push(as)
     }
-    if (Object.keys(compare).length) return `${sql} ${prepWhere({ alias, where: compare, values, encryption, ctx })}`
+    if (hasKeys(compare)) return `${sql} ${prepWhere({ alias, where: compare, values, encryption, ctx })}`
     return sql
 }
 
 /**
  * prepares sub query
- * @function prepRefer
  * @param {Object} referParam object with different properties that help generate aggregate method
  * @param {import("../defs/types").BaseQuery} referParam.val accepts values related to aggregate method
  * @param {*} [referParam.parent] accepts values related to aggregate method
  * @param {Array<*>} referParam.values reference of previous placeholder
- * @param {'and'|'or'|undefined} [referParam.junction] junction clause for conditions
  * @param {import("../defs/types").EncryptionConfig} [referParam.encryption] (optional) inherits encryption config from its parent level
  * @param {*} [referParam.ctx] context reference to parent class
  * @returns {string} 'sql' with placeholder string to be injected at execution
  */
 const prepRefer = ({ val, parent = null, values, encryption = undefined, ctx = undefined }) => {
 
-    const { select = ['*'], table, alias = undefined, join = [], where = {}, junction = 'and', groupBy = [], having = {}, orderBy = {}, limit = null, offset = null, as = null } = val
+    const { select = ['*'], table, alias = undefined, join = [], where = {}, groupBy = [], having = {}, orderBy = {}, limit = null, offset = null, as = null } = val
     const sqlParts = []
     sqlParts.push(`${prepSelect({ alias, select, values, encryption, ctx })} FROM ${ctx?.isMySQL ? '??' : `"${table}"`}`)
     if (ctx.isMySQL) values.push(table)
@@ -411,10 +401,10 @@ const prepRefer = ({ val, parent = null, values, encryption = undefined, ctx = u
         sqlParts.push(ctx?.isMySQL ? '??' : `"${alias}"`)
     }
     if (join.length) sqlParts.push(prepJoin({ alias, join, values, encryption, ctx }))
-    if (Object.keys(where).length) sqlParts.push(`WHERE ${prepWhere({ alias, where, junction, parent, values, encryption, ctx })}`)
+    if (hasKeys(where)) sqlParts.push(`WHERE ${prepWhere({ alias, where, parent, values, encryption, ctx })}`)
     if (groupBy.length) sqlParts.push(patchGroupBy({ groupBy, alias, values, ctx }))
-    if (Object.keys(having).length) sqlParts.push(`HAVING ${prepWhere({ alias, where: having, junction, values, encryption, ctx })}`)
-    if (Object.keys(orderBy).length) sqlParts.push(prepOrderBy({ alias, orderBy, values, ctx }))
+    if (hasKeys(having)) sqlParts.push(`HAVING ${prepWhere({ alias, where: having, values, encryption, ctx })}`)
+    if (hasKeys(orderBy)) sqlParts.push(prepOrderBy({ orderBy, values, ctx }))
     if (typeof limit === 'number') sqlParts.push(patchLimit(limit, values, ctx))
     if (typeof offset === 'number') sqlParts.push(patchLimit(offset, values, ctx, 'OFFSET'))
     if (as && ctx?.isMySQL) values.push(as)
@@ -423,22 +413,20 @@ const prepRefer = ({ val, parent = null, values, encryption = undefined, ctx = u
 
 /**
  * prepares if else condition
- * @function prepIf
  * @param {Object} ifParam
  * @param {string} [ifParam.alias] (optional) local reference name of the table
  * @param {import("../defs/types").IfObject} ifParam.val
  * @param {Array<*>}  ifParam.values array of values
- * @param {'and'|'or'}  [ifParam.junction] (optional) clause used to join conditions
  * @param {import("../defs/types").EncryptionConfig} [ifParam.encryption] (optional) inherits encryption config from its parent level
  * @param {*} [ifParam.ctx] context reference to parent class
  * @returns {string} 'sql' with placeholder string to be injected at execution
  */
-const prepIf = ({ alias, val, junction = 'and', values, encryption = undefined, ctx = undefined }) => {
+const prepIf = ({ alias, val, values, encryption = undefined, ctx = undefined }) => {
     if (!ctx.isMySQL) throw { message: `'if' object is only available in 'mysql'`, cause: `'${ctx?.config?.dialect}' does not support 'if' condition`, suggestion: `Use 'switch' object, works the same` }
     const { check = {}, trueValue = null, falseValue = null, cast = null, as = null } = val
-    const ifPlaceholder = handlePlaceholder({ alias, value: check, junction, values, encryption, ctx })
-    const truePlaceholder = trueValue == null || trueValue == 'null' ? null : handlePlaceholder({ alias, value: trueValue, junction, values, encryption, ctx })
-    const falsePlaceholder = falseValue == null || falseValue == 'null' ? null : handlePlaceholder({ alias, value: falseValue, junction, values, encryption, ctx })
+    const ifPlaceholder = handlePlaceholder({ alias, value: check, values, encryption, ctx })
+    const truePlaceholder = trueValue == null || trueValue == 'null' ? null : handlePlaceholder({ alias, value: trueValue, values, encryption, ctx })
+    const falsePlaceholder = falseValue == null || falseValue == 'null' ? null : handlePlaceholder({ alias, value: falseValue, values, encryption, ctx })
     if (as && ctx?.isMySQL) values.push(as)
     if (cast) return `CAST(IF(${ifPlaceholder}, ${truePlaceholder}, ${falsePlaceholder}) AS ${dataTypes[cast] || 'CHAR'})${as ? ` AS ${ctx?.isMySQL ? '?' : `"${as}"`}` : ''}`
     return `IF(${ifPlaceholder}, ${truePlaceholder}, ${falsePlaceholder})${as ? ` AS ${ctx?.isMySQL ? '?' : `"${as}"`}` : ''}`
@@ -450,18 +438,17 @@ const prepIf = ({ alias, val, junction = 'and', values, encryption = undefined, 
  * @param {Object} caseParam
  * @param {string} [caseParam.alias] (optional) local reference to table name
  * @param {import("../defs/types").SwitchObject} caseParam.val
- * @param {'and'|'or'} [caseParam.junction] (optional) clause used to join conditions
- * @param {Array<*>} caseParam.values junction clause for conditions
+ * @param {Array<*>} caseParam.values values array
  * @param {import("../defs/types").EncryptionConfig} [caseParam.encryption] (optional) inherits encryption config from its parent level
  * @param {*} [caseParam.ctx] context reference to parent class
  * @returns {string} 'sql' with placeholder string to be injected at execution
  */
-const prepCase = ({ alias, val, junction = 'and', values, encryption = undefined, ctx = undefined }) => {
+const prepCase = ({ alias, val, values, encryption = undefined, ctx = undefined }) => {
     const { check = [], else: defaultElse, cast = null, as = null } = val
     const conditionalPlaceholders = check.map(condition => {
         const { when, then } = condition
-        const whenPlaceholder = handlePlaceholder({ alias, value: when, junction, values, encryption, ctx })
-        const thenPlaceholder = then == null || then == 'null' ? null : handlePlaceholder({ alias, value: then, junction, values, encryption, ctx })
+        const whenPlaceholder = handlePlaceholder({ alias, value: when, values, encryption, ctx })
+        const thenPlaceholder = then == null || then == 'null' ? null : handlePlaceholder({ alias, value: then, values, encryption, ctx })
         return `WHEN ${whenPlaceholder} THEN ${thenPlaceholder}`
     })
     const elsePlaceholder = defaultElse == null || defaultElse == 'null' ? null : handlePlaceholder({ alias, value: defaultElse, ctx, values })
@@ -473,21 +460,19 @@ const prepCase = ({ alias, val, junction = 'and', values, encryption = undefined
 
 /**
  * concat values
- * @function prepConcat
  * @param {Object} concatParam
  * @param {string} [concatParam.alias] (optional) local reference to table name
  * @param {import("../defs/types").ConcatObject} concatParam.val
- * @param {'and'|'or'} [concatParam.junction] (optional) local reference to table name
  * @param {Array<*>} concatParam.values (optional) local reference to table name
  * @param {import("../defs/types").EncryptionConfig} [concatParam.encryption] (optional) inherits encryption config from its parent level
  * @param {*} [concatParam.ctx] context reference to parent class
  * @returns {string} 'sql' with placeholder string to be injected at execution
  */
-const prepConcat = ({ alias, val, junction = 'and', values, encryption = undefined, ctx = undefined }) => {
+const prepConcat = ({ alias, val, values, encryption = undefined, ctx = undefined }) => {
     const { value = [], pattern = '', substr = null, reverse = false, textCase = null, padding = {}, trim = false, as = null, compare = {} } = val
     const patternPlaceholder = prepPlaceholder({ value: pattern, alias, ctx })
     if (isVariable(patternPlaceholder)) values.push(prepName({ alias, value: pattern, ctx }))
-    let sql = `CONCAT_WS(${patternPlaceholder}, ${value.map(v => handlePlaceholder({ alias, value: v, junction, values, encryption, ctx })).join(', ')})`
+    let sql = `CONCAT_WS(${patternPlaceholder}, ${value.map(v => handlePlaceholder({ alias, value: v, values, encryption, ctx })).join(', ')})`
 
     // trim
     if (trim === 'left') sql = `LTRIM(${sql})`
@@ -513,9 +498,9 @@ const prepConcat = ({ alias, val, junction = 'and', values, encryption = undefin
         sql = `REVERSE(${sql})`
     }
 
-    if (Object.keys(compare).length) sql += prepWhere({ alias, where: compare, junction, values, encryption, ctx })
+    if (hasKeys(compare)) sql += prepWhere({ alias, where: compare, values, encryption, ctx })
 
-    if (!Object.keys(compare).length && as) {
+    if (!hasKeys(compare) && as) {
         if (ctx?.isMySQL) {
             sql += ` AS ?`
             values.push(as)
@@ -528,10 +513,8 @@ const prepConcat = ({ alias, val, junction = 'and', values, encryption = undefin
 
 /**
  * performs various string based operations on the 'value' property
- * @function prepString
  * @param {Object} strParam
  * @param {string} [strParam.alias] (optional) alias reference for the table name
- * @param {'and'|'or'} [strParam.junction] (optional) alias reference for the table name
  * @param {Array<*>} strParam.values (optional) alias reference for the table name
  * @param {boolean} [strParam.named] (optional) alias reference for the table name
  * @param {import("../defs/types").StringObject} strParam.val object that holds values for different properties
@@ -539,7 +522,7 @@ const prepConcat = ({ alias, val, junction = 'and', values, encryption = undefin
  * @param {*} [strParam.ctx]
  * @returns {string} 'sql' with placeholder string to be injected at execution
  */
-const prepString = ({ alias, val, junction = 'and', values, named = false, encryption = undefined, ctx = undefined }) => {
+const prepString = ({ alias, val, values, named = false, encryption = undefined, ctx = undefined }) => {
 
     const { value, replace = null, reverse = false, textCase = null, padding = {}, substr = null, trim = false, cast = null, decrypt = null, encoding = 'utf8mb4', as = ctx?.isPostgreSQL ? 'str' : null, compare = {} } = val
 
@@ -594,9 +577,9 @@ const prepString = ({ alias, val, junction = 'and', values, named = false, encry
         values.push(replace?.target, replace?.replaceWith)
     }
 
-    if (Object.keys(compare).length) sql += prepWhere({ alias, where: compare, junction, values, encryption, ctx })
+    if (hasKeys(compare)) sql += prepWhere({ alias, where: compare, values, encryption, ctx })
 
-    if (!Object.keys(compare).length && (as || named)) {
+    if (!hasKeys(compare) && (as || named)) {
         sql += ` AS ${ctx?.isMySQL ? '?' : `"${(as || value.split('.').pop())}"`}`
         if (ctx?.isMySQL) values.push(as || value.split('.').pop())
     }
@@ -618,10 +601,8 @@ const dateUnits = {
 
 /**
  * performs various date operation(s) on the value attribute
- * @function prepDate
  * @param {Object} dateObj
  * @param {string} [dateObj.alias] (optional) local reference for the table name
- * @param {'and'|'or'} [dateObj.junction]
  * @param {Array<*>} dateObj.values
  * @param {boolean} [dateObj.named]
  * @param {import("../defs/types").DateObject} dateObj.val object that holds values for different properties
@@ -629,7 +610,7 @@ const dateUnits = {
  * @param {*} [dateObj.ctx] (optional) inherits class context reference from its parent level
  * @returns {string} 'sql' with placeholder string to be injected at execution
  */
-const prepDate = ({ alias, val, junction = 'and', values, named = false, encryption = undefined, ctx = undefined }) => {
+const prepDate = ({ alias, val, values, named = false, encryption = undefined, ctx = undefined }) => {
     // deconstruct different props from the val object
     const { value, add = 0, sub = 0, format = null, fromPattern = null, cast = null, decrypt = null, encoding = 'utf8mb4', as = ctx?.isPostgreSQL ? 'date' : null, compare = {} } = val
 
@@ -748,9 +729,9 @@ const prepDate = ({ alias, val, junction = 'and', values, named = false, encrypt
         }
     }
 
-    if (Object.keys(compare).length) sql += prepWhere({ alias, where: compare, junction, values: localValues, encryption, ctx })
+    if (hasKeys(compare)) sql += prepWhere({ alias, where: compare, values: localValues, encryption, ctx })
 
-    if (!Object.keys(compare).length && (as || named)) {
+    if (!hasKeys(compare) && (as || named)) {
         sql += ' AS ' + (ctx?.isMySQL ? '?' : (as || value.split('.').pop()))
         if (ctx?.isMySQL) localValues.push(as || value.split('.').pop())
     }
@@ -760,10 +741,8 @@ const prepDate = ({ alias, val, junction = 'and', values, named = false, encrypt
 
 /**
  * performs numeric operations on the 'value' property
- * @function prepNumeric
  * @param {Object} numObj
  * @param {string} [numObj.alias] (optional) alias reference for the table name
- * @param {'and'|'or'} [numObj.junction]
  * @param {Array<*>} numObj.values
  * @param {boolean} [numObj.named]
  * @param {import("../defs/types").NumericObject} numObj.val
@@ -771,7 +750,7 @@ const prepDate = ({ alias, val, junction = 'and', values, named = false, encrypt
  * @param {*} [numObj.ctx]
  * @returns {string} 'sql' with placeholder string to be injected at execution
 */
-const prepNumeric = ({ alias, val, junction = 'and', values, named = false, encryption, ctx = 0 }) => {
+const prepNumeric = ({ alias, val, values, named = false, encryption, ctx = 0 }) => {
 
     const { value, decimals = null, mod = null, sub = null, add = null, multiplyBy = null, divideBy = null, power = null, cast = null, decrypt = null, encoding = 'utf8mb4', as = ctx?.isPostgreSQL ? 'num' : null, compare = {} } = val
 
@@ -836,9 +815,9 @@ const prepNumeric = ({ alias, val, junction = 'and', values, named = false, encr
     // type casting
     if (cast) sql = `CAST(${sql} AS ${dataTypes[cast] || 'CHAR'})`
 
-    if (Object.keys(compare).length) sql += prepWhere({ alias, where: compare, junction, values, encryption, ctx })
+    if (hasKeys(compare)) sql += prepWhere({ alias, where: compare, values, encryption, ctx })
 
-    if (!Object.keys(compare).length && (as || named)) {
+    if (!hasKeys(compare) && (as || named)) {
         sql += ` AS ${ctx?.isMySQL ? '?' : `"${(as || (typeof value == 'string' && value.split('.').pop()))}"`}`
         if (ctx?.isMySQL) values.push(as || (typeof value == 'string' && value.split('.').pop()))
     }
@@ -848,7 +827,6 @@ const prepNumeric = ({ alias, val, junction = 'and', values, named = false, encr
 
 /**
  * patches group by clause
- * @function patchGroupBy
  * @param {Object} options
  * @param {Array<*>} options.groupBy
  * @param {string} [options.alias]
@@ -875,25 +853,52 @@ const patchGroupBy = ({ groupBy, alias, values, ctx }) => {
     return `GROUP BY ${sqlParts.join(', ')}`
 }
 
+/** @type {Record<string, string>} */
 const orderDirections = { asc: 'ASC', desc: 'DESC' }
 
+const orderByExpr = new Set(['sum', 'count', 'min', 'max', 'avg'])
+
 /**
- * patches order by clause
- * @function prepOrderBy
- * @param {Object} options
- * @param {{[column:string]:'asc'|'desc'}} options.orderBy
- * @param {string} [options.alias]
- * @param {Array<*>} options.values
- * @param {*} [options.ctx]
- * @returns {string}
+ * prepares sort order
+ * @param {Object} params 
+ * @param {string} [params.alias]
+ * @param {Record<string, 'asc'|'desc'>|Record<string, any>} params.orderBy
+ * @param {Array<*>} params.values
+ * @param {*} params.ctx
  */
-const prepOrderBy = ({ alias, orderBy, values, ctx }) => {
-    if (!Object.keys(orderBy).length) return ''
-    const entries = Object.entries(orderBy)
+const prepOrderBy = ({ alias = undefined, orderBy, values, ctx }) => {
+    if (!hasKeys(orderBy)) return ''
+
     const sqlParts = []
-    for (let i = 0; i < entries.length; i++) {
-        const name = prepName({ alias, value: entries[i][0], ctx })
-        const order = orderDirections[entries[i][1]]
+
+    for (const key in orderBy) {
+        const value = orderBy[key]
+
+        if (key === 'using') {
+
+            if (!Array.isArray(value)) continue
+
+            for (let i = 0; i < value.length; i++) {
+
+                const expr = value[i]
+                const order = orderDirections[expr.order] || 'ASC'
+
+                for (const k in expr) {
+                    if (k === 'order') continue
+                    if (k === 'refer') {
+                        sqlParts.push(`${prepRefer({ val: expr.refer, values, ctx })} ${order}`)
+                    } else if (k === 'date') {
+                        sqlParts.push(`${prepDate({ alias, val: expr.date, values, ctx })} ${order}`)
+                    } else if (orderByExpr.has(k)) {
+                        sqlParts.push(`${prepAggregate({ key: k, val: expr[k], values, ctx })} ${order}`)
+                    }
+                    break
+                }
+            }
+            continue
+        }
+        const name = prepName({ value: key, ctx })
+        const order = orderDirections[value] || 'ASC'
         if (!ctx?.isMySQL) {
             sqlParts.push(`${name} ${order}`)
             continue
@@ -901,11 +906,12 @@ const prepOrderBy = ({ alias, orderBy, values, ctx }) => {
         values.push(name)
         sqlParts.push(`?? ${order}`)
     }
+
+    if (!sqlParts.length) return ''
     return `ORDER BY ${sqlParts.join(', ')}`
 }
 
 /**
- * 
  * @param {*} params 
  * @returns 
  */
@@ -990,6 +996,25 @@ const prepJsonContains = ({ jsonRef, contains, values, ctx, alias = null }) => {
     return `JSON_CONTAINS(${jsonRef}, ${typeof name === 'string' && !name.startsWith('#') ? `CAST(${name} AS CHAR)` : '?'}${typeof name === 'string' && !name.startsWith('#') ? `, '$'` : ''})`
 }
 
+/**
+ * @param {*} val 
+ * @param {any[]} values
+ * @param {*} encryption
+ * @param {*} ctx
+ */
+const getPlaceholder = (val, values, encryption, ctx) => {
+    if (typeof val == 'object' && 'refer' in val) return prepRefer({ val: val.refer, values, ctx, encryption })
+    if (typeof val === 'string') {
+        if (val?.startsWith('#')) {
+            values.push(val.substring(1))
+            return ctx?.isPostgreSQL ? `$${ctx._variableCount++}` : '?'
+        }
+        values.push(val)
+        return ctx?.isPostgreSQL ? `"${val}"` : '??'
+    }
+    return ''
+}
+
 /** @param {*} params */
 const prepEncryption = ({ placeholder, col, encrypt = {}, values, encryption, ctx }) => {
     if (!encrypt[col]) return placeholder
@@ -1004,28 +1029,32 @@ const prepEncryption = ({ placeholder, col, encrypt = {}, values, encryption, ct
     // check secret exists or not
     if (!config?.secret) throw { message: `[Missing]: Secret key is required for encryption of column: '${col}'`, cause: 'Secret key is missing' }
 
+    const secretPlaceholder = getPlaceholder(config?.secret, values, encryption, ctx)
+
     if (ctx?.isPostgreSQL) {
-        values.push(config?.secret)
-        values.push('compress-algo=1, cipher-algo=' + (config?.mode || 'aes256').toLowerCase().replace('-cbc', '').replace('-', ''))
-        return `pgp_sym_encrypt(${placeholder}, $${ctx._variableCount++}, $${ctx._variableCount++})`
+        values.push('compress-algo=1, cipher-algo=' + (config?.mode || 'aes256').toLowerCase().replace('-cbc', '').replace('-ecb', '').replace('-', ''))
+        return `pgp_sym_encrypt(${placeholder}, ${secretPlaceholder}, $${ctx._variableCount++})`
     }
 
     // check iv (in 'cbc' mode) exists or not
-    if (!config.iv && config?.mode.includes('cbc')) throw { message: `[Missing]: Initialization Vector (iv) is required (in '${config?.mode}') for encryption of column: '${col}'`, cause: 'Initialization Vector (iv) is missing' }
-    values.push(config?.secret)
-    if (config?.mode?.includes('cbc')) values.push(config?.iv)
-    values.push(config?.sha || 512)
-    return `AES_ENCRYPT(${placeholder} ${config?.mode?.includes('cbc') ? ', ?' : ''}, UNHEX(SHA2(?, ?)))`
+    if (!config.iv && config?.mode?.includes('cbc')) throw { message: `[Missing]: Initialization Vector (iv) is required (in '${config?.mode}') for encryption of column: '${col}'`, cause: 'Initialization Vector (iv) is missing' }
+
+    let ivPlaceholder = ''
+    if (config?.mode?.includes('cbc')) {
+        ivPlaceholder = `, UNHEX(SHA2(${getPlaceholder(config?.iv, values, encryption, ctx)}, ?))`
+        values.push(config?.sha || 512)
+    }
+    return `AES_ENCRYPT(${placeholder}, ${secretPlaceholder}${ivPlaceholder})`
 }
 
 /** @param {*} params */
 const prepDecryption = ({ placeholder, value, decrypt, encoding, values, encryption, ctx }) => {
 
-    if (!ctx?.isMySQL && !ctx?.isPostgreSQL) throw { message: `[Invalid]: No built-in AES Decryption support found for '${ctx?.config?.dialect}'`, cause: `AES Decryption not supported by '${ctx?.config?.dialect}'` }
-
     if (!decrypt) return placeholder
 
-    const config = { ...(decrypt || {}), ...(encryption || {}), ...(ctx?.config?.encryption) }
+    if (!ctx?.isMySQL && !ctx?.isPostgreSQL) throw { message: `[Invalid]: No built-in AES Decryption support found for '${ctx?.config?.dialect}'`, cause: `AES Decryption not supported by '${ctx?.config?.dialect}'` }
+
+    const config = { ...(ctx?.config?.encryption || {}), ...(encryption || {}), ...(decrypt || {}) }
     const modes = ['aes-128-ecb', 'aes-256-cbc']
 
     // validate encryption mode
@@ -1036,23 +1065,26 @@ const prepDecryption = ({ placeholder, value, decrypt, encoding, values, encrypt
     // check secret exists or not
     if (!config?.secret) throw { message: `[Missing]: Secret key is required to decrypt column: '${value}'`, cause: 'Secret key is missing' }
 
+    const secretPlaceholder = getPlaceholder(config?.secret, values, encryption, ctx)
+
     if (ctx?.isPostgreSQL) {
-        values.push(config?.secret)
-        values.push(`compress-algo=1, cipher-algo=${(config?.mode || 'aes256').toLowerCase().replace('-cbc', '').replace('-', '')}`)
-        return `pgp_sym_decrypt(${placeholder}, $${ctx._variableCount++}, $${ctx._variableCount++})`;
+        values.push(`compress-algo=1, cipher-algo=${(config?.mode || 'aes256').toLowerCase().replace('-cbc', '').replace('-ecb', '').replace('-', '')}`)
+        return `pgp_sym_decrypt(${placeholder}, ${secretPlaceholder}, $${ctx._variableCount++})`;
     }
 
     // check iv (in 'cbc' mode) exists or not
-    if (!config.iv && config?.mode.includes('cbc')) throw { message: `[Missing]: Initialization Vector (iv) is required (in '${config?.mode}') to decrypt column: '${value}'`, cause: 'Initialization Vector (iv) is missing' }
-    values.push(config?.secret)
-    if (config?.mode?.includes('cbc')) values.push(config?.iv)
-    values.push(config?.sha || 512)
-    return `CONVERT(AES_DECRYPT(${placeholder} ${config?.mode?.includes('cbc') ? ', ?' : ''}, UNHEX(SHA2(?, ?))) USING ${encoding})`
+    if (!config.iv && config?.mode?.includes('cbc')) throw { message: `[Missing]: Initialization Vector (iv) is required (in '${config?.mode}') to decrypt column: '${value}'`, cause: 'Initialization Vector (iv) is missing' }
+
+    let ivPlaceholder = ''
+    if (config?.mode?.includes('cbc')) {
+        ivPlaceholder = `, UNHEX(SHA2(${getPlaceholder(config?.iv, values, encryption, ctx)}, ?))`
+        values.push(config?.sha || 512)
+    }
+    return `CONVERT(AES_DECRYPT(${placeholder}, ${secretPlaceholder}${ivPlaceholder}) USING ${encoding})`
 }
 
 /**
  * patch limit/offset
- * @function patchLimit
  * @param {number} limit
  * @param {Array<*>} values
  * @param {*} ctx 
@@ -1065,8 +1097,7 @@ const patchLimit = (limit, values, ctx, key = 'LIMIT') => {
 }
 
 /**
- * @function prepPadding
- * @description adds padding to either side of the string
+ * adds padding to either side of the string
  * @param {*} params
  * @returns {string}
  */
@@ -1101,12 +1132,12 @@ const prepSubStr = ({ length, start, sql, values, ctx }) => {
 const patchDateCast = value => !value ? '' : (value.includes('-') && value.includes(':') ? '::timestamp' : (value.includes('-') ? '::date' : (value.includes(':') ? '::time' : '')))
 
 /** @param {*} params */
-const handlePlaceholder = ({ value, alias, junction = 'and', parent = null, encryption = undefined, ctx, values }) => {
+const handlePlaceholder = ({ value, alias, parent = null, encryption = undefined, ctx, values }) => {
     if (Array.isArray(value)) {
         return prepSelect({ select: value, values, alias, encryption, ctx })
     }
     if (typeof value === 'object' && value != null) {
-        return prepWhere({ alias, where: value, junction, parent, values, encryption, ctx })
+        return prepWhere({ alias, where: value, parent, values, encryption, ctx })
     }
     else {
         const placeholder = prepPlaceholder({ value, alias, ctx })
@@ -1121,20 +1152,19 @@ const handlePlaceholder = ({ value, alias, junction = 'and', parent = null, encr
  * @param {import("../defs/types").JunctionKeys} params.key - "and" or "or"
  * @param {Array<any>} params.val - array of sub conditions
  * @param {string} [params.alias]
- * @param {import("../defs/types").JunctionKeys} [params.junction]
  * @param {any} [params.parent]
  * @param {Array<any>} params.values
  * @param {any} [params.encryption]
  * @param {any} [params.ctx]
  * @returns {string}
  */
-const handleAndOr = ({ key, val, alias, junction, parent, values, encryption, ctx }) => {
-    const resp = val.map(condition => prepWhere({ alias, where: condition, junction, parent, values, encryption, ctx })).filter(Boolean).map(condition => `(${condition})`)
+const handleAndOr = ({ key, val, alias, parent, values, encryption, ctx }) => {
+    const resp = val.map(condition => prepWhere({ alias, where: condition, parent, values, encryption, ctx })).filter(Boolean).map(condition => `(${condition})`)
     return resp.length > 1 ? `(${resp.join(junctions[key])})` : resp.join(junctions[key])
 }
 
 /** @param {*} params */
-const handleBetween = ({ alias, val, junction, parent, values, encryption, ctx }) => {
+const handleBetween = ({ alias, val, parent, values, encryption, ctx }) => {
     /** @type {string|number|Date|boolean|null} */
     let sql = ''
     const { gt, lt } = val
@@ -1142,8 +1172,8 @@ const handleBetween = ({ alias, val, junction, parent, values, encryption, ctx }
         sql = prepPlaceholder({ value: parent, alias, ctx })
         if (isVariable(sql)) values.push(prepName({ alias, value: parent, ctx }))
     }
-    const gtPlaceholder = handlePlaceholder({ value: gt, alias, junction, values, encryption, ctx })
-    const ltPlaceholder = handlePlaceholder({ value: lt, alias, junction, values, encryption, ctx })
+    const gtPlaceholder = handlePlaceholder({ value: gt, alias, values, encryption, ctx })
+    const ltPlaceholder = handlePlaceholder({ value: lt, alias, values, encryption, ctx })
     return `${sql} BETWEEN ${gtPlaceholder} AND ${ltPlaceholder}`
 }
 
@@ -1213,6 +1243,12 @@ const replaceDatePatterns = ({ format, dialect = 'mysql' }) => {
     return result
 }
 
+/** @param {*} obj  */
+const hasKeys = obj => {
+    for (const _ in obj) return true
+    return false
+}
+
 /** 
  * @type {Record<string, Function>}
  */
@@ -1236,4 +1272,4 @@ const handleFunc = {
     min: prepAggregate,
 }
 
-module.exports = { prepSelect, prepWhere, prepJoin, prepOrderBy, isVariable, patchGroupBy, patchLimit, prepEncryption }
+module.exports = { prepSelect, prepWhere, prepJoin, prepOrderBy, isVariable, patchGroupBy, patchLimit, prepEncryption, prepRefer, hasKeys }

@@ -1,105 +1,82 @@
 /**
- * UnSQL is JavaScript based library to interact with structured databases (MySQL). It provides clean and easy interface for interaction for faster and smooth developers' experience.
- * @class
- * @alias UnSQL
- * @classdesc All model classes shall extend using UnSQL base class to access advanced functionalities
- * @namespace UnSQL
+ * JavaScript ORM for structured databases (MySQL, PostgreSQL, SQLite)
+ * Extend this class to access clean, structured database interaction interface
  * @author Siddharth Tiwari <dev.unsql@gmail.com>
  */
 export class UnSQL {
     /**
      * config is a static property object, used to declare configurations relating to a model class
      * @type {import("./defs/types").ConfigObject} (required) defines configurations for this model class
-     * @static
-     * @public
-     * @memberof UnSQL
      */
-    public static config: import("./defs/types").ConfigObject;
-    static _variableCount: number;
-    static isMySQL: boolean;
-    static isPostgreSQL: boolean;
-    static isSQLite: boolean;
+    static config: import("./defs/types").ConfigObject;
     /**
-     * Find method
-     * @method find
-     * @description find method is used to fetch records from the database table
-     *
-     * @param {Object} findParam (optional)
-     * @param {string} [findParam.alias] (optional) local reference name for table mapped to this model
-     * @param {import("./defs/types").SelectObject} [findParam.select] (optional) limits columns to be extracted, accepts an array of value(s), column name(s), wrapper methods etc
-     * @param {import("./defs/types").JoinObject} [findParam.join] (optional) enables association of child table(s) to this model class
-     * @param {import("./defs/types").WhereObject} [findParam.where] (optional) filter record(s) based on conditions
-     * @param {'and'|'or'} [findParam.junction] (optional) defines the clause ('and'|'or') used to connect conditions inside 'where' and 'having' property
-     * @param {string[]} [findParam.groupBy] (optional) groups record(s) based on single (or list of) column(s)
-     * @param {import("./defs/types").HavingObject} [findParam.having] (optional) similar to 'where', filters record(s) additionally allows filter using aggregate methods
-     * @param {{[column:string]:('asc'|'desc')}} [findParam.orderBy] (optional) re-order extracted record(s) based on single (or list of) column(s)
-     * @param {number} [findParam.limit] (optional) limits the number of record(s) to be fetched
-     * @param {number} [findParam.offset] (optional) sets the starting index for records to be fetched
-     * @param {import("./defs/types").EncryptionConfig} [findParam.encryption] (optional) defines query level encryption configurations
-     * @param {import("./defs/types").DebugTypes} [findParam.debug] (optional) enables different debug modes
-     * @param {SessionManager} [findParam.session] (optional)
-     * @param {boolean} [findParam.includeMeta] (optional)
-     *
-     * @returns {Promise<{success:boolean, error?:*, result?:Array<*>|*, meta?:*}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
-     * @static
-     * @memberof UnSQL
+     * Fetches records from the database table based on provided criteria.
+     * @param {Object} [findParam={}] - Configuration for the find operation.
+     * @param {string} [findParam.alias] - Local reference name for table mapped to this model.
+     * @param {import("./defs/types").SelectObject} [findParam.select=[]] - Columns to extract; accepts arrays, column names, or wrapper methods.
+     * @param {import("./defs/types").JoinObject} [findParam.join=[]] - Association of child table(s) to this model.
+     * @param {import("./defs/types").WhereObject} [findParam.where={}] - Filter conditions for the query.
+     * @param {string[]} [findParam.groupBy=[]] - Column(s) to group records by.
+     * @param {import("./defs/types").HavingObject} [findParam.having={}] - Filter using aggregate methods.
+     * @param {Object<string, 'asc'|'desc'>} [findParam.orderBy={}] - Sort order for the results.
+     * @param {number} [findParam.limit] - Maximum number of records to fetch.
+     * @param {number} [findParam.offset] - Starting index for pagination.
+     * @param {import("./defs/types").EncryptionConfig} [findParam.encryption={}] - Query-level encryption settings.
+     * @param {import("./defs/types").DebugTypes} [findParam.debug=false] - Debug mode configuration.
+     * @param {SessionManager} [findParam.session] - Database session/transaction manager.
+     * @returns {Promise<{success: boolean, error?: any, result?: any[]|any, meta?: any}>}
+     * Resolves with the execution status and the resulting dataset or error.
+     * @example
+     * const { success, result } = await User.find({
+     * where: { status: true, role: '#admin' },
+     * limit: 10,
+     * debug: 'query',
+     * });
      */
-    static find({ alias, select, join, where, junction, groupBy, having, orderBy, limit, offset, encryption, debug, session }?: {
+    static find({ alias, select, join, where, groupBy, having, orderBy, limit, offset, encryption, debug, session }?: {
         alias?: string | undefined;
         select?: import("./defs/types").SelectObject | undefined;
         join?: import("./defs/types").JoinObject | undefined;
         where?: import("./defs/types").WhereObject | undefined;
-        junction?: "and" | "or" | undefined;
         groupBy?: string[] | undefined;
         having?: import("./defs/types").HavingObject | undefined;
         orderBy?: {
-            [column: string]: "asc" | "desc";
+            [x: string]: "asc" | "desc";
         } | undefined;
         limit?: number | undefined;
         offset?: number | undefined;
         encryption?: import("./defs/types").EncryptionConfig | undefined;
         debug?: import("./defs/types").DebugTypes;
         session?: SessionManager | undefined;
-        includeMeta?: boolean | undefined;
-    }, includeMeta?: boolean): Promise<{
+    }): Promise<{
         success: boolean;
         error?: any;
-        result?: Array<any> | any;
+        result?: any[] | any;
         meta?: any;
     }>;
     /**
-     * @method save
-     * @description save method used in insert / update / upsert record(s) in the database table
-     * @param {Object} saveParam (optional)
-     * @param {string} [saveParam.alias] (optional) local reference name for table mapped to this model
-     * @param {Object|Array<object>} saveParam.data object / array of objects to be inserted into the database table
-     * @param {import("./defs/types").WhereObject} [saveParam.where] (optional) used to filter records to be updated
-     * @param {'and'|'or'} [saveParam.junction] (optional) defines default behavior that is used to join different 'child properties' inside 'where' property, default value is 'and'
-     * @param {Object} [saveParam.upsert] (optional) object data to be updated in case of 'duplicate key entry' found in the database
-     * @param {{[column:string]:{secret?:string, iv?:string, sha?:import("./defs/types").EncryptionSHAs} }} [saveParam.encrypt] (optional) define encryption overrides for column(s)
-     * @param {import("./defs/types").EncryptionConfig} [saveParam.encryption] (optional) defines query level encryption configurations
-     * @param {import("./defs/types").DebugTypes} [saveParam.debug] (optional) enables various debug mode
-     * @param {SessionManager} [saveParam.session] (optional) enables various debug mode
-     *
-     * @returns {Promise<{success:boolean, error?:*, result?:Array<*>|{insertId?:number, changes?:number}|{fieldCount?: number,affectedRows?: number, insertId: number, info?: string, serverStatus?: number, warningStatus?: number,changedRows?: number}}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
-     * @static
-     * @memberof UnSQL
+     * Insert update or upsert data into database
+     * @param {Object} saveParam
+     * @param {string?} [saveParam.alias]
+     * @param {Record<string, any>|any[]} saveParam.data
+     * @param {import("./defs/types").WhereObject} saveParam.where
+     * @param {any[]} [saveParam.upsert]
+     * @param {string[]} [saveParam.indexes]
+     * @param {any} [saveParam.encrypt]
+     * @param {import("./defs/types").DebugTypes} [saveParam.debug]
+     * @param {import("./defs/types").EncryptionConfig} [saveParam.encryption]
+     * @param {SessionManager} [saveParam.session]
+     * @returns {Promise<{success:boolean, error?:*, result?:Array<*>|{insertId?:number, changes?:number}}>}
      */
-    static save({ alias, data, where, junction, upsert, encrypt, encryption, debug, session }: {
-        alias?: string | undefined;
-        data: Object | Array<object>;
-        where?: import("./defs/types").WhereObject | undefined;
-        junction?: "and" | "or" | undefined;
-        upsert?: Object | undefined;
-        encrypt?: {
-            [column: string]: {
-                secret?: string;
-                iv?: string;
-                sha?: import("./defs/types").EncryptionSHAs;
-            };
-        } | undefined;
-        encryption?: import("./defs/types").EncryptionConfig | undefined;
+    static save({ alias, data, where, upsert, indexes, encrypt, encryption, debug, session }: {
+        alias?: string | null | undefined;
+        data: Record<string, any> | any[];
+        where: import("./defs/types").WhereObject;
+        upsert?: any[] | undefined;
+        indexes?: string[] | undefined;
+        encrypt?: any;
         debug?: import("./defs/types").DebugTypes;
+        encryption?: import("./defs/types").EncryptionConfig | undefined;
         session?: SessionManager | undefined;
     }): Promise<{
         success: boolean;
@@ -107,37 +84,21 @@ export class UnSQL {
         result?: Array<any> | {
             insertId?: number;
             changes?: number;
-        } | {
-            fieldCount?: number;
-            affectedRows?: number;
-            insertId: number;
-            info?: string;
-            serverStatus?: number;
-            warningStatus?: number;
-            changedRows?: number;
         };
     }>;
     /**
-     * @method delete
-     * @description delete method is used to remove record(s) from the database table
-     *
+     * delete method is used to remove record(s) from the database table
      * @param {Object} deleteParam delete query object definition
      * @param {string} [deleteParam.alias] (optional) local alias name for the database table
      * @param {import("./defs/types").WhereObject} [deleteParam.where] (optional) filter record(s) to be updated
-     * @param {'and'|'or'} [deleteParam.junction] (optional) defines default behavior that is used to join different 'child properties' inside 'where' property, default value is 'and'
      * @param {import("./defs/types").EncryptionConfig} [deleteParam.encryption] (optional) defines query level encryption configurations
      * @param {import("./defs/types").DebugTypes} [deleteParam.debug] (optional) enables various debug mode
      * @param {SessionManager} [deleteParam.session] (optional) global session reference for transactions and rollback
-     *
      * @returns {Promise<{success:boolean, error?:*, result?:*}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
-     *
-     * @static
-     * @memberof UnSQL
      */
-    static delete({ alias, where, junction, debug, encryption, session }?: {
+    static delete({ alias, where, debug, encryption, session }?: {
         alias?: string | undefined;
         where?: import("./defs/types").WhereObject | undefined;
-        junction?: "and" | "or" | undefined;
         encryption?: import("./defs/types").EncryptionConfig | undefined;
         debug?: import("./defs/types").DebugTypes;
         session?: SessionManager | undefined;
@@ -147,17 +108,16 @@ export class UnSQL {
         result?: any;
     }>;
     /**
-     * @method rawQuery
-     * @description rawQuery method is used to execute raw SQL query on the database
+     * rawQuery method is used to execute raw SQL query on the database
      * @param {Object} rawQueryParams
      * @param {string} rawQueryParams.sql (required) SQL query to be executed
      * @param {Array<*>} [rawQueryParams.values] (optional) values to be interpolated in the query
-     * @param {import("./defs/types").EncryptionConfig} [rawQueryParams.encryption] (optional) enables debug mode
+     * @param {import("./defs/types").EncryptionConfig} [rawQueryParams.encryption] (optional) encryption configurations
      * @param {import("./defs/types").DebugTypes} [rawQueryParams.debug] (optional) enables debug mode
      * @param {boolean} [rawQueryParams.multiQuery] (optional) flag if sql contains multiple queries (only in 'mysql'), default is false
      * @param {*} [rawQueryParams.session] (optional) global session reference for transactions and rollback
      * @param {'run'|'all'|'exec'} [rawQueryParams.methodType=all] (optional) used only with 'sqlite'
-     * @returns {Promise<{success:boolean, error?:object, result?:*}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
+     * @returns {Promise<{success:boolean, error?:*, result?:*}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
      */
     static rawQuery({ sql, values, debug, encryption, session, multiQuery, methodType }: {
         sql: string;
@@ -169,13 +129,11 @@ export class UnSQL {
         methodType?: "all" | "run" | "exec" | undefined;
     }): Promise<{
         success: boolean;
-        error?: object;
+        error?: any;
         result?: any;
     }>;
     /**
      * export record(s) from the table
-     * @method export
-     * @description This method exports record(s) (filtered/un-filtered) from the database table in form of the 'Json Array' into a json file
      * @param {Object} exportParam
      * @param {string|UnSQL|*} [exportParam.target] (optional) name of the file dynamically created '.json' file or reference to a valid UnSQL model class, defaults to the table name of exporting model class
      * @param {string} [exportParam.directory] (optional) rename default export directory
@@ -188,13 +146,11 @@ export class UnSQL {
      * @param {{[key:string]:'asc'|'desc'}} [exportParam.orderBy] (optional)
      * @param {number} [exportParam.limit] (optional) limit record(s) to be extracted
      * @param {number} [exportParam.offset] (optional) set starting index
-     * @param {{[column:string]:import("./defs/types").EncryptionConfig}} [exportParam.encrypt] (optional) set starting index
+     * @param {{[column:string]:import("./defs/types").EncryptionConfig}} [exportParam.encrypt] (optional) column(s) to encrypt
      * @param {import("./defs/types").EncryptionConfig} [exportParam.encryption] (optional) set encryption configuration
      * @param {'append'|'override'} [exportParam.mode] (optional) set writing mode
      * @param {import("./defs/types").DebugTypes} [exportParam.debug] (optional) set debug mode
      * @returns {Promise<{success: boolean, message?: string, error?: *}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
-     * @static
-     * @memberof UnSQL
      */
     static export({ target, directory, select, alias, join, where, groupBy, having, orderBy, limit, offset, encrypt, encryption, mode, debug }?: {
         target?: string | UnSQL | any;
@@ -223,12 +179,9 @@ export class UnSQL {
     }>;
     /**
      * Will reset the database table to initial state
-     * @method reset
      * @param {Object} resetParam
      * @param {import("./defs/types").DebugTypes} [resetParam.debug] (optional) set debug mode
      * @returns {Promise<{success:boolean, message?:string, result?:*, error?:*}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
-     * @static
-     * @memberof UnSQL
      */
     static reset({ debug }?: {
         debug?: import("./defs/types").DebugTypes;
@@ -240,16 +193,12 @@ export class UnSQL {
     }>;
 }
 /**
- * @class
- * @description provides various lifecycle methods to manage re-usable MySQL session (transactions)
- * @alias SessionManager
- *
+ * provides various lifecycle methods to manage re-usable MySQL session (transactions)
  * @returns {Promise<{success: boolean, error?: string, message?: string}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'message'
  * @author Siddharth Tiwari <dev.unsql@gmail.com>
  */
 export class SessionManager {
     /**
-     * @constructor
      * @param {*} pool MySQL connection pool or connection object or PostgreSQL pool object
      * @param {'mysql'|'postgresql'|'sqlite'} [dialect='mysql']
      */
@@ -257,11 +206,8 @@ export class SessionManager {
     pool: any;
     dialect: "mysql" | "postgresql" | "sqlite";
     /**
-     * @async
-     * @method init
-     * @description initiates transaction
+     * initiates transaction
      * @returns {Promise<void|{success: false, error?: *}|{success: true, message: string}>}
-     * @memberof SessionManager
      */
     init(): Promise<void | {
         success: false;
@@ -272,32 +218,23 @@ export class SessionManager {
     }>;
     connection: any;
     /**
-     * @async
-     * @method rollback
-     * @description rollbacks the changes, if 'false' is passed then session will not be closed
+     * rollbacks the changes, if 'false' is passed then session will not be closed
      * @param {boolean} [close=true]
      * @returns {Promise<void>}
-     * @memberof SessionManager
      */
     rollback(close?: boolean): Promise<void>;
     /**
-     * @async
-     * @method commit
-     * @description commits the changes, if 'false' is passed then session will not be closed
+     * commits the changes, if 'false' is passed then session will not be closed
      * @param {boolean} [close=true]
      * @returns {Promise<void|{success: false, error: string}>}
-     * @memberof SessionManager
-    */
+     */
     commit(close?: boolean): Promise<void | {
         success: false;
         error: string;
     }>;
     /**
-     * @async
-     * @method close
-     * @description terminates the session and releases the connection
+     * terminates the session and releases the connection
      * @returns {Promise<void>}
-     * @memberof SessionManager
      */
     close(): Promise<void>;
 }

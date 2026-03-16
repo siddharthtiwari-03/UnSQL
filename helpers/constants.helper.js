@@ -3,7 +3,7 @@
  * @param {*} value 
  * @returns 
  */
-const checkConstants = value => (value != null && value.toString().includes('*')) || 'pi' === value || 'now' === value || 'currentDate' === value || 'currentTime' === value || 'currentTimestamp' === value || 'localTime' === value || 'localTimestamp' === value || 'utcTimestamp' === value || 'isNull' === value || 'isNotNull' === value || 'null' === value || 'NULL' === value || null === value
+const checkConstants = value => (value != null && value.toString().includes('*')) || 'pi' === value || 'now' === value || 'currentDate' === value || 'currentTime' === value || 'currentTimestamp' === value || 'localTime' === value || 'localTimestamp' === value || 'utcTimestamp' === value || 'isNull' === value || 'isNotNull' === value || 'notNull' === value || 'null' === value || 'NULL' === value || null === value
 
 /** @type {Record<string, string>} */
 const constantFunctions = {
@@ -17,6 +17,7 @@ const constantFunctions = {
     pi: 'PI()',
     null: 'IS NULL',
     isNull: 'IS NULL',
+    notNull: 'IS NOT NULL',
     isNotNull: 'IS NOT NULL'
 }
 

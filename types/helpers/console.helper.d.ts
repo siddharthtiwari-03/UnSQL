@@ -10,10 +10,10 @@ export namespace colors {
  *
  * @param {import("../defs/types").DebugTypes} debug
  * @param {string} sql
- * @param {Array<*>} values
+ * @param {any[]} values
  * @param {string} prepared
  */
-export function handleQueryDebug(debug: import("../defs/types").DebugTypes, sql: string, values: Array<any>, prepared?: string): void;
+export function handleQueryDebug(debug: import("../defs/types").DebugTypes, sql: string, values: any[], prepared?: string): void;
 /**
  *
  * @param {import("../defs/types").DebugTypes} debug

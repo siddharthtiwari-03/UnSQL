@@ -17,7 +17,7 @@
 
 /**
  * debug types
- * @typedef {'query'|'error'|'benchmark'|'benchmark-query'|'benchmark-error'|boolean|undefined} DebugTypes
+ * @typedef {'query'|'error'|'benchmark'|'benchmark-query'|'benchmark-error'|'sandbox'|boolean|undefined} DebugTypes
  */
 
 /**
@@ -35,7 +35,7 @@
  * @prop {string} table name of the table to be mapped with this model class
  * @prop {boolean} [safeMode=true] protects accidental execution of 'delete-all'
  * @prop {boolean} [devMode=false] prevents 'reset' of data, enables Export/Import of records
- * @prop {Object} [connection] mysql 'connection' object
+ * @prop {*} [connection] mysql 'connection' object
  * @prop {*} [pool] mysql connection 'pool' object
  * @prop {'mysql'|'postgresql'|'sqlite'} [dialect='mysql'] dialect to be used
  * @prop {'unknown'|EncryptionModes} [dbEncryptionMode='unknown'] dialect to be used

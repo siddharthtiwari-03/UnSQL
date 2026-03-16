@@ -11,11 +11,11 @@ const colors = {
  * 
  * @param {import("../defs/types").DebugTypes} debug 
  * @param {string} sql 
- * @param {Array<*>} values 
+ * @param {any[]} values 
  * @param {string} prepared 
  */
 const handleQueryDebug = (debug, sql, values, prepared = '') => {
-    if (debug === true || debug === 'benchmark-query' || debug == 'query') {
+    if (debug === true || debug === 'sandbox' || debug === 'benchmark-query' || debug === 'query') {
         console.info(`\n${colors.blue}******************************************************************${colors.reset}`)
         console.info(`${colors.cyan}                       UnSQL Debug Query Begins${colors.reset}`)
         console.info(`${colors.blue}------------------------------------------------------------------${colors.reset}\n`)
@@ -24,7 +24,7 @@ const handleQueryDebug = (debug, sql, values, prepared = '') => {
         if (prepared) console.info(`${colors.cyan}Prepared Query:${colors.reset}`, prepared, '\n')
         console.info(`${colors.blue}------------------------------------------------------------------${colors.reset}`)
         console.info(`${colors.cyan}                       UnSQL Debug Query Ends${colors.reset}`)
-        console.info(`${colors.blue}******************************************************************${colors.reset}`)
+        console.info(`${colors.blue}******************************************************************${colors.reset}\n`)
     }
 }
 
@@ -34,11 +34,11 @@ const handleQueryDebug = (debug, sql, values, prepared = '') => {
  * @param {*} error 
  */
 const handleError = (debug, error) => {
-    if (debug === true || debug === 'benchmark-error' || debug == 'error') {
+    if (debug === true || debug === 'benchmark-error' || debug === 'error') {
         console.error(`\n${colors.red}******************************************************************${colors.reset}`)
         console.error(`${colors.yellow}                       UnSQL Debug Error Starts${colors.reset}`)
         console.error(`${colors.red}------------------------------------------------------------------${colors.reset}\n`)
-        console.error(`${colors.yellow}Error while find execution:${colors.reset}`)
+        console.error(`${colors.yellow}UnSQL execution error:${colors.reset}`)
         if (typeof error === 'object')
             console.dir(error)
         else
