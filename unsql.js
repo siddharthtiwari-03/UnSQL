@@ -47,7 +47,6 @@ class UnSQL {
      * });
      */
     static async find({ alias = undefined, select = [], join = [], where = {}, groupBy = [], having = {}, orderBy = {}, limit = undefined, offset = undefined, encryption = {}, debug = false, session = undefined } = {}) {
-
         patchDefaults(this)
 
         const { dialect } = this.config
@@ -68,10 +67,7 @@ class UnSQL {
         const values = []
         const sqlParts = []
 
-        const isBenchmarking = debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true
-
         try {
-            const t0 = isBenchmarking ? performance.now() : 0
             sqlParts.push(`SELECT ${prepSelect({ alias, select, values, encryption, ctx })} FROM ${ctx.isMySQL ? '??' : `"${ctx.config?.table}"`}`)
             if (ctx.isMySQL) values.push(ctx.config?.table)
             if (alias) {
@@ -532,7 +528,7 @@ const executeMySQL = async ({ sql, values, debug = false, session = undefined, c
 
         const t0 = isBenchmarking ? performance.now() : 0
 
-        const [result] = await connection[multiQuery ? 'query' : 'execute'](statement, needsStatement ? undefined : values)
+        const [result] = await connection[multiQuery || !needsStatement ? 'query' : 'execute'](statement, needsStatement ? undefined : values)
 
         if (!session) await connection?.commit()
         if (isBenchmarking) {
