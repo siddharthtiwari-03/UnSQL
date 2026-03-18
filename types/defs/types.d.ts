@@ -128,6 +128,7 @@ export type StringObject = {
         length: number;
     } | undefined;
     trim?: boolean | "left" | "right" | undefined;
+    ifNull?: any;
     cast?: CastingTypes | undefined;
     compare?: ValuesObject | ComparatorObjects | undefined;
     as?: string | undefined;
@@ -147,6 +148,7 @@ export type NumericObject = {
     divideBy?: string | number | undefined;
     multiplyBy?: string | number | undefined;
     mod?: string | number | undefined;
+    ifNull?: any;
     cast?: CastingTypes | undefined;
     compare?: ValuesObject | ComparatorObjects | undefined;
     as?: string | undefined;
@@ -164,6 +166,7 @@ export type DateObject = {
     format?: string | undefined;
     sub?: string | number | undefined;
     add?: string | number | undefined;
+    ifNull?: any;
     compare?: ValuesObject | ComparatorObjects | undefined;
     as?: string | undefined;
 };

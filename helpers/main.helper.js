@@ -212,7 +212,7 @@ const prepJoin = ({ alias, join = [], values, encryption = undefined, ctx = unde
             if (hasKeys(where)) sqlParts.push(`WHERE ${prepWhere({ alias: joinAlias, where, values, encryption, ctx })}`)
             if (groupBy.length) sqlParts.push(patchGroupBy({ groupBy, alias, values, ctx }))
             if (hasKeys(having)) sqlParts.push(`HAVING ${prepWhere({ alias: joinAlias, where: having, values, encryption, ctx })}`)
-            if (hasKeys(orderBy)) sqlParts.push(prepOrderBy({ orderBy, values, ctx }))
+            if (hasKeys(orderBy)) sqlParts.push(prepOrderBy({ orderBy, alias, values, ctx }))
             if (typeof limit === 'number') sqlParts.push(patchLimit(limit, values, ctx))
             if (typeof offset === 'number') sqlParts.push(patchLimit(offset, values, ctx, 'OFFSET'))
             if (!as) throw { message: `Missing 'as' property with selective join association`, cause: `Every derived table must have its own alias ('as' property)` }
@@ -325,7 +325,7 @@ const prepJson = ({ val, encryption = undefined, values, named = false, ctx = un
         if (hasKeys(where)) sqlParts.push(`WHERE ${prepWhere({ alias, where, values, encryption, ctx })}`)
         if (groupBy.length > 0) sqlParts.push(patchGroupBy({ groupBy, alias, values, ctx }))
         if (hasKeys(having)) sqlParts.push(`HAVING ${prepWhere({ alias, where: having, values, encryption, ctx })}`)
-        if (hasKeys(orderBy)) sqlParts.push(prepOrderBy({ orderBy, values, ctx }))
+        if (hasKeys(orderBy)) sqlParts.push(prepOrderBy({ orderBy, alias, values, ctx }))
         if (typeof limit === 'number') sqlParts.push(patchLimit(limit, values, ctx))
         if (typeof offset === 'number') sqlParts.push(patchLimit(offset, values, ctx, 'OFFSET'))
 
@@ -404,7 +404,7 @@ const prepRefer = ({ val, parent = null, values, encryption = undefined, ctx = u
     if (hasKeys(where)) sqlParts.push(`WHERE ${prepWhere({ alias, where, parent, values, encryption, ctx })}`)
     if (groupBy.length) sqlParts.push(patchGroupBy({ groupBy, alias, values, ctx }))
     if (hasKeys(having)) sqlParts.push(`HAVING ${prepWhere({ alias, where: having, values, encryption, ctx })}`)
-    if (hasKeys(orderBy)) sqlParts.push(prepOrderBy({ orderBy, values, ctx }))
+    if (hasKeys(orderBy)) sqlParts.push(prepOrderBy({ orderBy, alias, values, ctx }))
     if (typeof limit === 'number') sqlParts.push(patchLimit(limit, values, ctx))
     if (typeof offset === 'number') sqlParts.push(patchLimit(offset, values, ctx, 'OFFSET'))
     if (as && ctx?.isMySQL) values.push(as)
@@ -524,12 +524,19 @@ const prepConcat = ({ alias, val, values, encryption = undefined, ctx = undefine
  */
 const prepString = ({ alias, val, values, named = false, encryption = undefined, ctx = undefined }) => {
 
-    const { value, replace = null, reverse = false, textCase = null, padding = {}, substr = null, trim = false, cast = null, decrypt = null, encoding = 'utf8mb4', as = ctx?.isPostgreSQL ? 'str' : null, compare = {} } = val
+    const { value, replace = null, reverse = false, textCase = null, padding = {}, substr = null, trim = false, ifNull = null, cast = null, decrypt = null, encoding = 'utf8mb4', as = ctx?.isPostgreSQL ? 'str' : null, compare = {} } = val
 
     // prepare place holder
     let sql = prepPlaceholder({ value, alias, ctx })
     if (isVariable(sql)) {
         values.push(prepName({ alias, value, ctx }))
+    }
+
+    if (ifNull != null) {
+        const nullPlaceholder = prepPlaceholder({ value: ifNull, alias, ctx })
+        const nullValue = prepName({ alias, value: ifNull, ctx })
+        if (isVariable(nullPlaceholder)) values.push(nullValue)
+        sql = `IFNULL(${sql}, ${nullPlaceholder})`
     }
 
     // envelop decrypt
@@ -612,7 +619,7 @@ const dateUnits = {
  */
 const prepDate = ({ alias, val, values, named = false, encryption = undefined, ctx = undefined }) => {
     // deconstruct different props from the val object
-    const { value, add = 0, sub = 0, format = null, fromPattern = null, cast = null, decrypt = null, encoding = 'utf8mb4', as = ctx?.isPostgreSQL ? 'date' : null, compare = {} } = val
+    const { value, add = 0, sub = 0, format = null, fromPattern = null, ifNull = null, cast = null, decrypt = null, encoding = 'utf8mb4', as = ctx?.isPostgreSQL ? 'date' : null, compare = {} } = val
 
     // init local sql string and values array
     const localValues = [] // using due to 'unshift' (required for 'format' in sqlite)
@@ -624,6 +631,13 @@ const prepDate = ({ alias, val, values, named = false, encryption = undefined, c
     if (isVariable(sql)) {
         // prepare name
         localValues.push(prepName({ alias, value, ctx }))
+    }
+
+    if (ifNull != null) {
+        const nullPlaceholder = prepPlaceholder({ value: ifNull, alias, ctx })
+        const nullValue = prepName({ alias, value: ifNull, ctx })
+        if (isVariable(nullPlaceholder)) values.push(nullValue)
+        sql = `IFNULL(${sql}, ${nullPlaceholder})`
     }
 
     // decrypt
@@ -752,11 +766,18 @@ const prepDate = ({ alias, val, values, named = false, encryption = undefined, c
 */
 const prepNumeric = ({ alias, val, values, named = false, encryption, ctx = 0 }) => {
 
-    const { value, decimals = null, mod = null, sub = null, add = null, multiplyBy = null, divideBy = null, power = null, cast = null, decrypt = null, encoding = 'utf8mb4', as = ctx?.isPostgreSQL ? 'num' : null, compare = {} } = val
+    const { value, decimals = null, mod = null, sub = null, add = null, multiplyBy = null, divideBy = null, power = null, ifNull = undefined, cast = null, decrypt = null, encoding = 'utf8mb4', as = ctx?.isPostgreSQL ? 'num' : null, compare = {} } = val
 
     // patch placeholder to the sql string
     let sql = prepPlaceholder({ value, alias, ctx })
     if (isVariable(sql)) values.push(prepName({ alias, value, ctx }))
+
+    if (ifNull != null) {
+        const nullPlaceholder = prepPlaceholder({ value: ifNull, alias, ctx })
+        const nullValue = prepName({ alias, value: ifNull, ctx })
+        if (isVariable(nullPlaceholder)) values.push(nullValue)
+        sql = `IFNULL(${sql}, ${nullPlaceholder})`
+    }
 
     // envelop decrypt
     if (decrypt) sql = prepDecryption({ placeholder: sql, value, decrypt, values, encoding, encryption, ctx })
@@ -841,7 +862,7 @@ const patchGroupBy = ({ groupBy, alias, values, ctx }) => {
 
     for (let i = 0; i < groupBy.length; i++) {
         const col = prepName({ value: groupBy[i], alias, ctx })
-        if (!ctx?.isMySQL) {
+        if (!ctx?.isMySQL || groupBy[i].toString().startsWith('_')) {
             sqlParts.push(col)
             continue
         }
@@ -897,10 +918,16 @@ const prepOrderBy = ({ alias = undefined, orderBy, values, ctx }) => {
             }
             continue
         }
-        const name = prepName({ value: key, ctx })
+
+        const name = prepName({ value: key, alias, ctx })
         const order = orderDirections[value] || 'ASC'
-        if (!ctx?.isMySQL) {
+
+        if (key.toString().startsWith('_')) {
             sqlParts.push(`${name} ${order}`)
+            continue
+        }
+        if (!ctx?.isMySQL) {
+            sqlParts.push(`"${name}" ${order}`)
             continue
         }
         values.push(name)

@@ -26,6 +26,7 @@ const prepPlaceholder = ({ value, alias = null, ctx = undefined }) => {
     }
     if (value == null || value === 'null' || value === 'NULL') return null
     if (typeof value === 'number' || typeof value === 'boolean' || (typeof value === 'string' && (value?.startsWith('#') || Date.parse(value) || parseInt(value) || parseFloat(value))) || value === ' ' || value === '') return ctx?.isPostgreSQL ? `$${ctx._variableCount++}` : '?'
+    if (typeof value == 'string' && value.startsWith('_')) return value.slice(1)
     return ctx.isMySQL ? '??' : prepName({ value, alias, ctx })
 }
 

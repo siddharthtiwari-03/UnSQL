@@ -80,6 +80,7 @@
  * @prop {{left?:{length:number, pattern:string}, right?:{length:number, pattern:string}}} [padding]
  * @prop {{start:number, length:number}} [substr]
  * @prop {'left'|'right'|boolean} [trim]
+ * @prop {*} [ifNull]
  * @prop {CastingTypes} [cast]
  * @prop {ValuesObject|ComparatorObjects} [compare]
  * @prop {string} [as]
@@ -99,6 +100,7 @@
  * @prop {number|string} [divideBy]
  * @prop {number|string} [multiplyBy]
  * @prop {number|string} [mod]
+ * @prop {*} [ifNull]
  * @prop {CastingTypes} [cast]
  * @prop {ValuesObject|ComparatorObjects} [compare]
  * @prop {string} [as]
@@ -116,6 +118,7 @@
  * @prop {string} [format]
  * @prop {number|string} [sub]
  * @prop {number|string} [add]
+ * @prop {*} [ifNull]
  * @prop {ValuesObject|ComparatorObjects} [compare]
  * @prop {string} [as]
  */

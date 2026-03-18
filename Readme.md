@@ -371,6 +371,21 @@ await User.find({
 
 Each entry in `using` supports one expression key - `sum`, `avg`, `count`, `min`, `max`, `date`, or `refer` - alongside `order: 'asc' | 'desc'`.
 
+To sort by a derived column, prefix the derived column name with `'_'` to make UnSQL identify that column as a *derived column* instead of regular column names in the database table
+
+```javascript
+await User.find({
+    alias: 'u',
+    select: ['userId', 'firstName', { refer: { table:'user_wallet', alias:'w', select: ['points'], where: { userID : `u.userID` }, as: 'points' } }],
+    orderBy: { _points: 'desc', userId: 'desc' }
+})
+
+// SELECT `u`.`userId`, `u`.`firstName`, (SELECT `w.`points` FROM `user_wallet` `w` WHERE `w`.`userID` = `u`.`userID`) AS 'points' FROM `users` `u`
+// ORDER BY points DESC, `u`.`userID` DESC
+```
+
+> **Please note:** since `points` is a derived column name, we have prefixed it with `'_'` to let UnSQL identify it apart from normal column name
+
 #### Pagination
 
 Use `limit` and `offset` together:
@@ -412,6 +427,8 @@ await User.find({
 // HAVING AVG(`salary`) > 50000
 // ORDER BY COUNT(*) DESC
 ```
+
+> **Please note:** Similar to `orderBy`, `groupBy` also supports grouping by *derived column names*, we need to prefix the derived column name with `'_'` to let UnSQL identify it apart from the normal column names in the database
 
 #### Joining Tables
 
@@ -956,7 +973,7 @@ Wrapper objects are special JSON structures that generate SQL expressions at the
     // Decrypt an encrypted column
     await User.find({
         select: [{
-            str: { value: 'email', decrypt: { secret: 'mySecret', iv: 'myIV' }, as: 'email' }
+            str: { value: 'email', decrypt: { secret: 'mySecretColumn', iv: 'ivColumn' }, as: 'email' }
         }],
         encryption: { mode: 'aes-256-cbc' }
     })
@@ -973,6 +990,7 @@ Wrapper objects are special JSON structures that generate SQL expressions at the
     | `padding`  | `{ left: { length, pattern }, right: { length, pattern } }` (not SQLite)                                                                                                                   |
     | `substr`   | `{ start, length }`                                                                                                                                                                        |
     | `trim`     | `true` \| `'left'` \| `'right'`                                                                                                                                                            |
+    | `ifNull`   | provide a fallback (default) value in case the `value` gets null value from database                                                                                                       |
     | `cast`     | MySQL: `'char'`,`'signed'`,`'unsigned'`,`'decimal'`,`'binary'`,`'date'`,`'dateTime'` / PG: `'integer'`,`'text'`,`'timestamp'`,`'numeric'` / SQLite: `'integer'`,`'text'`,`'real'`,`'blob'` |
     | `decrypt`  | `{ secret, iv, sha }` - overrides all other encryption config for this column                                                                                                              |
     | `encoding` | MySQL only - character set for decrypted output. Default `'utf8mb4'`                                                                                                                       |
@@ -988,27 +1006,28 @@ Wrapper objects are special JSON structures that generate SQL expressions at the
     ```javascript
     await Specs.find({
         select: [{
-            num: { value: 'calories', multiplyBy: 100, divideBy: 'quantity', decimals: 2, as: 'unitCalories' }
+            num: { value: 'calories', multiplyBy: 100, divideBy: 'quantity', decimals: 2, ifNull: 0, as: 'unitCalories' }
         }]
     })
     // MySQL:  SELECT FORMAT((`calories` * 100) / `quantity`, ?) AS `unitCalories` FROM `specs`
     // PG/SQLite: SELECT ROUND((`calories` * 100) / `quantity`, ?) AS `unitCalories` FROM `specs`
     ```
 
-    | Option       | Description                                                    |
-    | ------------ | -------------------------------------------------------------- |
-    | `value`      | column name or number                                          |
-    | `add`        | add to value                                                   |
-    | `sub`        | subtract from value                                            |
-    | `multiplyBy` | multiply value                                                 |
-    | `divideBy`   | divide value                                                   |
-    | `mod`        | modulus                                                        |
-    | `power`      | raise to power                                                 |
-    | `decimals`   | decimal places (integer) \| `'floor'` \| `'ceil'` \| `'round'` |
-    | `cast`       | same options as `str.cast`                                     |
-    | `decrypt`    | same as `str.decrypt`                                          |
-    | `as`         | output alias                                                   |
-    | `compare`    | comparator conditions on the returned value                    |
+    | Option       | Description                                                                          |
+    | ------------ | ------------------------------------------------------------------------------------ |
+    | `value`      | column name or number                                                                |
+    | `add`        | add to value                                                                         |
+    | `sub`        | subtract from value                                                                  |
+    | `multiplyBy` | multiply value                                                                       |
+    | `divideBy`   | divide value                                                                         |
+    | `mod`        | modulus                                                                              |
+    | `power`      | raise to power                                                                       |
+    | `decimals`   | decimal places (integer) \| `'floor'` \| `'ceil'` \| `'round'`                       |
+    | `ifNull`     | provide a fallback (default) value in case the `value` gets null value from database |
+    | `cast`       | same options as `str.cast`                                                           |
+    | `decrypt`    | same as `str.decrypt`                                                                |
+    | `as`         | output alias                                                                         |
+    | `compare`    | comparator conditions on the returned value                                          |
 
 ---
 
@@ -1039,17 +1058,18 @@ Wrapper objects are special JSON structures that generate SQL expressions at the
     // WHERE `createdOn` BETWEEN DATE_SUB(NOW(), INTERVAL 30 DAY) AND NOW()
     ```
 
-    | Option        | Description                                                                       |
-    | ------------- | --------------------------------------------------------------------------------- |
-    | `value`       | column name, date string, or `'now'`                                              |
-    | `add`         | amount to add - e.g. `'6M'`, `'2d 5h'`, or number (days)                          |
-    | `sub`         | amount to subtract                                                                |
-    | `format`      | output format using [date symbols](#42-units-datetime). Wrap literal text in `[]` |
-    | `fromPattern` | parse a date string using this pattern (not supported by SQLite)                  |
-    | `cast`        | same options as `str.cast`                                                        |
-    | `decrypt`     | same as `str.decrypt`                                                             |
-    | `as`          | output alias                                                                      |
-    | `compare`     | comparator conditions on the returned value                                       |
+    | Option        | Description                                                                          |
+    | ------------- | ------------------------------------------------------------------------------------ |
+    | `value`       | column name, date string, or `'now'`                                                 |
+    | `add`         | amount to add - e.g. `'6M'`, `'2d 5h'`, or number (days)                             |
+    | `sub`         | amount to subtract                                                                   |
+    | `format`      | output format using [date symbols](#42-units-datetime). Wrap literal text in `[]`    |
+    | `fromPattern` | parse a date string using this pattern (not supported by SQLite)                     |
+    | `ifNull`      | provide a fallback (default) value in case the `value` gets null value from database |
+    | `cast`        | same options as `str.cast`                                                           |
+    | `decrypt`     | same as `str.decrypt`                                                                |
+    | `as`          | output alias                                                                         |
+    | `compare`     | comparator conditions on the returned value                                          |
 
 ---
 
@@ -1177,7 +1197,7 @@ Wrapper objects are special JSON structures that generate SQL expressions at the
     await User.find({
         alias: 'u',
         select: [
-            'u.userId', 'u.firstName',
+            'userId', 'firstName',
             {
                 json: {
                     value: { orderId: 'orderId', total: 'amount', date: 'createdOn' },

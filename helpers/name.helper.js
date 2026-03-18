@@ -52,7 +52,7 @@ const escapeIdentifier = (input) => {
  * @returns {string|number|boolean} prepared name to replace the placeholder
  */
 const prepName = ({ alias, value, ctx = undefined }) => {
-    if (typeof value === 'string' && value?.startsWith('#')) return value.substring(1)
+    if (typeof value === 'string' && (value?.startsWith('#') || value?.startsWith('_'))) return value.slice(1)
     if (typeof value == 'string' && value.trim() == '') return value
     if (typeof value === 'number' || typeof value === 'boolean') return value
     if (!isNaN(Date.parse(value)) || !isNaN(parseInt(value))) return value
