@@ -1,7 +1,10 @@
-const { colors, handleError, handleQueryDebug } = require("./helpers/console.helper")
-const { prepSelect, prepWhere, prepJoin, prepOrderBy, patchGroupBy, patchLimit, prepEncryption, isVariable, prepRefer, hasKeys } = require("./helpers/main.helper")
 const path = require('node:path')
 const fs = require('node:fs/promises')
+
+const { colors, handleError, handleQueryDebug } = require("./helpers/console.helper")
+const { prepSelect, prepWhere, prepJoin, prepOrderBy, patchGroupBy, patchLimit, prepEncryption, isVariable, prepRefer, hasKeys } = require("./helpers/main.helper")
+const { prepName } = require("./helpers/name.helper")
+const { prepPlaceholder } = require("./helpers/placeholder.helper")
 
 /**
  * JavaScript ORM for structured databases (MySQL, PostgreSQL, SQLite)
@@ -82,8 +85,7 @@ class UnSQL {
             if (typeof limit === 'number') sqlParts.push(patchLimit(limit, values, ctx))
             if (typeof offset === 'number') sqlParts.push(patchLimit(offset, values, ctx, 'OFFSET'))
 
-            const debugMessage = 'Fetched records in'
-            return await handleExecutions[ctx.config?.dialect || 'mysql']({ sql: sqlParts.join(' '), values, encryption, debug, session, config: ctx.config, debugMessage, methodType: 'all' })
+            return await handleExecutions[ctx.config?.dialect || 'mysql']({ sql: sqlParts.join(' '), values, encryption, debug, session, config: ctx.config, methodType: 'all' })
 
         } catch (/** @type {*} */ error) {
             handleError(debug, error)
@@ -103,7 +105,7 @@ class UnSQL {
      * @param {import("./defs/types").DebugTypes} [saveParam.debug]
      * @param {import("./defs/types").EncryptionConfig} [saveParam.encryption]
      * @param {SessionManager} [saveParam.session]
-     * @returns {Promise<{success:boolean, error?:*, result?:Array<*>|{insertId?:number, changes?:number}}>}
+     * @returns {Promise<{success:boolean, error?:*, result?:Array<*>|{insertId?:number, changes?:number}|{fieldCount?: number, affectedRows?: number, insertId?: number, info?: string, serverStatus?: number, warningStatus?: number, changedRows?: number }}>}
      */
     static async save({ alias = null, data, where = {}, upsert = [], indexes = [], encrypt, encryption, debug, session }) {
 
@@ -286,9 +288,12 @@ class UnSQL {
 
                                     if (newVal && typeof newVal == 'object' && 'refer' in newVal) {
                                         expr += ` ${op} ${prepRefer({ val: newVal.refer, values, ctx, encryption })}`
-                                    } else {
-                                        expr += ` ${op} ${ctx.isMySQL ? `?` : `$${ctx._variableCount++}`}`
-                                        values.push(newVal)
+                                    }
+                                    else {
+                                        const placeholder = prepPlaceholder({ value: newVal, alias: 'EXCLUDED', ctx })
+                                        const name = prepName({ alias: 'EXCLUDED', value: newVal, ctx })
+                                        expr += ` ${op} ${ctx.isMySQL ? placeholder : `"${name}"`}`
+                                        if (isVariable(placeholder)) values.push(name)
                                     }
                                 }
 
@@ -302,12 +307,13 @@ class UnSQL {
 
                 }
 
-                if (upsertParts.length > 0) sqlParts.push(ctx.isMySQL ? `AS EXCLUDED ON DUPLICATE KEY UPDATE` : `ON CONFLICT (${indexes.join(', ')}) DO UPDATE SET`, upsertParts.join(', '))
+                if (upsertParts.length > 0) sqlParts.push(ctx.isMySQL ? `AS EXCLUDED ON DUPLICATE KEY UPDATE` : `ON CONFLICT (${indexes.map(column => `"${column}"`).join(', ')}) DO UPDATE SET`, upsertParts.join(', '))
 
             }
 
-            const debugMessage = `${isUpdate ? 'Updated' : 'Inserted'} records in`
-            return await handleExecutions[ctx.dialect || 'mysql']({ sql: sqlParts.join(' '), values, config: ctx.config, debug, debugMessage, encryption, methodType: 'run', session })
+            if (ctx.isPostgreSQL) sqlParts.push('RETURNING *')
+
+            return await handleExecutions[ctx.dialect || 'mysql']({ sql: sqlParts.join(' '), values, config: ctx.config, debug, encryption, methodType: 'run', session })
         } catch (error) {
             console.error('error while save2', error)
             return { success: false, error }
@@ -361,8 +367,7 @@ class UnSQL {
 
         if (Object.keys(where).length) sqlParts.push(`WHERE ${prepWhere({ alias, where, values, encryption, ctx: ctx })}`)
 
-        const debugMessage = `Removed record(s) from '${ctx.config?.table}' table`
-        return await handleExecutions[ctx.config?.dialect || 'mysql']({ sql: sqlParts.join(' '), values, encryption, debug, session, config: ctx.config, debugMessage, methodType: 'run' })
+        return await handleExecutions[ctx.config?.dialect || 'mysql']({ sql: sqlParts.join(' '), values, encryption, debug, session, config: ctx.config, methodType: 'run' })
     }
 
     /**
@@ -381,8 +386,7 @@ class UnSQL {
         patchDefaults(this)
         const defaultResp = handleDefaults(this)
         if (!defaultResp.success) return defaultResp
-        const debugMessage = `Executed raw query in`
-        return await handleExecutions[this.config?.dialect || 'mysql']({ sql, values, encryption, debug, session, config: this.config, methodType, multiQuery, debugMessage })
+        return await handleExecutions[this.config?.dialect || 'mysql']({ sql, values, encryption, debug, session, config: this.config, methodType, multiQuery })
     }
 
     /**
@@ -492,8 +496,7 @@ class UnSQL {
 
         if (ctx.isMySQL) values.push(ctx.config.table)
 
-        const debugMessage = `Reset '${ctx.config?.table}' table record(s) in`
-        return await handleExecutions[ctx.config?.dialect || 'mysql']({ sql, values, debug, config: ctx.config, debugMessage })
+        return await handleExecutions[ctx.config?.dialect || 'mysql']({ sql, values, debug, config: ctx.config })
     }
 
 }
@@ -505,12 +508,11 @@ class UnSQL {
  * @param {import("./defs/types").DebugTypes} [options.debug] enables debug mode
  * @param {*} [options.session] global session reference for transactions and rollback
  * @param {import("./defs/types").ConfigObject} [options.config] global configuration object
- * @param {string} [options.debugMessage] debug message to be displayed in console
  * @param {boolean} [options.multiQuery] flag if sql contains multiple queries (only in 'mysql'), default is false
  * @param {import("./defs/types").EncryptionConfig} [options.encryption] enables encryption
  * @returns {Promise<{success:false, error:*}|{success:true, result:Array<*>|*}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'results'
  */
-const executeMySQL = async ({ sql, values, debug = false, session = undefined, config, encryption = undefined, multiQuery = false, debugMessage = '' }) => {
+const executeMySQL = async ({ sql, values, debug = false, session = undefined, config, encryption = undefined, multiQuery = false }) => {
     const connection = await (session?.connection || config?.pool?.getConnection() || config?.connection)
     const isBenchmarking = debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true
 
@@ -550,17 +552,16 @@ const executeMySQL = async ({ sql, values, debug = false, session = undefined, c
 
 /**
  * executes PostgreSQL query
- * @param {Object} params
- * @param {string} params.sql 
- * @param {Array<*>} params.values
- * @param {import("./defs/types").DebugTypes} params.debug
- * @param {import("./defs/types").ConfigObject} params.config
- * @param {SessionManager} [params.session]
- * @param {string} [params.debugMessage]
+ * @param {Object} options
+ * @param {string} options.sql 
+ * @param {Array<*>} options.values
+ * @param {import("./defs/types").DebugTypes} options.debug
+ * @param {import("./defs/types").ConfigObject} options.config
+ * @param {SessionManager} [options.session]
  * @returns {Promise<{success:true, result:Array<*>|*}|{success:false, error:*}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
  * @author Siddharth Tiwari <dev.unsql@gmail.com>
  */
-const executePostgreSQL = async ({ sql, values, debug = false, config, session = undefined, debugMessage = '' }) => {
+const executePostgreSQL = async ({ sql, values, debug = false, config, session = undefined }) => {
     const client = await (session?.connection || config?.pool?.connect())
     const isBenchmarking = debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true
 
@@ -630,11 +631,10 @@ const executePostgreSQL = async ({ sql, values, debug = false, config, session =
  * @param {import("./defs/types").DebugTypes} [options.debug]
  * @param {import("./defs/types").ConfigObject} [options.config]
  * @param {'all'|'run'|'exec'} [options.methodType=all]
- * @param {string} [options.debugMessage]
  * @param {*} [options.session]
  * @returns {Promise<{success:boolean, result?:Array<*>|{insertId?:number, changes?:number}, error?:*}>}
  */
-async function executeSqlite({ sql, values, debug = false, config, methodType = 'all', session = undefined, debugMessage = '' }) {
+async function executeSqlite({ sql, values, debug = false, config, methodType = 'all', session = undefined }) {
     const db = await (session?.pool || config?.pool)
 
     handleQueryDebug(debug, sql, values)

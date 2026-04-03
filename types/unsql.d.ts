@@ -66,7 +66,7 @@ export class UnSQL {
      * @param {import("./defs/types").DebugTypes} [saveParam.debug]
      * @param {import("./defs/types").EncryptionConfig} [saveParam.encryption]
      * @param {SessionManager} [saveParam.session]
-     * @returns {Promise<{success:boolean, error?:*, result?:Array<*>|{insertId?:number, changes?:number}}>}
+     * @returns {Promise<{success:boolean, error?:*, result?:Array<*>|{insertId?:number, changes?:number}|{fieldCount?: number, affectedRows?: number, insertId?: number, info?: string, serverStatus?: number, warningStatus?: number, changedRows?: number }}>}
      */
     static save({ alias, data, where, upsert, indexes, encrypt, encryption, debug, session }: {
         alias?: string | null | undefined;
@@ -84,6 +84,14 @@ export class UnSQL {
         result?: Array<any> | {
             insertId?: number;
             changes?: number;
+        } | {
+            fieldCount?: number;
+            affectedRows?: number;
+            insertId?: number;
+            info?: string;
+            serverStatus?: number;
+            warningStatus?: number;
+            changedRows?: number;
         };
     }>;
     /**
