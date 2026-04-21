@@ -1,4 +1,4 @@
-const { checkConstants, constantFunctions } = require("./constants.helper")
+const { checkConstants, SQL_CONSTANTS } = require("./constants.helper")
 const { prepName } = require("./name.helper")
 
 /**
@@ -22,7 +22,7 @@ const prepPlaceholder = ({ value, alias = null, ctx = undefined }) => {
             else if (value === 'localTime') return `TIME('now', 'localtime')`
             else if (value === 'localTimestamp') return `DATETIME('now', 'localtime')`
         }
-        return constantFunctions[String(value)]
+        return SQL_CONSTANTS[String(value)]
     }
     if (value == null || value === 'null' || value === 'NULL') return null
     if (typeof value === 'number' || typeof value === 'boolean' || (typeof value === 'string' && (value?.startsWith('#') || Date.parse(value) || parseInt(value) || parseFloat(value))) || value === ' ' || value === '') return ctx?.isPostgreSQL ? `$${ctx._variableCount++}` : '?'

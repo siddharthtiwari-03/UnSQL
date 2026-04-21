@@ -21,6 +21,7 @@ export class UnSQL {
      * @param {Object<string, 'asc'|'desc'>} [findParam.orderBy={}] - Sort order for the results.
      * @param {number} [findParam.limit] - Maximum number of records to fetch.
      * @param {number} [findParam.offset] - Starting index for pagination.
+     * @param {Boolean} [findParam.includeMeta=false] - Whether to include metadata in the response.
      * @param {import("./defs/types").EncryptionConfig} [findParam.encryption={}] - Query-level encryption settings.
      * @param {import("./defs/types").DebugTypes} [findParam.debug=false] - Debug mode configuration.
      * @param {SessionManager} [findParam.session] - Database session/transaction manager.
@@ -33,7 +34,7 @@ export class UnSQL {
      * debug: 'query',
      * });
      */
-    static find({ alias, select, join, where, groupBy, having, orderBy, limit, offset, encryption, debug, session }?: {
+    static find({ alias, select, join, where, groupBy, having, orderBy, limit, offset, encryption, debug, session, includeMeta }?: {
         alias?: string | undefined;
         select?: import("./defs/types").SelectObject | undefined;
         join?: import("./defs/types").JoinObject | undefined;
@@ -45,6 +46,7 @@ export class UnSQL {
         } | undefined;
         limit?: number | undefined;
         offset?: number | undefined;
+        includeMeta?: boolean | undefined;
         encryption?: import("./defs/types").EncryptionConfig | undefined;
         debug?: import("./defs/types").DebugTypes;
         session?: SessionManager | undefined;
@@ -123,17 +125,19 @@ export class UnSQL {
      * @param {import("./defs/types").EncryptionConfig} [rawQueryParams.encryption] (optional) encryption configurations
      * @param {import("./defs/types").DebugTypes} [rawQueryParams.debug] (optional) enables debug mode
      * @param {boolean} [rawQueryParams.multiQuery] (optional) flag if sql contains multiple queries (only in 'mysql'), default is false
-     * @param {*} [rawQueryParams.session] (optional) global session reference for transactions and rollback
+     * @param {SessionManager} [rawQueryParams.session] (optional) global session reference for transactions and rollback
+     * @param {Boolean} [rawQueryParams.includeMeta=false] - Whether to include metadata in the response.
      * @param {'run'|'all'|'exec'} [rawQueryParams.methodType=all] (optional) used only with 'sqlite'
      * @returns {Promise<{success:boolean, error?:*, result?:*}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
      */
-    static rawQuery({ sql, values, debug, encryption, session, multiQuery, methodType }: {
+    static rawQuery({ sql, values, debug, encryption, session, multiQuery, methodType, includeMeta }: {
         sql: string;
         values?: any[] | undefined;
         encryption?: import("./defs/types").EncryptionConfig | undefined;
         debug?: import("./defs/types").DebugTypes;
         multiQuery?: boolean | undefined;
-        session?: any;
+        session?: SessionManager | undefined;
+        includeMeta?: boolean | undefined;
         methodType?: "all" | "run" | "exec" | undefined;
     }): Promise<{
         success: boolean;

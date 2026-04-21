@@ -17,17 +17,17 @@
    - [2.3 Setup Guide](#23-setup-guide)
 3. [Built-in Methods](#3-built-in-methods)
 4. [Querying](#4-querying)
-   - [3.1 Fetching Records](#41-fetching-records)
-   - [3.2 Inserting and Updating Records](#42-inserting-and-updating-records)
-   - [3.3 Deleting Records](#43-deleting-records)
-   - [3.4 Raw Queries](#44-raw-queries)
-   - [3.5 Exporting Records](#45-exporting-records)
-   - [3.6 Resetting a Table](#46-resetting-a-table)
+   - [4.1 Fetching Records](#41-fetching-records)
+   - [4.2 Inserting and Updating Records](#42-inserting-and-updating-records)
+   - [4.3 Deleting Records](#43-deleting-records)
+   - [4.4 Raw Queries](#44-raw-queries)
+   - [4.5 Exporting Records](#45-exporting-records)
+   - [4.6 Resetting a Table](#46-resetting-a-table)
 5. [Built-in Constants / Units / Wrapper Objects / Comparator Objects](#5-built-in-constants-units-wrapper-objects-and-comparator-objects)
-   - [4.1 Constants (Reserved Keywords)](#51-constants-reserved-keywords)
-   - [4.2 Units (Date/Time)](#52-units-datetime)
-   - [4.3 Wrapper Objects](#53-wrapper-objects)
-   - [4.4 Comparator Objects](#54-comparator-objects)
+   - [5.1 Constants (Reserved Keywords)](#51-constants-reserved-keywords)
+   - [5.2 Units (Date/Time)](#52-units-datetime)
+   - [5.3 Wrapper Objects](#53-wrapper-objects)
+   - [5.4 Comparator Objects](#54-comparator-objects)
 6. [Session Manager](#6-session-manager)
 7. [Examples](#7-examples)
 8. [FAQs](#8-faqs)
@@ -89,6 +89,19 @@ import { UnSQL } from 'unsql'
 ---
 
 ### 1.2 What's New?
+
+**Version v2.4**
+
+- **Aggregate Window** - aggregate wrappers `sum` `count` `avg` `min` `max` now have `over` property for advanced **window queries**
+- **Enhance Upsert** - arithmetic operations in upsert now use table prefix
+- **Atomic Transactions** - all queries now use atomic transactions, unless *Session Manager* is used for transaction lifecycle hooks
+- **Faster Execution** - internal code optimization to result in roughly 10-15% faster query generation
+- **Session Manager stabilized** - handled transaction lifecycle exceptions
+- **New Rank Window Functions** - `rank` `denseRank` `percentRank` `rowNum` `nTile` added to built-in [wrapper objects](#53-wrapper-objects)
+- **New Value Window Functions** `firstValue` `lastValue` `nthValue` added to built-in [wrapper objects](#53-wrapper-objects)
+- **New Offset Window Functions** - `lead` `lag` added to built-in [wrapper objects](#53-wrapper-objects)
+- **Standardized ifNull property** - `IFNULL` / `ISNULL` replaced with dialect agnostic `COALESCE`
+- **ifNull support in sub-query** - `ifNull` support added to `refer` and `json` wrappers
 
 **Version v2.3**
 
@@ -503,7 +516,7 @@ To reference a column from a parent scope inside any child scope like `join` or 
 
 #### Decryption
 
-To decrypt an encrypted column during fetch, use the [`str` wrapper](#str) with `decrypt`:
+To decrypt an encrypted column during fetch, use the [`str` wrapper](#string-wrapper) with `decrypt`:
 
 ```javascript
 await User.find({
@@ -642,10 +655,10 @@ await User.save({
     ]
 })
 
-// ON DUPLICATE KEY UPDATE
+// INSERT INTO `users` (`email`, `firstName`, `loginCount`, `score`) VALUES ('jane@example.com', 'Jane', 0, 0) AS EXCLUDED ON DUPLICATE KEY UPDATE
 //   `firstName` = EXCLUDED.`firstName`,
-//   `loginCount` = `loginCount` + 1,
-//   `score` = `score` + 10 - 2
+//   `loginCount` = `users`.`loginCount` + 1,
+//   `score` = `users`.`score` + 10 - 2
 ```
 
 Supported operations: `add` (+), `sub` (−), `mul` (×), `div` (÷), `mod` (%), `refer` (subquery).
@@ -892,8 +905,10 @@ These strings can be used anywhere a value is expected and map directly to SQL c
 | `localTime`        | same as `localTimestamp`            |
 | `utcTimestamp`     | current timestamp in UTC            |
 | `pi`               | `PI()` - approx. `3.141593`         |
+| `null`             | `NULL`                              |
 | `isNull`           | `IS NULL`                           |
 | `isNotNull`        | `IS NOT NULL`                       |
+| `NotNull`          | `IS NOT NULL`                       |
 
 ```javascript
 // Sample: find users who joined today
@@ -949,11 +964,39 @@ Units can be combined: `'2y 3M 10d'`
 
 ### 5.3 Wrapper Objects
 
-Wrapper objects are special JSON structures that generate SQL expressions at the position they are placed. They work inside `select`, `where`, `having`, `orderBy.using`, and can be nested.
+UnSQL provides special *JSON structures* as **Wrapper objects** that generate SQL expressions at the position they are placed. They work inside `select`, `where`, `having`, `orderBy.using`, and can be nested.
+
+|            Keyword             | Wrapper Type | Description                                                                               |
+| :----------------------------: | :----------: | ----------------------------------------------------------------------------------------- |
+|    [`str`](#string-wrapper)    |    string    | performs string value related operations                                                  |
+|   [`num`](#numeric-wrapper)    |   numeric    | performs numeric value related operations                                                 |
+|    [`date`](#date-wrapper)     |     date     | performs date value related operations                                                    |
+|    [`and`](#and-or-wrapper)    |   junction   | performs junction override inside the `where` and `having`                                |
+|    [`or`](#and-or-wrapper)     |   junction   | performs junction override inside the `where` and `having`                                |
+|      [`if`](#if-wrapper)       | conditional  | checks **condition** and returns respective value (used with `select`, `where`, `having`) |
+|    [`case`](#case-wrapper)     | conditional  | checks **condition** and returns respective value (used with `select`, `where`, `having`) |
+|  [`sum`](#aggregate-wrapper)   |  aggregate   | calculates 'total' from set of values                                                     |
+|  [`avg`](#aggregate-wrapper)   |  aggregate   | calculates 'average' from set of values                                                   |
+| [`count`](#aggregate-wrapper)  |  aggregate   | performs 'count' operation on set of values                                               |
+|  [`min`](#aggregate-wrapper)   |  aggregate   | determines 'lowest' value among the provided values                                       |
+|  [`max`](#aggregate-wrapper)   |  aggregate   | determines 'highest' value among the provided values                                      |
+|   [`lead`](#offset-wrapper)    |    offset    | Accesses data from a subsequent row at a specified physical offset from the current row   |
+|    [`lag`](#offset-wrapper)    |    offset    | Accesses data from a previous row at a specified physical offset from the current row     |
+|    [`rank`](#rank-wrapper)     |     rank     | Assigns a rank to each row with gaps in the sequence for tied values                      |
+|  [`denseRank`](#rank-wrapper)  |     rank     | Assigns a rank to each row without gaps in the sequence for tied values                   |
+| [`percentRank`](#rank-wrapper) |     rank     | Calculates the relative rank of a row as a percentage (0 to 1)                            |
+|   [`rowNum`](#rank-wrapper)    |     rank     | Assigns a unique sequential number to each row within a partition                         |
+|    [`nTile`](#rank-wrapper)    |     rank     | Distributes rows into a specified number of approximately equal groups (buckets)          |
+| [`firstValue`](#value-wrapper) |    value     | Returns the first value in an ordered set of values (within a window frame)               |
+| [`lastValue`](#value-wrapper)  |    value     | Returns the last value in an ordered set of values (within a window frame)                |
+|  [`nthValue`](#value-wrapper)  |    value     | Returns the value of the argument at the N-th row of the window frame                     |
+|    [`json`](#json-wrapper)     |  sub-query   | creates a json object/array of object(s) at the position it is invoked                    |
+|   [`refer`](#refer-wrapper)    |  sub-query   | fetch a column from another table at the position it is invoked                           |
+|  [`concat`](#concat-wrapper)   |    merge     | merges multiple column/string values into single string                                   |
 
 ---
 
-- #### String Wrapper <span id="str">(`str`)</span>
+- #### String Wrapper <span id="string-wrapper">(`str`)</span>
 
     Performs string operations on `value`. Generates `UPPER()`, `LOWER()`, `SUBSTR()`, `TRIM()`, `LPAD()`, `RPAD()`, `REVERSE()`, `REPLACE()`, `CAST()`, and `AES_DECRYPT()` as needed.
 
@@ -999,7 +1042,7 @@ Wrapper objects are special JSON structures that generate SQL expressions at the
 
 ---
 
-- #### Numeric Wrapper <span id="num">(`num`)</span>
+- #### Numeric Wrapper <span id="numeric-wrapper">(`num`)</span>
 
     Performs mathematical operations on `value`. Follows BODMAS order.
 
@@ -1031,7 +1074,7 @@ Wrapper objects are special JSON structures that generate SQL expressions at the
 
 ---
 
-- #### Date Wrapper <span id="date">(`date`)</span>
+- #### Date Wrapper <span id="date-wrapper">(`date`)</span>
 
     Performs date/time operations on `value`.
 
@@ -1073,7 +1116,7 @@ Wrapper objects are special JSON structures that generate SQL expressions at the
 
 ---
 
-- #### And / Or Wrappers (`and`, `or`)
+- #### And / Or Wrappers <span id="and-or-wrapper">(`and`, `or`)</span>
 
     `and` and `or` wrappers give you explicit control over how conditions are joined inside `where` and `having`. By default all conditions in a `where` block are joined with `AND` - wrapping a group in `or` switches just that group to `OR`, and they can be nested for complex logic.
 
@@ -1109,7 +1152,7 @@ Wrapper objects are special JSON structures that generate SQL expressions at the
 
 ---
 
-- #### If Wrapper (`if`)
+- #### If Wrapper <span id="if-wrapper">(`if`)</span>
 
     Generates `IF(condition, trueValue, falseValue)` in MySQL, `CASE WHEN` in PostgreSQL/SQLite.
 
@@ -1124,7 +1167,7 @@ Wrapper objects are special JSON structures that generate SQL expressions at the
 
 ---
 
-- #### Case Wrapper (`case`)
+- #### Case Wrapper <span id="case-wrapper">(`case`)</span>
 
     Generates `CASE WHEN ... THEN ... ELSE ... END`. Evaluates conditions in order and returns the first matching value.
 
@@ -1149,9 +1192,9 @@ Wrapper objects are special JSON structures that generate SQL expressions at the
 
 ---
 
-- #### Aggregate Wrappers <span id="aggregates">(`sum`, `avg`, `count`, `min`, `max`)</span>
+- #### Aggregate Wrappers <span id="aggregate-wrapper">(`sum`, `avg`, `count`, `min`, `max`)</span>
 
-    All five share the same interface. Used with `groupBy` / `having`, and in `orderBy.using`.
+    All five share the same interface. Used with `groupBy` / `having`, and in `orderBy.using`. They also support the `over` property to perform Window (Analytical) functions.
 
     ```javascript
     await User.find({
@@ -1167,7 +1210,7 @@ Wrapper objects are special JSON structures that generate SQL expressions at the
         having: { avg: { value: 'salary', compare: { gt: 50000 } } }
     })
     // SELECT `department`,
-    //   SUM(IFNULL(`salary`, 0)) AS `totalSalary`,
+    //   SUM(COALESCE(`salary`, 0)) AS `totalSalary`,
     //   CAST(AVG(`salary`) AS UNSIGNED) AS `avgSalary`,
     //   COUNT(DISTINCT *) AS `headCount`,
     //   MIN(`salary`) AS `lowestSalary`,
@@ -1177,18 +1220,124 @@ Wrapper objects are special JSON structures that generate SQL expressions at the
     // HAVING AVG(`salary`) > 50000
     ```
 
-    | Option     | Description                                 |
-    | ---------- | ------------------------------------------- |
-    | `value`    | column name or conditional object           |
-    | `distinct` | ignore duplicate values when `true`         |
-    | `ifNull`   | fallback value if result is null            |
-    | `cast`     | same options as `str.cast`                  |
-    | `as`       | output alias                                |
-    | `compare`  | comparator conditions on the returned value |
+    | Option     | Description                                              |
+    | ---------- | -------------------------------------------------------- |
+    | `value`    | column name or conditional object                        |
+    | `distinct` | ignore duplicate values when `true`                      |
+    | `over`     | [Window Options](#window-options) for analytical queries |
+    | `ifNull`   | fallback value if result is null                         |
+    | `cast`     | same options as `str.cast`                               |
+    | `as`       | output alias                                             |
+    | `compare`  | comparator conditions on the returned value              |
 
 ---
 
-- #### Json Wrapper (`json`)
+- #### Offset Wrappers <span id="offset-wrapper">(`lead`, `lag`)</span>
+
+    `lead` and `lag` wrappers can be used to generate allowing you to peek forward or look back at values in neighboring rows within the same result set without using join or sub-queries.
+
+    ```javascript
+    // 1. without any optional parameters
+    await User2.find({
+        select: ['userId', 'w.points',
+            { lead: { value: 'w.points', as: 'leading' } }
+        ], join: [{ table: 'user_wallet', alias: 'w', using: ['userId'] }], limit: 10
+    })
+
+  // SELECT `userId`, `w`.`points`, LEAD(`w`.`points`) OVER () AS 'leading' FROM `nitecapp_users` JOIN `nitecapp_user_wallets` `w` USING (`userID`) LIMIT 10
+
+
+    // 2. with optional parameters
+    await User2.find({
+        select: ['userId', 'w.points',
+            { lead: { value: 'w.points', offset: 1, defaultValue: 0, as: 'leading' } }
+        ], join: [{ table: 'user_wallet', alias: 'w', using: ['userId'] }], limit: 10
+    })
+
+  // SELECT `userId`, `w`.`points`, LEAD(`w`.`points`, 1, 0) OVER () AS 'leading' FROM `nitecapp_users` JOIN `nitecapp_user_wallets` `w` USING (`userID`) LIMIT 10
+
+  // 3. with ordering
+
+  await User2.find({
+    select: [
+        'userId',
+        'w.points',
+        { lag: { value: 'w.points', over: { orderBy: { 'w.points': 'desc' } }, as: 'prev_points' } }
+    ],
+    join: [{ table: 'user_wallet', alias: 'w', using: ['userId'] }]
+  })
+
+  // SELECT `userId`, `w`.`points`, LAG(`w`.`points`) OVER (ORDER BY `w`.`points` DESC) AS `prev_points` FROM `users` JOIN `user_wallets` `w` USING (`userId`)
+    ```
+
+- #### Rank Wrappers <span id="rank-wrapper">(`rank`, `denseRank`, `percentRank`, `rowNum`, `nTile`)</span>
+
+    `rank`, `denseRank`, `percentRank`, `rowNum`, `nTile` wrappers can be used to generate ranking window query to access data from other rows relative to the current row without using join or sub-queries.
+
+    ```javascript
+     await User2.find({
+        select: ['userId', 'w.points',
+            { rank: { over: { orderBy: { 'w.points': 'desc' } }, as: 'ranking' } }
+        ], join: [{ table: 'user_wallet', alias: 'w', using: ['userId'] }], limit: 10
+    })
+
+    // SELECT `userId`, `w`.`points`, RANK() OVER (ORDER BY `w`.`points` DESC) AS 'ranking' FROM `users` JOIN `user_wallets` `w` USING (`userId`) LIMIT 10
+    ```
+
+- #### Value Wrappers <span id="value-wrapper">(`firstValue`, `lastValue`, `nthValue`)</span>
+
+    `firstValue`, `lastValue`, `nthValue` wrappers can be used to retrieve a specific column value from a defined set of rows (the window frame) relative to the current row.
+
+    ```javascript
+     await User2.find({
+        select: ['userId', 'w.points',
+            { firstValue: { value:'w.points', over: { orderBy: { 'w.points': 'desc' } }, as: 'highestPoints' } }
+        ], join: [{ table: 'user_wallet', alias: 'w', using: ['userId'] }], limit: 10
+    })
+
+    // SELECT `userId`, `w`.`points`, FIRST_VALUE(`w`.`points`) OVER (ORDER BY `w`.`points` DESC) AS 'first' FROM `users` JOIN `user_wallets` `w` USING (`userId`) LIMIT 10
+    ```
+
+- #### Window Options <span id="window-options">(`over`)</span>
+
+    The `over` property, available inside all **Aggregate Wrappers**, **Offset Wrappers**, **Rank Wrappers** and **Value Rappers**, transforms them into a Window Function. It defines the *partitioning*, *ordering*, and *framing* of the operation via. `partitionBy`, `orderBy` and `frame` properties respectively.
+
+    ```javascript
+    await User.find({
+        select: [
+            'department',
+            'salary',
+            { 
+                sum: { 
+                    value: 'salary', 
+                    over: { 
+                        partitionBy: ['department'], 
+                        orderBy: { salary: 'desc' },
+                        frame: { unit: 'rows', start: 'unboundedPreceding', end: 'currentRow' }
+                    }, 
+                    as: 'runningTotal' 
+                } 
+            }
+        ]
+    })
+ 
+    // SELECT `department`, `salary`, SUM(`salary`) OVER (PARTITION BY `department` ORDER BY `salary` DESC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS `runningTotal` FROM `users`
+ 
+    ```
+
+    | Option        | Description                                                                       |
+    | :------------ | :-------------------------------------------------------------------------------- |
+    | `partitionBy` | Array of column names to group the window.                                        |
+    | `orderBy`     | Object mapping columns to `'asc'` or `'desc'` to define the window sort order.    |
+    | `frame`       | Object defining the subset of rows (`unit`, `start`, `end`) within the partition. |
+
+    **Frame Unit (`unit`):** `'rows'` (default), `'range'`, or `'groups'`.
+
+    **Frame Bounds (`start` / `end`):**
+    - **Keywords:** `'unboundedPreceding'`, `'currentRow'`, `'unboundedFollowing'`.
+    - **Offsets:** `{ preceding: n }` or `{ following: n }`.
+
+- #### Json Wrapper <span id="json-wrapper">(`json`)</span>
 
     Creates or extracts JSON objects/arrays. Supports inline values, arrays, column references, and full sub-query properties.
 
@@ -1220,17 +1369,18 @@ Wrapper objects are special JSON structures that generate SQL expressions at the
 
     | Option            | Description                                                                                  |
     | ----------------- | -------------------------------------------------------------------------------------------- |
-    | `value`           | `{}` → JSON object, `[]` → JSON array, string → column containing JSON                       |
+    | `value`           | `{}` → JSON object, string → column containing JSON                                          |
     | `table`           | sub-query source table                                                                       |
     | `extract`         | path to extract from JSON (e.g. `'address.city'` or index `0`)                               |
     | `contains`        | check if JSON contains this value                                                            |
     | `aggregate`       | when `true`, wraps multiple JSON objects into an array                                       |
+    | `ifNull`          | sets a fallback value                                                                        |
     | `as`              | output alias                                                                                 |
     | Sub-query options | `alias`, `join`, `where`, `groupBy`, `having`, `orderBy`, `limit`, `offset` - same as `find` |
 
 ---
 
-- #### Refer Wrapper <span id="refer">(`refer`)</span>
+- #### Refer Wrapper <span id="refer-wrapper">(`refer`)</span>
 
     Generates a correlated subquery that fetches a single value from another table. Works in `select`, `where`, `having`, and `orderBy.using`.
 
@@ -1255,15 +1405,26 @@ Wrapper objects are special JSON structures that generate SQL expressions at the
     // FROM `users` `u`
     ```
 
-    | Option            | Description                                                                                          |
-    | ----------------- | ---------------------------------------------------------------------------------------------------- |
-    | `table`           | (required) source table                                                                              |
-    | `select`          | column(s) to return - should resolve to a single value                                               |
-    | Sub-query options | `alias`, `join`, `where`, `groupBy`, `having`, `orderBy`, `limit`, `offset`, `cast`, `decrypt`, `as` |
-
+    | Option    | Description                                                                                                              |
+    | --------- | ------------------------------------------------------------------------------------------------------------------------ |
+    | `table`   | (required) source table                                                                                                  |
+    | `alias`   | local reference name for table to be used in query                                                                       |
+    | `select`  | column or any nested wrapper objects (must return single value)                                                          |
+    | `join`    | array of json object(s) each one to connect a child table with parent table `using` single or set of common column(s)    |
+    | `where`   | object containing various filter conditions                                                                              |
+    | `groupBy` | group records based on column(s)                                                                                         |
+    | `having`  | object containing various filter conditions similar to `where` clause but also supports aggregate wrappers as conditions |
+    | `orderBy` | object containing sorting criteria                                                                                       |
+    | `limit`   | limit the number of record(s)                                                                                            |
+    | `offset`  | set starting offset                                                                                                      |
+    | `cast`    | converts the datatype of the returned value                                                                              |
+    | `decrypt` | object containing columns specific decryption related configs                                                            |
+    | `ifNull`  | sets default fallback value in case wrapper returns null value                                                           |
+    | `as`      | provide local reference name (derived column name) for the value returned by the wrapper (defaults to str)               |
+    
 ---
 
-- #### Concat Wrapper (`concat`)
+- #### Concat Wrapper <span id="concat-wrapper">(`concat`)<span>
 
     Combines multiple values into a single string with an optional separator.
 
@@ -1538,16 +1699,17 @@ router.post('/orders', async (req, res) => {
 
 ## 8. FAQs
 
-### 8.1 What is the difference between plain text and a column name?
+### 8.1 What is the difference between plain text, a column name and a derived column?
 
-Without a `#` prefix, UnSQL treats any string as a **column reference**. Add `#` to pass a **literal string value**:
+Without a `#` prefix, UnSQL treats any string as a **column reference**. Add `#` (hashtag) as a prefix to pass a **literal string value**. Add `_` (underscore) as a prefix to pass any derived column name:
 
 ```javascript
 where: { role: '#admin' }       // WHERE role = 'admin'   (plain text)
 where: { role: 'parentRole' }   // WHERE role = parentRole (column reference)
+orderBy: { _avgSalary: 'desc' }   // ORDER BY avgSalary DESC (derived column reference)
 ```
 
-The only exception is `target` and `replaceWith` inside `str.replace` - these are always plain text and don't need `#`.
+Apart from built-in keywords, `target` and `replaceWith` inside `str.replace` are always plain text and don't need `#` prefix.
 
 ### 8.2 What is the priority when `secret` / `iv` / `sha` are defined in multiple places?
 

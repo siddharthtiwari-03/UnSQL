@@ -74,14 +74,70 @@ export type ConfigObject = {
     encryption?: EncryptionConfig | undefined;
 };
 /**
+ * /
+ */
+export type FrameBoundaryKeyword = "unboundedPreceding" | "currentRow" | "unboundedFollowing";
+export type WindowObject = {
+    partitionBy?: string[] | undefined;
+    orderBy?: {
+        [x: string]: "asc" | "desc" | {
+            between: {
+                gt: string | number;
+                lt: string | number;
+            };
+        };
+    } | undefined;
+    frame?: {
+        unit: "rows" | "range" | "groups";
+        start: "unboundedPreceding" | "currentRow" | "unboundedFollowing" | {
+            preceding: number;
+        } | {
+            following: number;
+        };
+        end: "unboundedPreceding" | "currentRow" | "unboundedFollowing" | {
+            preceding: number;
+        } | {
+            following: number;
+        };
+    } | undefined;
+};
+export type BaseOffsetWindow = {
+    value: Object;
+    offset?: number | undefined;
+    defaultValue?: number | undefined;
+    over?: WindowObject | undefined;
+    cast?: CastingTypes | undefined;
+    ifNull?: string | number | boolean | undefined;
+    compare?: Object | undefined;
+    as?: string | undefined;
+};
+export type BaseRankWindow = {
+    numOfGroups?: number | undefined;
+    over?: WindowObject | undefined;
+    cast?: CastingTypes | undefined;
+    ifNull?: string | number | boolean | undefined;
+    compare?: Object | undefined;
+    as?: string | undefined;
+};
+export type BaseValueWindow = {
+    value?: Object | undefined;
+    limit?: number | undefined;
+    over?: WindowObject | undefined;
+    cast?: CastingTypes | undefined;
+    ifNull?: string | number | boolean | undefined;
+    compare?: Object | undefined;
+    as?: string | undefined;
+};
+/**
  * base aggregator
  */
 export type BaseAggregate = {
     value: Object;
     distinct?: boolean | undefined;
-    compare?: Object | undefined;
-    ifNull?: string | number | boolean | undefined;
+    over?: WindowObject | undefined;
     cast?: CastingTypes | undefined;
+    ifNull?: string | number | boolean | undefined;
+    compare?: Object | undefined;
     as?: string | undefined;
 };
 /**
@@ -277,6 +333,7 @@ export type PartialQuery = {
     }[] | undefined;
     limit?: number | undefined;
     offset?: number | undefined;
+    ifNull?: any;
     as?: string | undefined;
 };
 /**
@@ -385,4 +442,4 @@ export type JoinObject = BaseJoin[];
  * Logical junction types
  */
 export type JunctionKeys = "and" | "or";
-export type HandleFuncKey = "and" | "or" | "between" | "if" | "case" | "count" | "sum" | "min" | "max" | "avg";
+export type HandleFuncKey = "and" | "or" | "between" | "if" | "case" | "count" | "sum" | "min" | "max" | "avg" | "lead" | "lag" | "firstValue" | "lastValue" | "nthValue" | "rank" | "denseRank";

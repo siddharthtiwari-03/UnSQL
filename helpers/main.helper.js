@@ -1,4 +1,4 @@
-const { checkConstants, dataTypes, aggregateFunctions, constantFunctions } = require("./constants.helper")
+const { checkConstants, dataTypes, AGGREGATE_WINDOW_MAP, SQL_CONSTANTS, OFFSET_WINDOW_MAP, RANK_WINDOW_MAP, FRAME_BOUND_KEYWORDS, FRAME_UNITS, VALUE_WINDOW_MAP } = require("./constants.helper")
 const { prepName } = require("./name.helper")
 const { prepPlaceholder } = require("./placeholder.helper")
 
@@ -165,7 +165,7 @@ const prepWhere = ({ alias, where = {}, parent = null, values, encryption = unde
             if (isVariable(keyPlaceholder)) values.push(prepName({ alias, value: key, ctx }))
 
             if (val === 'isNull' || val === 'isNotNull' || val === 'notNull' || val === null) {
-                sqlParts.push(`${keyPlaceholder} ${constantFunctions[val]}`)
+                sqlParts.push(`${keyPlaceholder} ${SQL_CONSTANTS[val]}`)
                 continue
             }
 
@@ -272,7 +272,7 @@ const prepJoin = ({ alias, join = [], values, encryption = undefined, ctx = unde
 const prepJson = ({ val, encryption = undefined, values, named = false, ctx = undefined }) => {
 
     const sqlParts = []
-    const { value, aggregate = false, table = null, alias = undefined, join = [], where = {}, groupBy = [], having = {}, orderBy = {}, limit = undefined, offset = undefined, as = null, extract = null, contains = null, compare = {} } = val
+    const { value, aggregate = false, table = null, alias = undefined, join = [], where = {}, groupBy = [], having = {}, orderBy = {}, limit = undefined, offset = undefined, as = null, extract = null, contains = null, ifNull = null, compare = {} } = val
 
     const isAggregatedLimit = table && aggregate && (limit || offset)
     const UnSQLJsonAlias = `UNSQL_JSON_ALIAS${table ? `_${table}` : ''}`
@@ -345,14 +345,72 @@ const prepJson = ({ val, encryption = undefined, values, named = false, ctx = un
         }
     }
     if (hasKeys(compare)) sqlParts.push(prepWhere({ alias, where: compare, values, encryption, ctx }))
-    return sqlParts.join(' ')
+
+    let exp = sqlParts.join(' ')
+    if (ifNull) exp = prepNullCheck({ exp, alias, values, ifNull, ctx })
+    return exp
+}
+
+/**
+ * prepares window 
+ * @param {Object} overParam
+ * @param {'rank'|'denseRank'|'rowNum'|'firstValue'|'lastValue'|'nthValue'} [overParam.key] 
+ * @param {string[]} [overParam.partitionBy] 
+ * @param {Object<string, 'asc'|'desc'|{between:{gt:string|number, lt:string|number}}>} [overParam.orderBy] 
+ * @param {{unit: 'rows'|'range'|'groups', start: 'unboundedPreceding'|'currentRow'|'unboundedFollowing'| { preceding: number } | { following: number }, end: 'unboundedPreceding'|'currentRow'|'unboundedFollowing'| { preceding: number } | { following: number }}} [overParam.frame] 
+ * @param {Array<*>} overParam.values
+ * @param {string} [overParam.alias] (optional) local reference name of the table
+ * @param {*} [overParam.ctx]
+ */
+const prepOver = ({ key, partitionBy = [], orderBy = {}, frame, values, alias, ctx }) => {
+    const overSqlParts = []
+
+    if (partitionBy?.length) {
+        /** @type {(string|number|boolean|null)[]} */
+        const partitionByParts = []
+        partitionBy.forEach(col => {
+            const colPlaceholder = prepPlaceholder({ value: col, alias, ctx })
+            if (isVariable(colPlaceholder)) values.push(prepName({ alias, value: col, ctx }))
+            partitionByParts.push(colPlaceholder)
+        })
+        if (partitionByParts.length) overSqlParts.push(`PARTITION BY ${partitionByParts.join(', ')}`)
+    }
+
+    if (hasKeys(orderBy)) overSqlParts.push(prepOrderBy({ orderBy, alias, values, ctx }))
+
+    if (frame) {
+        const { unit, start, end } = frame
+
+        let frameStart = ''
+        let frameEnd = ''
+
+        if (typeof start == 'string' && start in FRAME_BOUND_KEYWORDS) frameStart = FRAME_BOUND_KEYWORDS[start]
+        else if (start && typeof start === 'object') {
+            if ('preceding' in start && typeof start.preceding === 'number')
+                frameStart = `${start.preceding} PRECEDING`
+            else if ('following' in start && typeof start.following === 'number')
+                frameStart = `${start.following} FOLLOWING`
+        }
+
+        if (typeof end == 'string' && end in FRAME_BOUND_KEYWORDS) frameEnd = FRAME_BOUND_KEYWORDS[end]
+        else if (end && typeof end === 'object') {
+            if ('preceding' in end && typeof end.preceding === 'number')
+                frameEnd = `${end.preceding} PRECEDING`
+            else if ('following' in end && typeof end.following === 'number')
+                frameEnd = `${end.following} FOLLOWING`
+        }
+
+        overSqlParts.push(`${FRAME_UNITS[unit] || 'ROWS'} BETWEEN ${frameStart} AND ${frameEnd}`)
+    }
+
+    return `OVER (${overSqlParts.join(' ')})`
 }
 
 /**
  * prepares aggregate functions
  * @param {Object} aggParam object with different properties that help generate aggregate method
  * @param {string} [aggParam.alias] (optional) local reference name of the table
- * @param {string} aggParam.key refers the name of the aggregate method, viz. 'sum', 'avg', 'min', 'max' etc.
+ * @param {'sum'|'avg'|'count'|'min'|'max'} aggParam.key refers the name of the aggregate method, viz. 'sum', 'avg', 'min', 'max' etc.
  * @param {import("../defs/types").BaseAggregate} aggParam.val accepts values related to aggregate method
  * @param {*} [aggParam.parent] reference of previous placeholder
  * @param {Array<*>} aggParam.values reference of previous placeholder
@@ -361,23 +419,142 @@ const prepJson = ({ val, encryption = undefined, values, named = false, ctx = un
  * @returns {string} 'sql' with placeholder string to be injected at execution
  */
 const prepAggregate = ({ alias, key, val, parent = null, values, encryption = undefined, ctx = undefined }) => {
-    const { value, distinct = false, cast = null, ifNull = undefined, compare = {}, as = null } = val
+    const { value, distinct = false, over = null, cast = null, ifNull = undefined, compare = {}, as = null } = val
     const placeholder = handlePlaceholder({ alias, value, parent, values, encryption, ctx })
-    let sql = `${aggregateFunctions[key]}(${distinct ? 'DISTINCT ' : ''}${placeholder})`
-    if (ifNull != undefined) {
-        const nullPlaceholder = prepPlaceholder({ value: ifNull, alias, ctx })
-        const nullValue = prepName({ alias, value: ifNull, ctx })
-        if (isVariable(nullPlaceholder)) values.push(nullValue)
-        sql = `IFNULL(${sql}, ${nullPlaceholder})`
-    }
-    // type casting ends here
-    if (cast) sql = `CAST(${sql} AS ${dataTypes[cast] || 'CHAR'})`
+
+    let exp = `${AGGREGATE_WINDOW_MAP[key]}(${distinct ? 'DISTINCT ' : ''}${placeholder})`
+
+    if (over) exp += ` ${prepOver({ ...over, values, alias, ctx })}`
+
+    if (cast) exp = `CAST(${exp} AS ${dataTypes[cast] || 'CHAR'})`
+
+    if (ifNull != undefined) exp = prepNullCheck({ exp, ifNull, alias, values, ctx })
+
     if (as) {
-        sql += ` AS ${ctx?.isMySQL ? '?' : as}`
+        exp += ` AS ${ctx?.isMySQL ? '?' : as}`
         if (ctx?.isMySQL) values.push(as)
     }
-    if (hasKeys(compare)) return `${sql} ${prepWhere({ alias, where: compare, values, encryption, ctx })}`
-    return sql
+    if (hasKeys(compare)) return `${exp} ${prepWhere({ alias, where: compare, values, encryption, ctx })}`
+    return exp
+}
+
+/**
+ * prepares offset window
+ * @param {Object} offsetParam object with different properties that help generate offset window method
+ * @param {string} [offsetParam.alias] (optional) local reference name of the table
+ * @param {'lead'|'lag'} offsetParam.key refers the name of the offset window method, viz. 'rank', 'denseRank', 'rowNum', 'firstVal', 'lastVal' etc.
+ * @param {import("../defs/types").BaseOffsetWindow} offsetParam.val accepts values related to offset window method
+ * @param {*} [offsetParam.parent] reference of previous placeholder
+ * @param {Array<*>} offsetParam.values reference of previous placeholder
+ * @param {import("../defs/types").EncryptionConfig} [offsetParam.encryption] (optional) inherits encryption config from its parent level
+ * @param {*} [offsetParam.ctx] context reference to parent class
+ * @returns {string} 'sql' with placeholder string to be injected at execution
+ */
+const prepOffsetWindow = ({ key, val, alias, values, parent = null, encryption, ctx }) => {
+
+    const { value, offset = null, defaultValue = null, over = null, cast = null, ifNull = undefined, compare = {}, as = null } = val
+    let args = handlePlaceholder({ alias, value, parent, values, encryption, ctx })
+
+    if (offset != null) {
+        args += ctx.isMySQL ? ', ?' : `, $${ctx._variableCount++}`
+        values.push(offset)
+        if (defaultValue != null) {
+            if (defaultValue in SQL_CONSTANTS) {
+                args += `, ${SQL_CONSTANTS[defaultValue]}`
+            }
+            else {
+                args += ctx.isMySQL ? ', ?' : `, $${ctx._variableCount++}`
+                values.push(defaultValue)
+            }
+        }
+    }
+
+    let exp = `${OFFSET_WINDOW_MAP[key]}(${args})`
+
+    exp += ` ${prepOver({ ...over, values, alias, ctx })}`
+
+    if (cast) exp = `CAST(${exp} AS ${dataTypes[cast] || 'CHAR'})`
+
+    if (ifNull != undefined) exp = prepNullCheck({ exp, ifNull, alias, values, ctx })
+
+    if (as) exp += ` AS ${ctx?.isMySQL ? '?' : as}`
+    if (ctx?.isMySQL && as) values.push(as)
+    if (hasKeys(compare)) return `${exp} ${prepWhere({ alias, where: compare, values, encryption, ctx })}`
+    return exp
+}
+
+/**
+ * prepare rank window
+ * @param {Object} rankParam
+ * @param {string}  [rankParam.alias]
+ * @param {'rank'|'denseRank'|'percentRank'|'rowNum'|'nTile'}  rankParam.key
+ * @param {import("../defs/types").EncryptionConfig} [rankParam.encryption]
+ * @param {import("../defs/types").BaseRankWindow}  rankParam.val
+ * @param {Array<*>}  rankParam.values
+ * @param {*}  [rankParam.ctx]
+ * @returns {string}
+ */
+const prepRankWindow = ({ key, val, alias, values, encryption, ctx }) => {
+    if (typeof key != 'string' || !(key in RANK_WINDOW_MAP)) return ''
+
+    const { numOfGroups = null, over = null, cast = null, ifNull = null, compare = {}, as = null } = val
+
+    let arg = ''
+
+    if (numOfGroups && key == 'nTile') {
+        arg = ctx.isMySQL ? '?' : `$${ctx._variableCount++}`
+        values.push(numOfGroups)
+    }
+
+    let exp = `${RANK_WINDOW_MAP[key]}(${arg})`
+
+    exp += ` ${prepOver({ ...over, values, alias, ctx })}`
+
+    if (cast) exp = `CAST(${exp} AS ${dataTypes[cast] || 'CHAR'})`
+
+    if (ifNull != undefined) exp = prepNullCheck({ exp, ifNull, alias, values, ctx })
+
+    if (as) exp += ` AS ${ctx?.isMySQL ? '?' : as}`
+    if (ctx?.isMySQL && as) values.push(as)
+    if (hasKeys(compare)) return `${exp} ${prepWhere({ alias, where: compare, values, encryption, ctx })}`
+    return exp
+}
+
+/**
+ * prepare value window
+ * @param {Object} valueParam
+ * @param {string}  [valueParam.alias]
+ * @param {'firstValue'|'lastValue'|'nthValue'}  valueParam.key
+ * @param {import("../defs/types").EncryptionConfig} [valueParam.encryption]
+ * @param {import("../defs/types").BaseValueWindow}  valueParam.val
+ * @param {Array<*>}  valueParam.values
+ * @param {*}  [valueParam.ctx]
+ * @returns {string}
+ */
+const prepValueWindow = ({ key, val, alias, values, encryption, ctx }) => {
+
+    const { value, limit = null, over = null, cast = null, ifNull = null, compare = {}, as = null } = val
+
+    let args = handlePlaceholder({ value, alias, encryption, ctx, values })
+
+    if (key == 'nthValue') {
+        if (limit == null) throw new Error(`nthValue requires 'limit' (nth position)`)
+        args += ctx.isMySQL ? ', ?' : `, $${ctx._variableCount++}`
+        values.push(limit)
+    }
+
+    let exp = `${VALUE_WINDOW_MAP[key]}(${args})`
+
+    exp += ` ${prepOver({ ...over, values, alias, ctx })}`
+
+    if (cast) exp = `CAST(${exp} AS ${dataTypes[cast] || 'CHAR'})`
+
+    if (ifNull != undefined) exp = prepNullCheck({ exp, ifNull, alias, values, ctx })
+
+    if (as) exp += ` AS ${ctx?.isMySQL ? '?' : as}`
+    if (ctx?.isMySQL && as) values.push(as)
+    if (hasKeys(compare)) return `${exp} ${prepWhere({ alias, where: compare, values, encryption, ctx })}`
+    return exp
 }
 
 /**
@@ -392,7 +569,7 @@ const prepAggregate = ({ alias, key, val, parent = null, values, encryption = un
  */
 const prepRefer = ({ val, parent = null, values, encryption = undefined, ctx = undefined }) => {
 
-    const { select = ['*'], table, alias = undefined, join = [], where = {}, groupBy = [], having = {}, orderBy = {}, limit = null, offset = null, as = null } = val
+    const { select = ['*'], table, alias = undefined, join = [], where = {}, groupBy = [], having = {}, orderBy = {}, limit = null, offset = null, ifNull, as = null } = val
     const sqlParts = []
     sqlParts.push(`${prepSelect({ alias, select, values, encryption, ctx })} FROM ${ctx?.isMySQL ? '??' : `"${table}"`}`)
     if (ctx.isMySQL) values.push(table)
@@ -408,7 +585,10 @@ const prepRefer = ({ val, parent = null, values, encryption = undefined, ctx = u
     if (typeof limit === 'number') sqlParts.push(patchLimit(limit, values, ctx))
     if (typeof offset === 'number') sqlParts.push(patchLimit(offset, values, ctx, 'OFFSET'))
     if (as && ctx?.isMySQL) values.push(as)
-    return `(SELECT ${sqlParts.join(' ')})${as ? ` AS ${ctx?.isMySQL ? '?' : `"${as}"`}` : ''}`
+    let exp = `(SELECT ${sqlParts.join(' ')})`
+    if (ifNull) exp = prepNullCheck({ exp, ifNull, values, alias, ctx })
+    if (as) exp += ` AS ${ctx.isMySQL ? '?' : `"${as}"`}`
+    return exp
 }
 
 /**
@@ -532,12 +712,7 @@ const prepString = ({ alias, val, values, named = false, encryption = undefined,
         values.push(prepName({ alias, value, ctx }))
     }
 
-    if (ifNull != null) {
-        const nullPlaceholder = prepPlaceholder({ value: ifNull, alias, ctx })
-        const nullValue = prepName({ alias, value: ifNull, ctx })
-        if (isVariable(nullPlaceholder)) values.push(nullValue)
-        sql = `IFNULL(${sql}, ${nullPlaceholder})`
-    }
+    if (ifNull != null) sql = prepNullCheck({ exp: sql, ifNull, alias, values, ctx })
 
     // envelop decrypt
     if (decrypt) sql = prepDecryption({ placeholder: sql, value, decrypt, encoding, values, encryption, ctx })
@@ -877,6 +1052,11 @@ const patchGroupBy = ({ groupBy, alias, values, ctx }) => {
 /** @type {Record<string, string>} */
 const orderDirections = { asc: 'ASC', desc: 'DESC' }
 
+/**
+ * @typedef {'sum' | 'avg' | 'count' | 'min' | 'max'} AggregateKey
+ */
+
+/** @type {Set<string>} */
 const orderByExpr = new Set(['sum', 'count', 'min', 'max', 'avg'])
 
 /**
@@ -911,7 +1091,9 @@ const prepOrderBy = ({ alias = undefined, orderBy, values, ctx }) => {
                     } else if (k === 'date') {
                         sqlParts.push(`${prepDate({ alias, val: expr.date, values, ctx })} ${order}`)
                     } else if (orderByExpr.has(k)) {
-                        sqlParts.push(`${prepAggregate({ key: k, val: expr[k], values, ctx })} ${order}`)
+                        /** @type {AggregateKey} */
+                        const aggregateKey = /** @type {any} */ (k)
+                        sqlParts.push(`${prepAggregate({ key: aggregateKey, val: expr[k], values, ctx })} ${order}`)
                     }
                     break
                 }
@@ -1276,6 +1458,17 @@ const hasKeys = obj => {
     return false
 }
 
+/**
+ * prepare null check
+ * @param {*} exp 
+ */
+const prepNullCheck = ({ exp, ifNull, alias, values, ctx }) => {
+    const nullPlaceholder = prepPlaceholder({ value: ifNull, alias, ctx })
+    const nullValue = prepName({ alias, value: ifNull, ctx })
+    if (isVariable(nullPlaceholder)) values.push(nullValue)
+    return `COALESCE(${exp}, ${nullPlaceholder})`
+}
+
 /** 
  * @type {Record<string, Function>}
  */
@@ -1297,6 +1490,16 @@ const handleFunc = {
     count: prepAggregate,
     max: prepAggregate,
     min: prepAggregate,
+    lead: prepOffsetWindow,
+    lag: prepOffsetWindow,
+    rank: prepRankWindow,
+    denseRank: prepRankWindow,
+    percentRank: prepRankWindow,
+    rowNum: prepRankWindow,
+    nTile: prepRankWindow,
+    firstValue: prepValueWindow,
+    lastValue: prepValueWindow,
+    nthValue: prepValueWindow,
 }
 
 module.exports = { prepSelect, prepWhere, prepJoin, prepOrderBy, isVariable, patchGroupBy, patchLimit, prepEncryption, prepRefer, hasKeys }

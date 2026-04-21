@@ -37,6 +37,7 @@ class UnSQL {
      * @param {Object<string, 'asc'|'desc'>} [findParam.orderBy={}] - Sort order for the results.
      * @param {number} [findParam.limit] - Maximum number of records to fetch.
      * @param {number} [findParam.offset] - Starting index for pagination.
+     * @param {Boolean} [findParam.includeMeta=false] - Whether to include metadata in the response.
      * @param {import("./defs/types").EncryptionConfig} [findParam.encryption={}] - Query-level encryption settings.
      * @param {import("./defs/types").DebugTypes} [findParam.debug=false] - Debug mode configuration.
      * @param {SessionManager} [findParam.session] - Database session/transaction manager.
@@ -49,7 +50,7 @@ class UnSQL {
      * debug: 'query', 
      * });
      */
-    static async find({ alias = undefined, select = [], join = [], where = {}, groupBy = [], having = {}, orderBy = {}, limit = undefined, offset = undefined, encryption = {}, debug = false, session = undefined } = {}) {
+    static async find({ alias = undefined, select = [], join = [], where = {}, groupBy = [], having = {}, orderBy = {}, limit = undefined, offset = undefined, encryption = {}, debug = false, session = undefined, includeMeta = false } = {}) {
         patchDefaults(this)
 
         const { dialect } = this.config
@@ -71,8 +72,8 @@ class UnSQL {
         const sqlParts = []
 
         try {
-            sqlParts.push(`SELECT ${prepSelect({ alias, select, values, encryption, ctx })} FROM ${ctx.isMySQL ? '??' : `"${ctx.config?.table}"`}`)
-            if (ctx.isMySQL) values.push(ctx.config?.table)
+            sqlParts.push(`SELECT ${prepSelect({ alias, select, values, encryption, ctx })} FROM ${ctx.isMySQL ? '??' : `"${ctx.table}"`}`)
+            if (ctx.isMySQL) values.push(ctx.table)
             if (alias) {
                 if (ctx.isMySQL) values.push(alias)
                 sqlParts.push(ctx.isMySQL ? '??' : `"${alias}"`)
@@ -85,7 +86,7 @@ class UnSQL {
             if (typeof limit === 'number') sqlParts.push(patchLimit(limit, values, ctx))
             if (typeof offset === 'number') sqlParts.push(patchLimit(offset, values, ctx, 'OFFSET'))
 
-            return await handleExecutions[ctx.config?.dialect || 'mysql']({ sql: sqlParts.join(' '), values, encryption, debug, session, config: ctx.config, methodType: 'all' })
+            return await handleExecutions[ctx.dialect || 'mysql']({ sql: sqlParts.join(' '), values, debug, session, config: ctx.config, methodType: 'all', includeMeta })
 
         } catch (/** @type {*} */ error) {
             handleError(debug, error)
@@ -129,7 +130,7 @@ class UnSQL {
         if (!defaultResp.success) return defaultResp
 
         // ↓ added — SQLite encryption guard
-        if (hasKeys(encrypt) && ctx.isSQLite) return { success: false, error: `[Unsupported]: Column-level encryption is not supported in SQLite. Encrypt values at application level before passing to save2.` }
+        if (hasKeys(encrypt) && ctx.isSQLite) return { success: false, error: `[Unsupported]: Column-level encryption is not supported in SQLite. Encrypt values at application level before passing to save.` }
 
         const sqlParts = []
         const values = []
@@ -142,8 +143,8 @@ class UnSQL {
 
         if (!isUpdate && !Array.isArray(data)) data = [data]
 
-        sqlParts.push(`${isUpdate ? `UPDATE` : `INSERT INTO`} ${ctx.isMySQL ? `??` : `"${this.config.table}"`}`)
-        if (ctx.isMySQL) values.push(this.config.table)
+        sqlParts.push(`${isUpdate ? `UPDATE` : `INSERT INTO`} ${ctx.isMySQL ? `??` : `"${ctx.table}"`}`)
+        if (ctx.isMySQL) values.push(ctx.table)
 
         if (alias && isUpdate) {
             if (ctx.isMySQL) values.push(alias)
@@ -275,8 +276,8 @@ class UnSQL {
                         if ('refer' in valueObj) {
                             upsertParts.push(baseStr + prepRefer({ val: valueObj.refer, values, ctx }))
                         } else {
-                            let expr = ctx.isMySQL ? '??' : `"${col}"`
-                            if (ctx.isMySQL) values.push(col)
+                            let expr = ctx.isMySQL ? '??' : `"${ctx.table}"."${col}"`
+                            if (ctx.isMySQL) values.push(`${ctx.table}.${col}`)
 
                             for (const key in valueObj) {
 
@@ -313,9 +314,8 @@ class UnSQL {
 
             if (ctx.isPostgreSQL) sqlParts.push('RETURNING *')
 
-            return await handleExecutions[ctx.dialect || 'mysql']({ sql: sqlParts.join(' '), values, config: ctx.config, debug, encryption, methodType: 'run', session })
+            return await handleExecutions[ctx.dialect || 'mysql']({ sql: sqlParts.join(' '), values, config: ctx.config, debug, methodType: 'run', session })
         } catch (error) {
-            console.error('error while save2', error)
             return { success: false, error }
         }
 
@@ -354,12 +354,12 @@ class UnSQL {
         // handle delete all if safe mode is active
         if (!Object.keys(where).length && ctx.config?.safeMode) {
             console.error(colors.red + `Delete all records from database table in 'safeMode' is prohibited!` + colors.reset)
-            return { success: false, error: `Delete all is disabled in 'safeMode' (default 'true') inside 'config' property of '${ctx.name}' model class` }
+            return { success: false, error: `Delete all is disabled in 'safeMode' (default 'true') inside 'config' property of '${this.name}' model class` }
         }
 
         const values = []
-        const sqlParts = [`DELETE FROM ${(ctx.isMySQL ? '??' : `"${ctx.config?.table}"`)}`]
-        if (ctx.isMySQL) values.push(ctx.config?.table)
+        const sqlParts = [`DELETE FROM ${(ctx.isMySQL ? '??' : `"${ctx.table}"`)}`]
+        if (ctx.isMySQL) values.push(ctx.table)
         if (alias) {
             if (ctx.isMySQL) values.push(alias)
             sqlParts.push(ctx.isMySQL ? '??' : `"${alias}"`)
@@ -367,7 +367,7 @@ class UnSQL {
 
         if (Object.keys(where).length) sqlParts.push(`WHERE ${prepWhere({ alias, where, values, encryption, ctx: ctx })}`)
 
-        return await handleExecutions[ctx.config?.dialect || 'mysql']({ sql: sqlParts.join(' '), values, encryption, debug, session, config: ctx.config, methodType: 'run' })
+        return await handleExecutions[ctx.dialect || 'mysql']({ sql: sqlParts.join(' '), values, debug, session, config: ctx.config, methodType: 'run' })
     }
 
     /**
@@ -378,15 +378,16 @@ class UnSQL {
      * @param {import("./defs/types").EncryptionConfig} [rawQueryParams.encryption] (optional) encryption configurations
      * @param {import("./defs/types").DebugTypes} [rawQueryParams.debug] (optional) enables debug mode
      * @param {boolean} [rawQueryParams.multiQuery] (optional) flag if sql contains multiple queries (only in 'mysql'), default is false
-     * @param {*} [rawQueryParams.session] (optional) global session reference for transactions and rollback
+     * @param {SessionManager} [rawQueryParams.session] (optional) global session reference for transactions and rollback
+     * @param {Boolean} [rawQueryParams.includeMeta=false] - Whether to include metadata in the response.
      * @param {'run'|'all'|'exec'} [rawQueryParams.methodType=all] (optional) used only with 'sqlite'
      * @returns {Promise<{success:boolean, error?:*, result?:*}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
      */
-    static async rawQuery({ sql = '', values = [], debug = false, encryption = undefined, session = undefined, multiQuery = false, methodType = 'all' }) {
+    static async rawQuery({ sql = '', values = [], debug = false, encryption = undefined, session = undefined, multiQuery = false, methodType = 'all', includeMeta = false }) {
         patchDefaults(this)
         const defaultResp = handleDefaults(this)
         if (!defaultResp.success) return defaultResp
-        return await handleExecutions[this.config?.dialect || 'mysql']({ sql, values, encryption, debug, session, config: this.config, methodType, multiQuery })
+        return await handleExecutions[this.config?.dialect || 'mysql']({ sql, values, debug, session, config: this.config, methodType, multiQuery, includeMeta })
     }
 
     /**
@@ -491,120 +492,121 @@ class UnSQL {
 
         if (!defaultResp.success) return defaultResp
 
-        const sql = `TRUNCATE ${ctx.isMySQL ? '??' : `"${ctx.config?.table}"`}`
+        const sql = `TRUNCATE ${ctx.isMySQL ? '??' : `"${ctx.table}"`}`
         const values = []
 
-        if (ctx.isMySQL) values.push(ctx.config.table)
+        if (ctx.isMySQL) values.push(ctx.table)
 
-        return await handleExecutions[ctx.config?.dialect || 'mysql']({ sql, values, debug, config: ctx.config })
+        return await handleExecutions[ctx.dialect || 'mysql']({ sql, values, debug, config: ctx.config })
     }
 
 }
 
-/** executes MySQL query
- * @param {Object} options
- * @param {string} options.sql SQL query to be executed
- * @param {Array<any>} options.values values to be interpolated in the query
- * @param {import("./defs/types").DebugTypes} [options.debug] enables debug mode
- * @param {*} [options.session] global session reference for transactions and rollback
- * @param {import("./defs/types").ConfigObject} [options.config] global configuration object
- * @param {boolean} [options.multiQuery] flag if sql contains multiple queries (only in 'mysql'), default is false
- * @param {import("./defs/types").EncryptionConfig} [options.encryption] enables encryption
- * @returns {Promise<{success:false, error:*}|{success:true, result:Array<*>|*}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'results'
+/**
+ * executes MySQL query
+ * @param {Object} params 
+ * @param {string} params.sql SQL query to be executed
+ * @param {Array<any>} params.values values to be interpolated in the query
+ * @param {import("./defs/types").DebugTypes} [params.debug] enables debug mode
+ * @param {SessionManager} [params.session] global session reference for transactions and rollback
+ * @param {import("./defs/types").ConfigObject} params.config global configuration object
+ * @param {boolean} [params.multiQuery] flag if sql contains multiple queries (only in 'mysql'), default is false
+ * @param {boolean} [params.includeMeta] flag to include metadata in the response
  */
-const executeMySQL = async ({ sql, values, debug = false, session = undefined, config, encryption = undefined, multiQuery = false }) => {
-    const connection = await (session?.connection || config?.pool?.getConnection() || config?.connection)
-    const isBenchmarking = debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true
+async function execMySQL({ sql, values, debug = false, session, config, multiQuery = false, includeMeta = false }) {
+    const isBenchmarking = debug && (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true)
+    const isDebugging = debug && (debug === true || debug === 'sandbox' || debug === 'query' || debug === 'benchmark-query')
+    let releaseClient = false
 
-    const needsStatement = debug === true || debug === 'sandbox' || debug === 'query' || debug === 'benchmark-query'
+    let client = config?.pool || config?.connection
+
+    if (session?.connection) client = session.connection
+    else if (multiQuery && config.pool) {
+        try {
+            client = await config.pool?.getConnection()
+            releaseClient = true
+        } catch (/** @type {*} */ error) {
+            return { success: false, error: `Failed to get connection from pool for multiQuery execution: ${error.message || error}` }
+        }
+    }
+
+    if (!client) return { success: false, error: `No MySQL connection or pool found!` }
 
     try {
-
-        const statement = needsStatement ? await connection.format(sql, values) : sql
-
-        handleQueryDebug(debug, sql, values, statement)
-
+        if (isDebugging) handleQueryDebug(debug, sql, values, typeof client.format === 'function' ? client.format(sql, values) : null)
         if (debug === 'sandbox') return { success: true, result: [{ message: 'UnSQL executed in sandbox mode' }] }
-
-        if (!session) await connection?.beginTransaction()
-
         const t0 = isBenchmarking ? performance.now() : 0
-
-        const [result] = await connection[multiQuery || !needsStatement ? 'query' : 'execute'](statement, needsStatement ? undefined : values)
-
-        if (!session) await connection?.commit()
+        const [result, meta] = await client.query(sql, values)
         if (isBenchmarking) {
             console.info(`\n${colors.blue}******************************************************************${colors.reset}\n`)
             console.log(`${colors.cyan}UnSQL Benchmark (Query Execution + Network Delay):${colors.reset} ${colors.yellow}${performance.now() - t0}ms${colors.reset}`)
             console.info(`\n${colors.blue}******************************************************************${colors.reset}\n`)
         }
-
-        return { success: true, result }
-
+        return { success: true, result, ...(includeMeta && { meta }) }
     } catch (error) {
-        handleError(debug, error)
-        if (connection && !session) await connection?.rollback()
         return { success: false, error }
     } finally {
-        if (config?.pool && !session) await connection?.release()
+        if (releaseClient) client.release()
     }
 }
 
 /**
  * executes PostgreSQL query
- * @param {Object} options
- * @param {string} options.sql 
- * @param {Array<*>} options.values
- * @param {import("./defs/types").DebugTypes} options.debug
- * @param {import("./defs/types").ConfigObject} options.config
- * @param {SessionManager} [options.session]
- * @returns {Promise<{success:true, result:Array<*>|*}|{success:false, error:*}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
+ * @param {Object} params 
+ * @param {string} params.sql SQL query to be executed
+ * @param {Array<any>} params.values values to be interpolated in the query
+ * @param {import("./defs/types").DebugTypes} [params.debug] enables debug mode
+ * @param {SessionManager} [params.session] global session reference for transactions and rollback
+ * @param {import("./defs/types").ConfigObject} params.config global configuration object
+ * @param {boolean} [params.includeMeta] flag to include metadata in the response
+ * @returns {Promise<{success:false, error:*}|{success:true, result:Array<*>|*, meta?:*}>}
  * @author Siddharth Tiwari <dev.unsql@gmail.com>
  */
-const executePostgreSQL = async ({ sql, values, debug = false, config, session = undefined }) => {
-    const client = await (session?.connection || config?.pool?.connect())
-    const isBenchmarking = debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true
-
+async function execPostgreSQL({ sql, values, debug = false, session, config, includeMeta = false }) {
+    const isBenchmarking = debug && (debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true)
+    let releaseClient = false
     handleQueryDebug(debug, sql, values)
-
     if (debug === 'sandbox') return { success: true, result: [{ message: 'UnSQL executed in sandbox mode' }] }
 
+    let client = null
+
+    if (session?.connection) client = session.connection
+    else if (config?.pool) {
+        try {
+            client = await config.pool.connect()
+            releaseClient = true
+        } catch (/** @type {*} */ error) {
+            return { success: false, error: `Failed to get connection from pool for query execution: ${error.message || error}` }
+        }
+    }
+
+    if (!client) return { success: false, error: `No PostgreSQL connection or pool found!` }
+
     try {
-        if (!session) await client.query('BEGIN')
         const t0 = isBenchmarking ? performance.now() : 0
-
         const result = await client.query(sql, values)
-        if (!session) await client.query('COMMIT')
-
         if (isBenchmarking) {
             console.info(`\n${colors.blue}******************************************************************${colors.reset}\n`)
             console.log(`${colors.cyan}UnSQL Benchmark (Query Execution + Network Delay):${colors.reset} ${colors.yellow}${performance.now() - t0}ms${colors.reset}`)
             console.info(`\n${colors.blue}******************************************************************${colors.reset}\n`)
         }
 
-        const payload = []
-        const meta = []
 
         if (Array.isArray(result)) {
+            const rowsArray = []
+            const meta = []
             for (let i = 0; i < result.length; i++) {
-                const { rows, fields } = result[i]
-                if (rows && rows.length) {
-                    payload.push(...rows)
-                    meta.push(fields)
-                } else if (fields && fields.length) {
-                    meta.push(fields)
-                }
+                const { rows, ...metadata } = result[i]
+                rowsArray.push({ [`output_${i + 1}`]: rows })
+                meta.push({ [`meta_${i + 1}`]: metadata })
             }
-        } else {
-            payload.push(...result.rows)
-            meta.push(result.fields)
+            return { success: true, result: rowsArray, ...(includeMeta && { meta }) }
         }
-        return { success: true, result: payload }
-    }
-    catch (/** @type {*} */ error) {
-        if (!session) await client.query('ROLLBACK')
-        handleError(debug, error)
+        const { rows, ...metadata } = result
+        return { success: true, result: rows, ...(includeMeta && { meta: metadata }) }
 
+    } catch (/** @type {*} */ error) {
+        handleError(debug, error)
         return {
             success: false, error: {
                 message: error.message,
@@ -619,38 +621,34 @@ const executePostgreSQL = async ({ sql, values, debug = false, config, session =
             }
         }
     } finally {
-        if (!session) await client.release()
+        if (releaseClient) await client.release()
     }
 }
 
 /**
  * executes SQLite query
- * @param {Object} options
- * @param {string} options.sql
- * @param {Array<*>} options.values
- * @param {import("./defs/types").DebugTypes} [options.debug]
- * @param {import("./defs/types").ConfigObject} [options.config]
- * @param {'all'|'run'|'exec'} [options.methodType=all]
- * @param {*} [options.session]
- * @returns {Promise<{success:boolean, result?:Array<*>|{insertId?:number, changes?:number}, error?:*}>}
- */
-async function executeSqlite({ sql, values, debug = false, config, methodType = 'all', session = undefined }) {
-    const db = await (session?.pool || config?.pool)
+ * @param {Object} params
+ * @param {string} params.sql
+ * @param {Array<*>} params.values
+ * @param {import("./defs/types").DebugTypes} [params.debug]
+ * @param {import("./defs/types").ConfigObject} [params.config]
+ * @param {'all'|'run'|'exec'} [params.methodType]
+ * @param {SessionManager} [params.session]
+ * @returns {Promise<{success:true, result:Array<*>|{insertId?:number, changes?:number}}|{success:false, error:*}>} Promise resolving with two parameters: boolean 'success' and either 'error' or 'result'
+ * @author Siddharth Tiwari <dev.unsql@gmail.com>
+*/
+async function execSQLite({ sql, values, debug = false, config, session = undefined, methodType = 'all' }) {
+
+    const isBenchmarking = debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true
+    const client = await (session?.pool || config?.pool)
 
     handleQueryDebug(debug, sql, values)
 
     if (debug === 'sandbox') return { success: true, result: [{ message: 'UnSQL executed in sandbox mode' }] }
 
-    const isBenchmarking = debug === 'benchmark' || debug === 'benchmark-query' || debug === 'benchmark-error' || debug === true
-    if (typeof db[methodType] != 'function') return { success: false, error: `Invalid method '${methodType}' detected!` }
-
     try {
-        if (!session?.pool) await db.run('BEGIN TRANSACTION')
         const t0 = isBenchmarking ? performance.now() : 0
-
-        const result = await db[methodType](sql, values) // execute query
-        if (!session?.pool) await db.run('COMMIT')
-
+        const result = await client[methodType](sql, values)
         if (isBenchmarking) {
             console.info(`\n${colors.blue}******************************************************************${colors.reset}\n`)
             console.log(`${colors.cyan}UnSQL Benchmark (Query Execution + Network Delay):${colors.reset} ${colors.yellow}${performance.now() - t0}ms${colors.reset}`)
@@ -667,7 +665,6 @@ async function executeSqlite({ sql, values, debug = false, config, methodType = 
             }
         }
     } catch (/** @type {*} */ error) {
-        if (!session?.pool) await db.run('ROLLBACK')
         const code = error.message?.split(':')[0].trim()
         handleError(debug, error)
         return { success: false, error: { message: error.message, code, stack: error.stack } }
@@ -685,7 +682,7 @@ async function executeSqlite({ sql, values, debug = false, config, methodType = 
  * @returns {void}
  * @author Siddharth Tiwari <dev.unsql@gmail.com>
  */
-const patchDefaults = ctx => {
+function patchDefaults(ctx) {
     if (!('devMode' in ctx.config)) ctx.config.devMode = false
     if (!('safeMode' in ctx.config)) ctx.config.safeMode = true
     if (!('dialect' in ctx.config)) ctx.config.dialect = 'mysql'
@@ -700,7 +697,7 @@ const patchDefaults = ctx => {
  * @param {*} ctx 
  * @returns {{success:true}|{success:false, error:string}}
  */
-const handleDefaults = ctx => {
+function handleDefaults(ctx) {
     if (!ctx?.config && ('TABLE_NAME' in ctx) && ('POOL' in ctx)) return { success: false, error: `[UnSQL Version Conflict]: '${ctx?.name}' model class is using 'v1.x' class configuration with 'v2.x' to continue with 'v1.x' kindly switch the 'unsql' import to 'unsql/legacy'` }
     // handle if connection object is missing
     if (!ctx?.config?.pool && !ctx?.config?.connection) return { success: false, error: `[Missing]: Please provide${ctx?.isMySQL ? ` 'connection' or` : ''} 'pool' inside config(static property) of '${ctx?.name}' model class` }
@@ -710,9 +707,9 @@ const handleDefaults = ctx => {
 }
 
 const handleExecutions = {
-    mysql: executeMySQL,
-    postgresql: executePostgreSQL,
-    sqlite: executeSqlite
+    mysql: execMySQL,
+    postgresql: execPostgreSQL,
+    sqlite: execSQLite
 }
 
 /**
@@ -736,19 +733,39 @@ class SessionManager {
      * @returns {Promise<void|{success: false, error?: *}|{success: true, message: string}>}
      */
     async init() {
+        if (this.connection) return { success: true, message: 'Session already active.' }
+
         switch (this.dialect) {
-            case 'mysql':
+            case 'mysql': {
                 this.connection = await this.pool?.getConnection() || this.pool
-                await this.connection?.beginTransaction()
+                try {
+                    await this.connection?.beginTransaction()
+                } catch (error) {
+                    await this.close()
+                    return { success: false, error }
+                }
                 break
-            case 'postgresql':
+            }
+            case 'postgresql': {
                 this.connection = await this.pool?.connect()
-                await this.connection?.query('BEGIN')
+                try {
+                    await this.connection?.query('BEGIN')
+                } catch (error) {
+                    await this.close()
+                    return { success: false, error }
+                }
                 break
-            case 'sqlite':
+            }
+            case 'sqlite': {
                 this.connection = await this.pool
-                await this.connection?.run('BEGIN')
+                try {
+                    await this.connection?.run('BEGIN')
+                } catch (error) {
+                    await this.close()
+                    return { success: false, error }
+                }
                 break
+            }
             default:
                 return { success: false, error: 'Invalid dialect provided in config' }
         }
@@ -791,7 +808,7 @@ class SessionManager {
      */
     async close() {
         if (typeof this.connection?.release === 'function') await this.connection?.release()
-        delete this.connection
+        this.connection = null
     }
 }
 

@@ -43,13 +43,57 @@
  */
 
 /**
+ * @typedef {'unboundedPreceding'|'currentRow'|'unboundedFollowing'} FrameBoundaryKeyword
+ * /
+ * 
+ * @typedef {Object} WindowObject
+ * @prop {string[]} [partitionBy]
+ * @prop {Object<string, 'asc'|'desc'|{between:{gt:string|number, lt:string|number}}>} [orderBy]
+ * @prop {{unit: 'rows'|'range'|'groups', start: 'unboundedPreceding'|'currentRow'|'unboundedFollowing'| { preceding: number } | { following: number }, end: 'unboundedPreceding'|'currentRow'|'unboundedFollowing'| { preceding: number } | { following: number }}} [frame]
+ */
+
+/**
+ * @typedef {Object} BaseOffsetWindow
+ * @prop {Object} value
+ * @prop {number} [offset]
+ * @prop {number} [defaultValue]
+ * @prop {WindowObject} [over]
+ * @prop {CastingTypes} [cast]
+ * @prop {string|number|boolean} [ifNull]
+ * @prop {Object} [compare]
+ * @prop {string} [as]
+ */
+
+/**
+ * @typedef {Object} BaseRankWindow
+ * @prop {number} [numOfGroups]
+ * @prop {WindowObject} [over]
+ * @prop {CastingTypes} [cast]
+ * @prop {string|number|boolean} [ifNull]
+ * @prop {Object} [compare]
+ * @prop {string} [as]
+ */
+
+/**
+ * @typedef {Object} BaseValueWindow
+ * @prop {Object} [value]
+ * @prop {number} [limit]
+ * @prop {WindowObject} [over]
+ * @prop {CastingTypes} [cast]
+ * @prop {string|number|boolean} [ifNull]
+ * @prop {Object} [compare]
+ * @prop {string} [as]
+ */
+
+/**
  * base aggregator
  * @typedef {Object} BaseAggregate
  * @prop {Object} value
  * @prop {boolean} [distinct]
- * @prop {Object} [compare]
- * @prop {string|number|boolean} [ifNull]
+ * @prop {WindowObject} [over]
  * @prop {CastingTypes} [cast]
+ * @prop {string|number|boolean} [ifNull]
+ * @prop {Object} [compare]
  * @prop {string} [as]
  */
 
@@ -190,6 +234,7 @@
  * @prop {{[key:string]:'asc'|'desc'}[]} [orderBy]
  * @prop {number} [limit]
  * @prop {number} [offset]
+ * @prop {*} [ifNull]
  * @prop {string} [as]
  */
 
@@ -290,7 +335,7 @@
  */
 
 /**
- * @typedef {'and'|'or'|'between'|'if'|'case'|'count'|'sum'|'min'|'max'|'avg'} HandleFuncKey
+ * @typedef {'and'|'or'|'between'|'if'|'case'|'count'|'sum'|'min'|'max'|'avg'|'lead'|'lag'|'firstValue'|'lastValue'|'nthValue'|'rank'|'denseRank'} HandleFuncKey
  */
 
 exports.unused = {}

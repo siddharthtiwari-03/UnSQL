@@ -14,7 +14,7 @@ const colors = {
  * @param {any[]} values 
  * @param {string} prepared 
  */
-const handleQueryDebug = (debug, sql, values, prepared = '') => {
+function handleQueryDebug(debug, sql, values, prepared = '') {
     if (debug === true || debug === 'sandbox' || debug === 'benchmark-query' || debug === 'query') {
         console.info(`\n${colors.blue}******************************************************************${colors.reset}`)
         console.info(`${colors.cyan}                       UnSQL Debug Query Begins${colors.reset}`)
@@ -33,7 +33,7 @@ const handleQueryDebug = (debug, sql, values, prepared = '') => {
  * @param {import("../defs/types").DebugTypes} debug 
  * @param {*} error 
  */
-const handleError = (debug, error) => {
+function handleError(debug, error) {
     if (debug === true || debug === 'benchmark-error' || debug === 'error') {
         console.error(`\n${colors.red}******************************************************************${colors.reset}`)
         console.error(`${colors.yellow}                       UnSQL Debug Error Starts${colors.reset}`)

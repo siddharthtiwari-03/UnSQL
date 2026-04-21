@@ -1,3 +1,4 @@
+export type AggregateKey = "sum" | "avg" | "count" | "min" | "max";
 /**
  * prepares select query using various
  * @param {Object} selectParam
