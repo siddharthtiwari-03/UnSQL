@@ -217,36 +217,52 @@ export class SessionManager {
     constructor(pool: any, dialect?: "mysql" | "postgresql" | "sqlite");
     pool: any;
     dialect: "mysql" | "postgresql" | "sqlite";
+    releaseClient: boolean;
     /**
      * initiates transaction
-     * @returns {Promise<void|{success: false, error?: *}|{success: true, message: string}>}
+     * @returns {Promise<void|{success: false, error: *}|{success: true, message: string}>}
      */
     init(): Promise<void | {
         success: false;
-        error?: any;
+        error: any;
     } | {
         success: true;
         message: string;
     }>;
-    connection: any;
+    client: any;
     /**
      * rollbacks the changes, if 'false' is passed then session will not be closed
      * @param {boolean} [close=true]
-     * @returns {Promise<void>}
+     * @returns {Promise<void|{success: true, message: string}|{success: false, error:*}>}
      */
-    rollback(close?: boolean): Promise<void>;
+    rollback(close?: boolean): Promise<void | {
+        success: true;
+        message: string;
+    } | {
+        success: false;
+        error: any;
+    }>;
     /**
      * commits the changes, if 'false' is passed then session will not be closed
      * @param {boolean} [close=true]
-     * @returns {Promise<void|{success: false, error: string}>}
+     * @returns {Promise<void|{success: true, message: string}|{success: false, error: *}>}
      */
     commit(close?: boolean): Promise<void | {
+        success: true;
+        message: string;
+    } | {
         success: false;
-        error: string;
+        error: any;
     }>;
     /**
      * terminates the session and releases the connection
-     * @returns {Promise<void>}
+     * @returns {Promise<void|{success: true, message: string}|{success: false, error: *}>}
      */
-    close(): Promise<void>;
+    close(): Promise<void | {
+        success: true;
+        message: string;
+    } | {
+        success: false;
+        error: any;
+    }>;
 }

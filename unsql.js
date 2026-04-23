@@ -520,7 +520,7 @@ async function execMySQL({ sql, values, debug = false, session, config, multiQue
 
     let client = config?.pool || config?.connection
 
-    if (session?.connection) client = session.connection
+    if (session?.client) client = session.client
     else if (multiQuery && config.pool) {
         try {
             client = await config.pool?.getConnection()
@@ -570,7 +570,7 @@ async function execPostgreSQL({ sql, values, debug = false, session, config, inc
 
     let client = null
 
-    if (session?.connection) client = session.connection
+    if (session?.client) client = session.client
     else if (config?.pool) {
         try {
             client = await config.pool.connect()
@@ -726,48 +726,50 @@ class SessionManager {
     constructor(pool, dialect = 'mysql') {
         this.pool = pool
         this.dialect = dialect
+        this.releaseClient = false
     }
 
     /**
      * initiates transaction
-     * @returns {Promise<void|{success: false, error?: *}|{success: true, message: string}>}
+     * @returns {Promise<void|{success: false, error: *}|{success: true, message: string}>}
      */
     async init() {
-        if (this.connection) return { success: true, message: 'Session already active.' }
+        if (this.client) return { success: true, message: 'Session already active.' }
+        if (!this.pool) throw new Error('Connection/pool not initialized')
 
-        switch (this.dialect) {
-            case 'mysql': {
-                this.connection = await this.pool?.getConnection() || this.pool
-                try {
-                    await this.connection?.beginTransaction()
-                } catch (error) {
-                    await this.close()
-                    return { success: false, error }
+        try {
+            switch (this.dialect) {
+                case 'mysql': {
+                    if (typeof this.pool?.getConnection === 'function') {
+                        this.client = await this.pool.getConnection()
+                        this.releaseClient = true
+                    } else {
+                        this.client = this.pool
+                    }
+                    await this.client.beginTransaction()
+                    break
                 }
-                break
-            }
-            case 'postgresql': {
-                this.connection = await this.pool?.connect()
-                try {
-                    await this.connection?.query('BEGIN')
-                } catch (error) {
-                    await this.close()
-                    return { success: false, error }
+                case 'postgresql': {
+                    if (typeof this.pool?.connect === 'function') {
+                        this.client = await this.pool.connect()
+                        this.releaseClient = true
+                    } else {
+                        this.client = this.pool
+                    }
+                    await this.client.query('BEGIN')
+                    break
                 }
-                break
-            }
-            case 'sqlite': {
-                this.connection = await this.pool
-                try {
-                    await this.connection?.run('BEGIN')
-                } catch (error) {
-                    await this.close()
-                    return { success: false, error }
+                case 'sqlite': {
+                    this.client = this.pool
+                    await this.client.run('BEGIN')
+                    break
                 }
-                break
+                default:
+                    return { success: false, error: 'Invalid dialect provided in config' }
             }
-            default:
-                return { success: false, error: 'Invalid dialect provided in config' }
+        } catch (error) {
+            await this.close()
+            return { success: false, error }
         }
         return { success: true, message: 'Transaction initialized successfully!' }
     }
@@ -775,27 +777,36 @@ class SessionManager {
     /**
      * rollbacks the changes, if 'false' is passed then session will not be closed
      * @param {boolean} [close=true]
-     * @returns {Promise<void>}
+     * @returns {Promise<void|{success: true, message: string}|{success: false, error:*}>}
      */
     async rollback(close = true) {
-        if (this.dialect === 'mysql') await this.connection?.rollback()
-        else if (this.dialect === 'postgresql') await this.connection?.query('ROLLBACK')
-        else if (this.dialect === 'sqlite') await this.connection?.run('ROLLBACK')
-        if (close) await this.close()
+        if (!this.client) return { success: false, error: 'No active connection/pool detected' }
+        try {
+            if (this.dialect === 'mysql') await this.client.rollback()
+            else if (this.dialect === 'postgresql') await this.client.query('ROLLBACK')
+            else if (this.dialect === 'sqlite') await this.client.run('ROLLBACK')
+            return { success: true, message: 'Transaction rollback successful!' }
+        } catch (error) {
+            return { success: false, error }
+        } finally {
+            if (close) await this.close()
+        }
     }
 
     /**
      * commits the changes, if 'false' is passed then session will not be closed
      * @param {boolean} [close=true]
-     * @returns {Promise<void|{success: false, error: string}>}
+     * @returns {Promise<void|{success: true, message: string}|{success: false, error: *}>}
      */
     async commit(close = true) {
+        if (!this.client) return { success: false, error: 'No active connection/pool detected' }
         try {
-            if (this.dialect === 'mysql') await this.connection.commit()
-            else if (this.dialect === 'postgresql') await this.connection.query('COMMIT')
-            else if (this.dialect === 'sqlite') await this.connection.run('COMMIT')
+            if (this.dialect === 'mysql') await this.client.commit()
+            else if (this.dialect === 'postgresql') await this.client.query('COMMIT')
+            else if (this.dialect === 'sqlite') await this.client.run('COMMIT')
+            return { success: true, message: 'Transaction commit successful!' }
         } catch (/** @type {*} */ error) {
-            await this.rollback()
+            await this.rollback(false)
             return { success: false, error }
         } finally {
             if (close) await this.close()
@@ -804,11 +815,27 @@ class SessionManager {
 
     /**
      * terminates the session and releases the connection
-     * @returns {Promise<void>}
+     * @returns {Promise<void|{success: true, message: string}|{success: false, error: *}>}
      */
     async close() {
-        if (typeof this.connection?.release === 'function') await this.connection?.release()
-        this.connection = null
+        if (!this.client) return { success: true, message: 'No active session to close' }
+
+        let conn = this.client
+        this.client = null
+
+        let message = `Transaction closed`
+        if (typeof conn.release === 'function' && this.releaseClient) {
+            try {
+                await conn.release()
+                message += ', connection released'
+            } catch (error) {
+                return { success: false, error }
+            } finally {
+                this.releaseClient = false
+            }
+        }
+        message += ' successfully!'
+        return { success: true, message }
     }
 }
 
