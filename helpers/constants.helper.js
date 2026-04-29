@@ -20,7 +20,7 @@ const SQL_CONSTANTS = {
     notNull: 'IS NOT NULL',
     isNotNull: 'IS NOT NULL',
     jsonArray: 'JSON_ARRAY()',
-    jsonObject: 'JSON_BUILD_OBJECT()',
+    jsonObject: 'JSON_OBJECT()',
 }
 
 /** @type {Record<string, string>} */
