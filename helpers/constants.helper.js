@@ -15,7 +15,7 @@ const SQL_CONSTANTS = {
     localTime: 'LOCALTIME',
     localTimestamp: 'LOCALTIMESTAMP',
     pi: 'PI()',
-    null: 'NULL',
+    null: 'IS NULL',
     isNull: 'IS NULL',
     notNull: 'IS NOT NULL',
     isNotNull: 'IS NOT NULL'

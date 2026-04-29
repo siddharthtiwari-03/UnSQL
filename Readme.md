@@ -905,7 +905,7 @@ These strings can be used anywhere a value is expected and map directly to SQL c
 | `localTime`        | same as `localTimestamp`            |
 | `utcTimestamp`     | current timestamp in UTC            |
 | `pi`               | `PI()` - approx. `3.141593`         |
-| `null`             | `NULL`                              |
+| `null`             | `IS NULL`                           |
 | `isNull`           | `IS NULL`                           |
 | `isNotNull`        | `IS NOT NULL`                       |
 | `NotNull`          | `IS NOT NULL`                       |
