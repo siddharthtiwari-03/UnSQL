@@ -895,21 +895,21 @@ await User.reset()
 
 These strings can be used anywhere a value is expected and map directly to SQL constants:
 
-| Constant           | SQL equivalent                      |
-| ------------------ | ----------------------------------- |
-| `now`              | `NOW()` - current date and time     |
-| `currentTimestamp` | synonym for `now`                   |
-| `currentDate`      | `CURDATE()` - current date only     |
-| `currentTime`      | `CURTIME()` - current time only     |
-| `localTimestamp`   | current timestamp in local timezone |
-| `localTime`        | same as `localTimestamp`            |
-| `utcTimestamp`     | current timestamp in UTC            |
-| `pi`               | `PI()` - approx. `3.141593`         |
-| `null`             | `IS NULL`                           |
-| `isNull`           | `IS NULL`                           |
-| `isNotNull`        | `IS NOT NULL`                       |
-| `NotNull`          | `IS NOT NULL`                       |
-| `jsonArray`        | `JSON_ARRAY()`                      |
+| Constant           | SQL equivalent                                              |
+| ------------------ | ----------------------------------------------------------- |
+| `now`              | `NOW()` - current date and time                             |
+| `currentTimestamp` | synonym for `now`                                           |
+| `currentDate`      | `CURDATE()` - current date only                             |
+| `currentTime`      | `CURTIME()` - current time only                             |
+| `localTimestamp`   | current timestamp in local timezone                         |
+| `localTime`        | same as `localTimestamp`                                    |
+| `utcTimestamp`     | current timestamp in UTC                                    |
+| `pi`               | `PI()` - approx. `3.141593`                                 |
+| `null`             | `IS NULL`                                                   |
+| `isNull`           | `IS NULL`                                                   |
+| `isNotNull`        | `IS NOT NULL`                                               |
+| `NotNull`          | `IS NOT NULL`                                               |
+| `jsonArray`        | `JSON_ARRAY()` or `JSON_BUILD_ARRAY()` (**for PostgreSQL**) |
 
 ```javascript
 // Sample: find users who joined today

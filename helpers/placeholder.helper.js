@@ -22,6 +22,7 @@ const prepPlaceholder = ({ value, alias = null, ctx = undefined }) => {
             else if (value === 'localTime') return `TIME('now', 'localtime')`
             else if (value === 'localTimestamp') return `DATETIME('now', 'localtime')`
         }
+        if (ctx?.isPostgreSQL && value === 'jsonArray') return 'JSON_BUILD_ARRAY()'
         return SQL_CONSTANTS[String(value)]
     }
     if (value == null || value === 'null' || value === 'NULL') return null
