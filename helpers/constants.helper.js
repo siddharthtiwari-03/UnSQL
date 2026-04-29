@@ -3,7 +3,7 @@
  * @param {*} value 
  * @returns 
  */
-const checkConstants = value => (value != null && value.toString().includes('*')) || 'pi' === value || 'now' === value || 'currentDate' === value || 'currentTime' === value || 'currentTimestamp' === value || 'localTime' === value || 'localTimestamp' === value || 'utcTimestamp' === value || 'isNull' === value || 'isNotNull' === value || 'notNull' === value || 'null' === value || 'NULL' === value || null === value
+const checkConstants = value => (value != null && value.toString().includes('*')) || value in SQL_CONSTANTS
 
 /** @type {Record<string, string>} */
 const SQL_CONSTANTS = {
@@ -18,7 +18,8 @@ const SQL_CONSTANTS = {
     null: 'IS NULL',
     isNull: 'IS NULL',
     notNull: 'IS NOT NULL',
-    isNotNull: 'IS NOT NULL'
+    isNotNull: 'IS NOT NULL',
+    jsonArray: 'JSON_ARRAY()',
 }
 
 /** @type {Record<string, string>} */

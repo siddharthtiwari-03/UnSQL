@@ -909,6 +909,7 @@ These strings can be used anywhere a value is expected and map directly to SQL c
 | `isNull`           | `IS NULL`                           |
 | `isNotNull`        | `IS NOT NULL`                       |
 | `NotNull`          | `IS NOT NULL`                       |
+| `jsonArray`        | `JSON_ARRAY()`                      |
 
 ```javascript
 // Sample: find users who joined today

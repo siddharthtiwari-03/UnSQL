@@ -335,19 +335,20 @@ const prepJson = ({ val, encryption = undefined, values, named = false, ctx = un
             sqlParts.push(`AS ${UnSQLJsonAlias})`)
         }
     }
+    let exp = sqlParts.join(' ')
+    if (ifNull) exp = prepNullCheck({ exp, alias, values, ifNull, ctx })
 
     if (as || named) {
         if (ctx?.isMySQL) {
-            sqlParts.push('AS ?')
+            exp += ' AS ?'
             values.push(as || 'json')
         } else {
-            sqlParts.push(`AS ${as || 'json'}`)
+            exp += ` AS ${as || 'json'}`
         }
     }
-    if (hasKeys(compare)) sqlParts.push(prepWhere({ alias, where: compare, values, encryption, ctx }))
 
-    let exp = sqlParts.join(' ')
-    if (ifNull) exp = prepNullCheck({ exp, alias, values, ifNull, ctx })
+    if (hasKeys(compare)) return `${exp} ${prepWhere({ alias, where: compare, values, encryption, ctx })}`
+
     return exp
 }
 
