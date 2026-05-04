@@ -253,6 +253,7 @@
  * sub-query object
  * @typedef {Object} SubQuery
  * @prop {SelectObject} [select]
+ * @prop {boolean} [aggregate]
  * @prop {'and'|'or'} [junction]
  * @typedef {PartialQuery & SubQuery} BaseQuery
  */

@@ -570,7 +570,7 @@ const prepValueWindow = ({ key, val, alias, values, encryption, ctx }) => {
  */
 const prepRefer = ({ val, parent = null, values, encryption = undefined, ctx = undefined }) => {
 
-    const { select = ['*'], table, alias = undefined, join = [], where = {}, groupBy = [], having = {}, orderBy = {}, limit = null, offset = null, ifNull, as = null } = val
+    const { select = ['*'], table, alias = undefined, join = [], where = {}, groupBy = [], having = {}, orderBy = {}, limit = null, offset = null, ifNull, aggregate = false, as = null } = val
     const sqlParts = []
     sqlParts.push(`${prepSelect({ alias, select, values, encryption, ctx })} FROM ${ctx?.isMySQL ? '??' : `"${table}"`}`)
     if (ctx.isMySQL) values.push(table)
@@ -588,6 +588,11 @@ const prepRefer = ({ val, parent = null, values, encryption = undefined, ctx = u
     if (as && ctx?.isMySQL) values.push(as)
     let exp = `(SELECT ${sqlParts.join(' ')})`
     if (ifNull) exp = prepNullCheck({ exp, ifNull, values, alias, ctx })
+    if (aggregate) {
+        if (ctx?.isMySQL) exp = `JSON_ARRAYAGG(${exp})`
+        else if (ctx?.isPostgreSQL) exp = `JSON_AGG(${exp})`
+        else if (ctx?.isSQLite) exp = `JSON_GROUP_ARRAY(${exp})`
+    }
     if (as) exp += ` AS ${ctx.isMySQL ? '?' : `"${as}"`}`
     return exp
 }

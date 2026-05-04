@@ -102,6 +102,8 @@ import { UnSQL } from 'unsql'
 - **New Offset Window Functions** - `lead` `lag` added to built-in [wrapper objects](#53-wrapper-objects)
 - **Standardized ifNull property** - `IFNULL` / `ISNULL` replaced with dialect agnostic `COALESCE`
 - **ifNull support in sub-query** - `ifNull` support added to `refer` and `json` wrappers
+- **New SQL constants support in ifNull** - `ifNull` property now supports 2 new SQL constants `jsonArray` and `jsonObject`
+- **Aggregate in refer** - `refer` wrapper now supports `aggregate` feature similar to `json` wrapper
 
 **Version v2.3**
 
@@ -1375,7 +1377,7 @@ UnSQL provides special *JSON structures* as **Wrapper objects** that generate SQ
     | `table`           | sub-query source table                                                                       |
     | `extract`         | path to extract from JSON (e.g. `'address.city'` or index `0`)                               |
     | `contains`        | check if JSON contains this value                                                            |
-    | `aggregate`       | when `true`, wraps multiple JSON objects into an array                                       |
+    | `aggregate`       | when `true`, encapsulates multiple values returned by this wrapper into a unified array      |
     | `ifNull`          | sets a fallback value                                                                        |
     | `as`              | output alias                                                                                 |
     | Sub-query options | `alias`, `join`, `where`, `groupBy`, `having`, `orderBy`, `limit`, `offset` - same as `find` |
@@ -1407,22 +1409,23 @@ UnSQL provides special *JSON structures* as **Wrapper objects** that generate SQ
     // FROM `users` `u`
     ```
 
-    | Option    | Description                                                                                                              |
-    | --------- | ------------------------------------------------------------------------------------------------------------------------ |
-    | `table`   | (required) source table                                                                                                  |
-    | `alias`   | local reference name for table to be used in query                                                                       |
-    | `select`  | column or any nested wrapper objects (must return single value)                                                          |
-    | `join`    | array of json object(s) each one to connect a child table with parent table `using` single or set of common column(s)    |
-    | `where`   | object containing various filter conditions                                                                              |
-    | `groupBy` | group records based on column(s)                                                                                         |
-    | `having`  | object containing various filter conditions similar to `where` clause but also supports aggregate wrappers as conditions |
-    | `orderBy` | object containing sorting criteria                                                                                       |
-    | `limit`   | limit the number of record(s)                                                                                            |
-    | `offset`  | set starting offset                                                                                                      |
-    | `cast`    | converts the datatype of the returned value                                                                              |
-    | `decrypt` | object containing columns specific decryption related configs                                                            |
-    | `ifNull`  | sets default fallback value in case wrapper returns null value                                                           |
-    | `as`      | provide local reference name (derived column name) for the value returned by the wrapper (defaults to str)               |
+    | Option      | Description                                                                                                              |
+    | ----------- | ------------------------------------------------------------------------------------------------------------------------ |
+    | `table`     | (required) source table                                                                                                  |
+    | `alias`     | local reference name for table to be used in query                                                                       |
+    | `select`    | column or any nested wrapper objects (must return single value)                                                          |
+    | `join`      | array of json object(s) each one to connect a child table with parent table `using` single or set of common column(s)    |
+    | `where`     | object containing various filter conditions                                                                              |
+    | `groupBy`   | group records based on column(s)                                                                                         |
+    | `having`    | object containing various filter conditions similar to `where` clause but also supports aggregate wrappers as conditions |
+    | `orderBy`   | object containing sorting criteria                                                                                       |
+    | `limit`     | limit the number of record(s)                                                                                            |
+    | `offset`    | set starting offset                                                                                                      |
+    | `cast`      | converts the datatype of the returned value                                                                              |
+    | `decrypt`   | object containing columns specific decryption related configs                                                            |
+    | `ifNull`    | sets default fallback value in case wrapper returns null value                                                           |
+    | `aggregate` | when `true`, encapsulates multiple values returned by this wrapper into a unified array                                  |
+    | `as`        | provide local reference name (derived column name) for the value returned by the wrapper (defaults to str)               |
     
 ---
 
