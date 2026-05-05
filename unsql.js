@@ -99,7 +99,7 @@ class UnSQL {
      * @param {Object} saveParam
      * @param {string?} [saveParam.alias]
      * @param {Record<string, any>|any[]} saveParam.data
-     * @param {import("./defs/types").WhereObject} saveParam.where
+     * @param {import("./defs/types").WhereObject} [saveParam.where]
      * @param {any[]} [saveParam.upsert]
      * @param {string[]} [saveParam.indexes]
      * @param {any} [saveParam.encrypt]

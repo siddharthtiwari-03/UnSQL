@@ -357,6 +357,7 @@ export type BaseJson = PartialQuery & JsonObject;
  */
 export type SubQuery = {
     select?: SelectObject | undefined;
+    aggregate?: boolean | undefined;
     junction?: "and" | "or" | undefined;
 };
 /**
