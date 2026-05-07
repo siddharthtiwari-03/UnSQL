@@ -210,9 +210,9 @@ const prepJoin = ({ alias, join = [], values, encryption = undefined, ctx = unde
             }
             if (nestedJoin.length) sqlParts.push(prepJoin({ alias: joinAlias, join: nestedJoin, values, encryption, ctx }))
             if (hasKeys(where)) sqlParts.push(`WHERE ${prepWhere({ alias: joinAlias, where, values, encryption, ctx })}`)
-            if (groupBy.length) sqlParts.push(patchGroupBy({ groupBy, alias, values, ctx }))
+            if (groupBy.length) sqlParts.push(patchGroupBy({ groupBy, alias: joinAlias, values, ctx }))
             if (hasKeys(having)) sqlParts.push(`HAVING ${prepWhere({ alias: joinAlias, where: having, values, encryption, ctx })}`)
-            if (hasKeys(orderBy)) sqlParts.push(prepOrderBy({ orderBy, alias, values, ctx }))
+            if (hasKeys(orderBy)) sqlParts.push(prepOrderBy({ orderBy, alias: joinAlias, values, ctx }))
             if (typeof limit === 'number') sqlParts.push(patchLimit(limit, values, ctx))
             if (typeof offset === 'number') sqlParts.push(patchLimit(offset, values, ctx, 'OFFSET'))
             if (!as) throw { message: `Missing 'as' property with selective join association`, cause: `Every derived table must have its own alias ('as' property)` }
@@ -236,18 +236,20 @@ const prepJoin = ({ alias, join = [], values, encryption = undefined, ctx = unde
             }).join(', ')})`)
         } else if (typeof using === 'object') {
             const usingConditions = Object.entries(using).map(([parentColumn, childColumn]) => {
-                const parentPlaceholder = prepPlaceholder({ value: parentColumn, alias: nestedSubQuery ? as : alias, ctx })
-                const parentColumnName = prepName({ value: parentColumn, alias: nestedSubQuery ? as : alias, ctx })
+                const parentPlaceholder = prepPlaceholder({ value: parentColumn, alias, ctx })
+                const parentColumnName = prepName({ value: parentColumn, alias, ctx })
                 if (ctx?.isMySQL) {
                     values.push(parentColumnName)
                 }
 
+                const currentJoinAlias = nestedSubQuery ? as : (joinAlias || table)
+
                 if (typeof childColumn === 'object') {
-                    const resp = handlePlaceholder({ value: childColumn, alias: joinAlias, values, encryption, ctx })
+                    const resp = handlePlaceholder({ value: childColumn, alias: currentJoinAlias, values, encryption, ctx })
                     return `${parentPlaceholder} ${resp}`
                 }
-                const childPlaceholder = prepPlaceholder({ value: childColumn, alias: joinAlias, ctx })
-                if (ctx.isMySQL) values.push(prepName({ value: childColumn, alias: joinAlias, ctx }))
+                const childPlaceholder = prepPlaceholder({ value: childColumn, alias: currentJoinAlias, ctx })
+                if (ctx.isMySQL) values.push(prepName({ value: childColumn, alias: currentJoinAlias, ctx }))
                 return `${parentPlaceholder} = ${childPlaceholder}`
             })
             sqlParts.push(`ON ${usingConditions.join(' AND ')}`)
