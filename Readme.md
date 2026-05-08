@@ -104,6 +104,7 @@ import { UnSQL } from 'unsql'
 - **ifNull support in sub-query** - `ifNull` support added to `refer` and `json` wrappers
 - **New SQL constants support in ifNull** - `ifNull` property now supports 2 new SQL constants `jsonArray` and `jsonObject`
 - **Aggregate in refer** - `refer` wrapper now supports `aggregate` feature similar to `json` wrapper
+- **Stable Pre-aggregated Joins** - The Derived tables inside pre-aggregated joins stable
 
 **Version v2.3**
 
@@ -467,7 +468,7 @@ await User.find({
 
 > **Please Note:** To refer any column from the child table, prefix it with the child table's alias (here `'o.orderDate'`)
 
-When you add `select` or `where` inside a join object, UnSQL wraps the joined table in a subquery. In that case `as` is required as the subquery alias:
+When you add `select` or `where` or `having` inside a join object, UnSQL wraps the joined table in a subquery to produce a temporary *Derived Table*, this approach is also called *Pre-aggregated Join*. In such case `as` is required as the subquery alias:
 
 ```javascript
 // Subquery join - triggered by select + as inside the join object
@@ -481,13 +482,13 @@ await User.find({
         select: ['orderId', 'amount'],
         where: { status: 1 },
         using: { userId: 'customerId' }, // assuming orders table stores userId as customerId
-        as: 'o' // required when select or where is set
+        as: 'o' // required when select or where or having is set
     }]
 })
 
 // SELECT `u`.`userId`, `u`.`firstName`, `o`.`orderId`, `o`.`amount`
 // FROM `users` `u`
-// LEFT JOIN (SELECT `t1`.`orderId`, `t1`.`amount` FROM `orders` `t1` WHERE `t1`.`status` = 1) AS `o` ON `userId` = `customerId`
+// LEFT JOIN (SELECT `t1`.`orderId`, `t1`.`amount` FROM `orders` `t1` WHERE `t1`.`status` = 1) AS `o` ON `u.userId` = `o.customerId`
 ```
 
 > **Please note:** 
