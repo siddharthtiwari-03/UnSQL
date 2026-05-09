@@ -178,6 +178,13 @@
  */
 
 /**
+ * if object
+ * @typedef {Object} CoalesceObject
+ * @prop {selectTypes[]} value
+ * @prop {string} [as]
+ */
+
+/**
  * concat object
  * @typedef {Object} ConcatObject
  * @prop {SelectObject} value
@@ -277,6 +284,7 @@
  * @prop {ConcatObject} [concat]
  * @prop {SwitchObject} [case]
  * @prop {IfObject} [if]
+ * @prop {CoalesceObject} [coalesce]
  * @prop {BaseJson} [json]
  * @prop {BaseJson} [array]
  * @prop {BaseQuery} [refer]
@@ -311,8 +319,7 @@
  */
 
 /**
- * custom wrapper
- * @typedef {{[key:string]:(ValuesObject|ComparatorObjects|{between:BetweenObject})}} CustomWrapper
+ * @typedef {Object<string, ValuesObject|ComparatorObjects|{between: BetweenObject}>} CustomWrapper
  */
 
 /**
@@ -336,7 +343,7 @@
  */
 
 /**
- * @typedef {'and'|'or'|'between'|'if'|'case'|'count'|'sum'|'min'|'max'|'avg'|'lead'|'lag'|'firstValue'|'lastValue'|'nthValue'|'rank'|'denseRank'} HandleFuncKey
+ * @typedef {'and'|'or'|'between'|'if'|'case'|'coalesce'|'count'|'sum'|'min'|'max'|'avg'|'lead'|'lag'|'firstValue'|'lastValue'|'nthValue'|'rank'|'denseRank'} HandleFuncKey
  */
 
 exports.unused = {}

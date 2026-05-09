@@ -237,6 +237,13 @@ export type IfObject = {
     as?: string | undefined;
 };
 /**
+ * if object
+ */
+export type CoalesceObject = {
+    value: selectTypes[];
+    as?: string | undefined;
+};
+/**
  * concat object
  */
 export type ConcatObject = {
@@ -389,6 +396,7 @@ export type WrapperMethods = {
     concat?: ConcatObject | undefined;
     case?: SwitchObject | undefined;
     if?: IfObject | undefined;
+    coalesce?: CoalesceObject | undefined;
     json?: BaseJson | undefined;
     array?: BaseJson | undefined;
     refer?: BaseQuery | undefined;
@@ -397,8 +405,16 @@ export type WrapperMethods = {
  * composite methods
  */
 export type CompositeMethods = {
-    and?: (WrapperMethods | CustomWrapper | AggregateWrappers)[] | undefined;
-    or?: (WrapperMethods | CustomWrapper | AggregateWrappers)[] | undefined;
+    and?: (WrapperMethods | {
+        [x: string]: ValuesObject | ComparatorObjects | {
+            between: BetweenObject;
+        };
+    } | AggregateWrappers)[] | undefined;
+    or?: (WrapperMethods | {
+        [x: string]: ValuesObject | ComparatorObjects | {
+            between: BetweenObject;
+        };
+    } | AggregateWrappers)[] | undefined;
     between?: BetweenObject | undefined;
 };
 /**
@@ -419,13 +435,10 @@ export type selectTypes = ValueOptions | AggregateWrappers;
  * select object
  */
 export type SelectObject = selectTypes[];
-/**
- * custom wrapper
- */
 export type CustomWrapper = {
-    [key: string]: (ValuesObject | ComparatorObjects | {
+    [x: string]: ValuesObject | ComparatorObjects | {
         between: BetweenObject;
-    });
+    };
 };
 /**
  * where object
@@ -443,4 +456,4 @@ export type JoinObject = BaseJoin[];
  * Logical junction types
  */
 export type JunctionKeys = "and" | "or";
-export type HandleFuncKey = "and" | "or" | "between" | "if" | "case" | "count" | "sum" | "min" | "max" | "avg" | "lead" | "lag" | "firstValue" | "lastValue" | "nthValue" | "rank" | "denseRank";
+export type HandleFuncKey = "and" | "or" | "between" | "if" | "case" | "coalesce" | "count" | "sum" | "min" | "max" | "avg" | "lead" | "lag" | "firstValue" | "lastValue" | "nthValue" | "rank" | "denseRank";

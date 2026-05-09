@@ -2,7 +2,7 @@ export type AggregateKey = "sum" | "avg" | "count" | "min" | "max";
 /**
  * prepares select query using various
  * @param {Object} selectParam
- * @param {string} [selectParam.alias] (optional) local reference name of the table
+ * @param {string?} [selectParam.alias] (optional) local reference name of the table
  * @param {import("../defs/types").SelectObject} selectParam.select array of columns / values / wrapper methods
  * @param {Array<*>} selectParam.values (optional) local reference name of the table
  * @param {import("../defs/types").EncryptionConfig} [selectParam.encryption] (optional) query level encryption configuration
@@ -10,7 +10,7 @@ export type AggregateKey = "sum" | "avg" | "count" | "min" | "max";
  * @returns {string} 'sql' with placeholder string to be injected at execution
  */
 export function prepSelect({ alias, select, values, encryption, ctx }: {
-    alias?: string | undefined;
+    alias?: string | null | undefined;
     select: import("../defs/types").SelectObject;
     values: Array<any>;
     encryption?: import("../defs/types").EncryptionConfig | undefined;
@@ -29,7 +29,11 @@ export function prepSelect({ alias, select, values, encryption, ctx }: {
  */
 export function prepWhere({ alias, where, parent, values, encryption, ctx }: {
     alias?: string | null | undefined;
-    where?: string | number | boolean | Date | import("../defs/types").WrapperMethods | import("../defs/types").ValueOptions[] | import("../defs/types").CustomWrapper | import("../defs/types").CompositeMethods | import("../defs/types").AggregateWrappers | undefined;
+    where?: string | number | boolean | Date | import("../defs/types").WrapperMethods | import("../defs/types").ValueOptions[] | {
+        [x: string]: import("../defs/types").ValuesObject | import("../defs/types").ComparatorObjects | {
+            between: import("../defs/types").BetweenObject;
+        };
+    } | import("../defs/types").CompositeMethods | import("../defs/types").AggregateWrappers | undefined;
     parent?: string | null | undefined;
     values: Array<any>;
     encryption?: import("../defs/types").EncryptionConfig | undefined;

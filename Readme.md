@@ -105,6 +105,7 @@ import { UnSQL } from 'unsql'
 - **New SQL constants support in ifNull** - `ifNull` property now supports 2 new SQL constants `jsonArray` and `jsonObject`
 - **Aggregate in refer** - `refer` wrapper now supports `aggregate` feature similar to `json` wrapper
 - **Stable Pre-aggregated Joins** - The Derived tables inside pre-aggregated joins stable
+- **Coalesce Wrapper added** - New `coalesce` wrapper object added to the list
 
 **Version v2.3**
 
@@ -971,33 +972,34 @@ Units can be combined: `'2y 3M 10d'`
 
 UnSQL provides special *JSON structures* as **Wrapper objects** that generate SQL expressions at the position they are placed. They work inside `select`, `where`, `having`, `orderBy.using`, and can be nested.
 
-|            Keyword             | Wrapper Type | Description                                                                               |
-| :----------------------------: | :----------: | ----------------------------------------------------------------------------------------- |
-|    [`str`](#string-wrapper)    |    string    | performs string value related operations                                                  |
-|   [`num`](#numeric-wrapper)    |   numeric    | performs numeric value related operations                                                 |
-|    [`date`](#date-wrapper)     |     date     | performs date value related operations                                                    |
-|    [`and`](#and-or-wrapper)    |   junction   | performs junction override inside the `where` and `having`                                |
-|    [`or`](#and-or-wrapper)     |   junction   | performs junction override inside the `where` and `having`                                |
-|      [`if`](#if-wrapper)       | conditional  | checks **condition** and returns respective value (used with `select`, `where`, `having`) |
-|    [`case`](#case-wrapper)     | conditional  | checks **condition** and returns respective value (used with `select`, `where`, `having`) |
-|  [`sum`](#aggregate-wrapper)   |  aggregate   | calculates 'total' from set of values                                                     |
-|  [`avg`](#aggregate-wrapper)   |  aggregate   | calculates 'average' from set of values                                                   |
-| [`count`](#aggregate-wrapper)  |  aggregate   | performs 'count' operation on set of values                                               |
-|  [`min`](#aggregate-wrapper)   |  aggregate   | determines 'lowest' value among the provided values                                       |
-|  [`max`](#aggregate-wrapper)   |  aggregate   | determines 'highest' value among the provided values                                      |
-|   [`lead`](#offset-wrapper)    |    offset    | Accesses data from a subsequent row at a specified physical offset from the current row   |
-|    [`lag`](#offset-wrapper)    |    offset    | Accesses data from a previous row at a specified physical offset from the current row     |
-|    [`rank`](#rank-wrapper)     |     rank     | Assigns a rank to each row with gaps in the sequence for tied values                      |
-|  [`denseRank`](#rank-wrapper)  |     rank     | Assigns a rank to each row without gaps in the sequence for tied values                   |
-| [`percentRank`](#rank-wrapper) |     rank     | Calculates the relative rank of a row as a percentage (0 to 1)                            |
-|   [`rowNum`](#rank-wrapper)    |     rank     | Assigns a unique sequential number to each row within a partition                         |
-|    [`nTile`](#rank-wrapper)    |     rank     | Distributes rows into a specified number of approximately equal groups (buckets)          |
-| [`firstValue`](#value-wrapper) |    value     | Returns the first value in an ordered set of values (within a window frame)               |
-| [`lastValue`](#value-wrapper)  |    value     | Returns the last value in an ordered set of values (within a window frame)                |
-|  [`nthValue`](#value-wrapper)  |    value     | Returns the value of the argument at the N-th row of the window frame                     |
-|    [`json`](#json-wrapper)     |  sub-query   | creates a json object/array of object(s) at the position it is invoked                    |
-|   [`refer`](#refer-wrapper)    |  sub-query   | fetch a column from another table at the position it is invoked                           |
-|  [`concat`](#concat-wrapper)   |    merge     | merges multiple column/string values into single string                                   |
+|             Keyword             | Wrapper Type | Description                                                                               |
+| :-----------------------------: | :----------: | ----------------------------------------------------------------------------------------- |
+|    [`str`](#string-wrapper)     |    string    | performs string value related operations                                                  |
+|    [`num`](#numeric-wrapper)    |   numeric    | performs numeric value related operations                                                 |
+|     [`date`](#date-wrapper)     |     date     | performs date value related operations                                                    |
+|    [`and`](#and-or-wrapper)     |   junction   | performs junction override inside the `where` and `having`                                |
+|     [`or`](#and-or-wrapper)     |   junction   | performs junction override inside the `where` and `having`                                |
+|       [`if`](#if-wrapper)       | conditional  | checks **condition** and returns respective value (used with `select`, `where`, `having`) |
+|     [`case`](#case-wrapper)     | conditional  | checks **condition** and returns respective value (used with `select`, `where`, `having`) |
+| [`coalesce`](#coalesce-wrapper) | conditional  | returns the first non-null value from provided values                                     |
+|   [`sum`](#aggregate-wrapper)   |  aggregate   | calculates 'total' from set of values                                                     |
+|   [`avg`](#aggregate-wrapper)   |  aggregate   | calculates 'average' from set of values                                                   |
+|  [`count`](#aggregate-wrapper)  |  aggregate   | performs 'count' operation on set of values                                               |
+|   [`min`](#aggregate-wrapper)   |  aggregate   | determines 'lowest' value among the provided values                                       |
+|   [`max`](#aggregate-wrapper)   |  aggregate   | determines 'highest' value among the provided values                                      |
+|    [`lead`](#offset-wrapper)    |    offset    | Accesses data from a subsequent row at a specified physical offset from the current row   |
+|    [`lag`](#offset-wrapper)     |    offset    | Accesses data from a previous row at a specified physical offset from the current row     |
+|     [`rank`](#rank-wrapper)     |     rank     | Assigns a rank to each row with gaps in the sequence for tied values                      |
+|  [`denseRank`](#rank-wrapper)   |     rank     | Assigns a rank to each row without gaps in the sequence for tied values                   |
+| [`percentRank`](#rank-wrapper)  |     rank     | Calculates the relative rank of a row as a percentage (0 to 1)                            |
+|    [`rowNum`](#rank-wrapper)    |     rank     | Assigns a unique sequential number to each row within a partition                         |
+|    [`nTile`](#rank-wrapper)     |     rank     | Distributes rows into a specified number of approximately equal groups (buckets)          |
+| [`firstValue`](#value-wrapper)  |    value     | Returns the first value in an ordered set of values (within a window frame)               |
+|  [`lastValue`](#value-wrapper)  |    value     | Returns the last value in an ordered set of values (within a window frame)                |
+|  [`nthValue`](#value-wrapper)   |    value     | Returns the value of the argument at the N-th row of the window frame                     |
+|     [`json`](#json-wrapper)     |  sub-query   | creates a json object/array of object(s) at the position it is invoked                    |
+|    [`refer`](#refer-wrapper)    |  sub-query   | fetch a column from another table at the position it is invoked                           |
+|   [`concat`](#concat-wrapper)   |    merge     | merges multiple column/string values into single string                                   |
 
 ---
 
@@ -1057,8 +1059,7 @@ UnSQL provides special *JSON structures* as **Wrapper objects** that generate SQ
             num: { value: 'calories', multiplyBy: 100, divideBy: 'quantity', decimals: 2, ifNull: 0, as: 'unitCalories' }
         }]
     })
-    // MySQL:  SELECT FORMAT((`calories` * 100) / `quantity`, ?) AS `unitCalories` FROM `specs`
-    // PG/SQLite: SELECT ROUND((`calories` * 100) / `quantity`, ?) AS `unitCalories` FROM `specs`
+    // SELECT COALESCE(FORMAT(((`calories`/ `quantity`) * 100), 2), 0) AS `unitCalories` FROM `specs`
     ```
 
     | Option       | Description                                                                          |
@@ -1174,6 +1175,24 @@ UnSQL provides special *JSON structures* as **Wrapper objects** that generate SQ
 
 - #### Case Wrapper <span id="case-wrapper">(`case`)</span>
 
+    Generates `COALESCE(value 1, value 2, value 3, ...)`. Evaluates conditions in order and returns the first matching value.
+
+    ```javascript
+    await User.find({
+        select: ['firstName', 'lastName', {
+            coalesce: {
+                value: ['mobile', '#no contact provided'],
+                as: 'points'
+            }
+        }]
+    })
+    // SELECT `firstName`, `lastName`, COALESCE(`mobile`, 'no contact provided') FROM `users`
+    ```
+
+---
+
+- #### Case Wrapper <span id="coalesce-wrapper">(`coalesce`)</span>
+
     Generates `CASE WHEN ... THEN ... ELSE ... END`. Evaluates conditions in order and returns the first matching value.
 
     ```javascript
@@ -1215,7 +1234,7 @@ UnSQL provides special *JSON structures* as **Wrapper objects** that generate SQ
         having: { avg: { value: 'salary', compare: { gt: 50000 } } }
     })
     // SELECT `department`,
-    //   SUM(COALESCE(`salary`, 0)) AS `totalSalary`,
+    //   COALESCE(SUM(`salary`), 0) AS `totalSalary`,
     //   CAST(AVG(`salary`) AS UNSIGNED) AS `avgSalary`,
     //   COUNT(DISTINCT *) AS `headCount`,
     //   MIN(`salary`) AS `lowestSalary`,

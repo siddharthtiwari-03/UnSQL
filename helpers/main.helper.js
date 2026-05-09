@@ -44,7 +44,7 @@ const joinTypes = {
 /**
  * prepares select query using various 
  * @param {Object} selectParam
- * @param {string} [selectParam.alias] (optional) local reference name of the table
+ * @param {string?} [selectParam.alias] (optional) local reference name of the table
  * @param {import("../defs/types").SelectObject} selectParam.select array of columns / values / wrapper methods
  * @param {Array<*>} selectParam.values (optional) local reference name of the table
  * @param {import("../defs/types").EncryptionConfig} [selectParam.encryption] (optional) query level encryption configuration
@@ -816,13 +816,6 @@ const prepDate = ({ alias, val, values, named = false, encryption = undefined, c
         localValues.push(prepName({ alias, value, ctx }))
     }
 
-    if (ifNull != null) {
-        const nullPlaceholder = prepPlaceholder({ value: ifNull, alias, ctx })
-        const nullValue = prepName({ alias, value: ifNull, ctx })
-        if (isVariable(nullPlaceholder)) values.push(nullValue)
-        sql = `IFNULL(${sql}, ${nullPlaceholder})`
-    }
-
     // decrypt
     if (decrypt) sql = prepDecryption({ placeholder: sql, value, decrypt, values, encryption, encoding, ctx })
 
@@ -926,6 +919,13 @@ const prepDate = ({ alias, val, values, named = false, encryption = undefined, c
         }
     }
 
+    if (ifNull != null) {
+        const nullPlaceholder = prepPlaceholder({ value: ifNull, alias, ctx })
+        const nullValue = prepName({ alias, value: ifNull, ctx })
+        if (isVariable(nullPlaceholder)) values.push(nullValue)
+        sql = `COALESCE(${sql}, ${nullPlaceholder})`
+    }
+
     if (hasKeys(compare)) sql += prepWhere({ alias, where: compare, values: localValues, encryption, ctx })
 
     if (!hasKeys(compare) && (as || named)) {
@@ -947,20 +947,13 @@ const prepDate = ({ alias, val, values, named = false, encryption = undefined, c
  * @param {*} [numObj.ctx]
  * @returns {string} 'sql' with placeholder string to be injected at execution
 */
-const prepNumeric = ({ alias, val, values, named = false, encryption, ctx = 0 }) => {
+const prepNumeric = ({ alias, val, values, named = false, encryption, ctx = undefined }) => {
 
     const { value, decimals = null, mod = null, sub = null, add = null, multiplyBy = null, divideBy = null, power = null, ifNull = undefined, cast = null, decrypt = null, encoding = 'utf8mb4', as = ctx?.isPostgreSQL ? 'num' : null, compare = {} } = val
 
     // patch placeholder to the sql string
     let sql = prepPlaceholder({ value, alias, ctx })
     if (isVariable(sql)) values.push(prepName({ alias, value, ctx }))
-
-    if (ifNull != null) {
-        const nullPlaceholder = prepPlaceholder({ value: ifNull, alias, ctx })
-        const nullValue = prepName({ alias, value: ifNull, ctx })
-        if (isVariable(nullPlaceholder)) values.push(nullValue)
-        sql = `IFNULL(${sql}, ${nullPlaceholder})`
-    }
 
     // envelop decrypt
     if (decrypt) sql = prepDecryption({ placeholder: sql, value, decrypt, values, encoding, encryption, ctx })
@@ -1019,6 +1012,13 @@ const prepNumeric = ({ alias, val, values, named = false, encryption, ctx = 0 })
     // type casting
     if (cast) sql = `CAST(${sql} AS ${dataTypes[cast] || 'CHAR'})`
 
+    if (ifNull != null) {
+        const nullPlaceholder = prepPlaceholder({ value: ifNull, alias, ctx })
+        const nullValue = prepName({ alias, value: ifNull, ctx })
+        if (isVariable(nullPlaceholder)) values.push(nullValue)
+        sql = `COALESCE(${sql}, ${nullPlaceholder})`
+    }
+
     if (hasKeys(compare)) sql += prepWhere({ alias, where: compare, values, encryption, ctx })
 
     if (!hasKeys(compare) && (as || named)) {
@@ -1027,6 +1027,29 @@ const prepNumeric = ({ alias, val, values, named = false, encryption, ctx = 0 })
     }
 
     return `${sql}`
+}
+
+/**
+ * prepares coalesce 
+ * @param {Object} coalesceObj
+ * @param {string} [coalesceObj.alias] 
+ * @param {*} [coalesceObj.val] 
+ * @param {Array<*>} coalesceObj.values 
+ * @param {import("../defs/types").EncryptionConfig} coalesceObj.encryption 
+ * @param {*} coalesceObj.ctx 
+ * @returns {string}
+ */
+const prepCoalesce = ({ alias, val, values, encryption, ctx = undefined }) => {
+    const { value = [], as } = val
+    const sql = `COALESCE(${prepSelect({ alias, select: value, values, encryption, ctx })})`
+    if (as) {
+        if (ctx.isMySQL) {
+            values.push(as)
+            return `${sql} AS ?`
+        }
+        return `${sql} AS "${as}"`
+    }
+    return sql
 }
 
 /**
@@ -1094,15 +1117,7 @@ const prepOrderBy = ({ alias = undefined, orderBy, values, ctx }) => {
 
                 for (const k in expr) {
                     if (k === 'order') continue
-                    if (k === 'refer') {
-                        sqlParts.push(`${prepRefer({ val: expr.refer, values, ctx })} ${order}`)
-                    } else if (k === 'date') {
-                        sqlParts.push(`${prepDate({ alias, val: expr.date, values, ctx })} ${order}`)
-                    } else if (orderByExpr.has(k)) {
-                        /** @type {AggregateKey} */
-                        const aggregateKey = /** @type {any} */ (k)
-                        sqlParts.push(`${prepAggregate({ key: aggregateKey, val: expr[k], values, ctx })} ${order}`)
-                    }
+                    sqlParts.push(`${handleFunc[k]({ alias, key: k, val: expr[k], values, ctx })} ${order}`)
                     break
                 }
             }
@@ -1348,7 +1363,16 @@ const prepSubStr = ({ length, start, sql, values, ctx }) => {
 /** @param {*} value */
 const patchDateCast = value => !value ? '' : (value.includes('-') && value.includes(':') ? '::timestamp' : (value.includes('-') ? '::date' : (value.includes(':') ? '::time' : '')))
 
-/** @param {*} params */
+/**
+ * @param {Object} params
+ * @param {*} params.value
+ * @param {string?} [params.alias]
+ * @param {string?} [params.parent]
+ * @param {import("../defs/types").EncryptionConfig} [params.encryption]
+ * @param {*} [params.ctx]
+ * @param {Array<*>} params.values
+ * @returns {string|number|boolean|null}
+ */
 const handlePlaceholder = ({ value, alias, parent = null, encryption = undefined, ctx, values }) => {
     if (Array.isArray(value)) {
         return prepSelect({ select: value, values, alias, encryption, ctx })
@@ -1471,9 +1495,7 @@ const hasKeys = obj => {
  * @param {*} exp 
  */
 const prepNullCheck = ({ exp, ifNull, alias, values, ctx }) => {
-    const nullPlaceholder = prepPlaceholder({ value: ifNull, alias, ctx })
-    const nullValue = prepName({ alias, value: ifNull, ctx })
-    if (isVariable(nullPlaceholder)) values.push(nullValue)
+    const nullPlaceholder = handlePlaceholder({ alias, values, value: ifNull, ctx })
     return `COALESCE(${exp}, ${nullPlaceholder})`
 }
 
@@ -1486,6 +1508,7 @@ const handleFunc = {
     between: handleBetween,
     if: prepIf,
     case: prepCase,
+    coalesce: prepCoalesce,
     join: prepJoin,
     json: prepJson,
     refer: prepRefer,
