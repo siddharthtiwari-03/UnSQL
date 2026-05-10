@@ -438,7 +438,7 @@ await User.find({
     }
 })
 
-// SELECT `department`, COUNT(*) AS `headCount`, CAST(AVG(`salary`) AS UNSIGNED) AS `avgSalary`
+// SELECT `department`, COUNT(*) AS 'headCount', CAST(AVG(`salary`) AS UNSIGNED) AS 'avgSalary'
 // FROM `users`
 // GROUP BY `department`
 // HAVING AVG(`salary`) > 50000
@@ -489,7 +489,7 @@ await User.find({
 
 // SELECT `u`.`userId`, `u`.`firstName`, `o`.`orderId`, `o`.`amount`
 // FROM `users` `u`
-// LEFT JOIN (SELECT `t1`.`orderId`, `t1`.`amount` FROM `orders` `t1` WHERE `t1`.`status` = 1) AS `o` ON `u.userId` = `o.customerId`
+// LEFT JOIN (SELECT `t1`.`orderId`, `t1`.`amount` FROM `orders` `t1` WHERE `t1`.`status` = 1) AS 'o' ON `u.userId` = `o.customerId`
 ```
 
 > **Please note:** 
@@ -1012,13 +1012,13 @@ UnSQL provides special *JSON structures* as **Wrapper objects** that generate SQ
     await User.find({
         select: [{ str: { value: 'firstName', textCase: 'upper', as: 'name' } }]
     })
-    // SELECT UPPER(`firstName`) AS `name` FROM `users`
+    // SELECT UPPER(`firstName`) AS 'name' FROM `users`
 
     // Extract a substring
     await User.find({
         select: [{ str: { value: 'bio', substr: { start: 1, length: 100 }, as: 'shortBio' } }]
     })
-    // SELECT SUBSTR(`bio`, 1, 100) AS `shortBio` FROM `users`
+    // SELECT SUBSTR(`bio`, 1, 100) AS 'shortBio' FROM `users`
 
     // Decrypt an encrypted column
     await User.find({
@@ -1059,7 +1059,7 @@ UnSQL provides special *JSON structures* as **Wrapper objects** that generate SQ
             num: { value: 'calories', multiplyBy: 100, divideBy: 'quantity', decimals: 2, ifNull: 0, as: 'unitCalories' }
         }]
     })
-    // SELECT COALESCE(FORMAT(((`calories`/ `quantity`) * 100), 2), 0) AS `unitCalories` FROM `specs`
+    // SELECT COALESCE(FORMAT(((`calories`/ `quantity`) * 100), 2), 0) AS 'unitCalories' FROM `specs`
     ```
 
     | Option       | Description                                                                          |
@@ -1091,7 +1091,7 @@ UnSQL provides special *JSON structures* as **Wrapper objects** that generate SQ
             date: { value: 'joiningDate', add: '6M', format: 'dd MON Y', as: 'probationEnd' }
         }]
     })
-    // SELECT DATE_FORMAT(DATE_ADD(`joiningDate`, INTERVAL 6 MONTH), '%d %b %Y') AS `probationEnd`
+    // SELECT DATE_FORMAT(DATE_ADD(`joiningDate`, INTERVAL 6 MONTH), '%d %b %Y') AS 'probationEnd'
 
     // Filter by relative date range
     await User.find({
@@ -1168,32 +1168,15 @@ UnSQL provides special *JSON structures* as **Wrapper objects** that generate SQ
             if: { check: { experience: { lt: 1 } }, trueValue: '#Fresher', falseValue: '#Experienced', as: 'level' }
         }]
     })
-    // SELECT IF(`experience` < 1, 'Fresher', 'Experienced') AS `level` FROM `users`
+    // SELECT IF(`experience` < 1, 'Fresher', 'Experienced') AS 'level' FROM `users`
     ```
 
 ---
 
 - #### Case Wrapper <span id="case-wrapper">(`case`)</span>
 
-    Generates `COALESCE(value 1, value 2, value 3, ...)`. Evaluates conditions in order and returns the first matching value.
+   Generates `CASE WHEN ... THEN ... ELSE ... END`. Evaluates conditions in order and returns the first matching value.
 
-    ```javascript
-    await User.find({
-        select: ['firstName', 'lastName', {
-            coalesce: {
-                value: ['mobile', '#no contact provided'],
-                as: 'points'
-            }
-        }]
-    })
-    // SELECT `firstName`, `lastName`, COALESCE(`mobile`, 'no contact provided') FROM `users`
-    ```
-
----
-
-- #### Case Wrapper <span id="coalesce-wrapper">(`coalesce`)</span>
-
-    Generates `CASE WHEN ... THEN ... ELSE ... END`. Evaluates conditions in order and returns the first matching value.
 
     ```javascript
     await User.find({
@@ -1210,11 +1193,29 @@ UnSQL provides special *JSON structures* as **Wrapper objects** that generate SQ
     })
     // SELECT CASE WHEN `experience` < 2 THEN 'Fresher'
     //             WHEN `experience` BETWEEN 2 AND 5 THEN 'Mid-level'
-    //             ELSE 'Senior' END AS `level`
+    //             ELSE 'Senior' END AS 'level'
     // FROM `users`
     ```
-
 ---
+   
+
+- #### Coalesce Wrapper <span id="coalesce-wrapper">(`coalesce`)</span>
+
+ Generates `COALESCE(value 1, value 2, value 3, ...)`. Evaluates conditions in order and returns the first matching value.
+   
+    ```javascript
+    await User.find({
+        select: ['firstName', 'lastName', {
+            coalesce: {
+                value: ['mobile', '#no contact provided'],
+                as: 'points'
+            }
+        }]
+    })
+    // SELECT `firstName`, `lastName`, COALESCE(`mobile`, 'no contact provided') AS 'points' FROM `users`
+   ```
+--- 
+
 
 - #### Aggregate Wrappers <span id="aggregate-wrapper">(`sum`, `avg`, `count`, `min`, `max`)</span>
 
@@ -1234,11 +1235,11 @@ UnSQL provides special *JSON structures* as **Wrapper objects** that generate SQ
         having: { avg: { value: 'salary', compare: { gt: 50000 } } }
     })
     // SELECT `department`,
-    //   COALESCE(SUM(`salary`), 0) AS `totalSalary`,
-    //   CAST(AVG(`salary`) AS UNSIGNED) AS `avgSalary`,
-    //   COUNT(DISTINCT *) AS `headCount`,
-    //   MIN(`salary`) AS `lowestSalary`,
-    //   MAX(`salary`) AS `highestSalary`
+    //   COALESCE(SUM(`salary`), 0) AS 'totalSalary',
+    //   CAST(AVG(`salary`) AS UNSIGNED) AS 'avgSalary',
+    //   COUNT(DISTINCT *) AS 'headCount',
+    //   MIN(`salary`) AS 'lowestSalary',
+    //   MAX(`salary`) AS 'highestSalary'
     // FROM `users`
     // GROUP BY `department`
     // HAVING AVG(`salary`) > 50000
@@ -1291,7 +1292,7 @@ UnSQL provides special *JSON structures* as **Wrapper objects** that generate SQ
     join: [{ table: 'user_wallet', alias: 'w', using: ['userId'] }]
   })
 
-  // SELECT `userId`, `w`.`points`, LAG(`w`.`points`) OVER (ORDER BY `w`.`points` DESC) AS `prev_points` FROM `users` JOIN `user_wallets` `w` USING (`userId`)
+  // SELECT `userId`, `w`.`points`, LAG(`w`.`points`) OVER (ORDER BY `w`.`points` DESC) AS 'prev_points' FROM `users` JOIN `user_wallets` `w` USING (`userId`)
     ```
 
 - #### Rank Wrappers <span id="rank-wrapper">(`rank`, `denseRank`, `percentRank`, `rowNum`, `nTile`)</span>
@@ -1345,7 +1346,7 @@ UnSQL provides special *JSON structures* as **Wrapper objects** that generate SQ
         ]
     })
  
-    // SELECT `department`, `salary`, SUM(`salary`) OVER (PARTITION BY `department` ORDER BY `salary` DESC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS `runningTotal` FROM `users`
+    // SELECT `department`, `salary`, SUM(`salary`) OVER (PARTITION BY `department` ORDER BY `salary` DESC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS 'runningTotal' FROM `users`
  
     ```
 
@@ -1459,7 +1460,7 @@ UnSQL provides special *JSON structures* as **Wrapper objects** that generate SQ
             concat: { value: ['firstName', 'lastName'], pattern: ' ', as: 'fullName' }
         }]
     })
-    // SELECT CONCAT_WS(' ', `firstName`, `lastName`) AS `fullName` FROM `users`
+    // SELECT CONCAT_WS(' ', `firstName`, `lastName`) AS 'fullName' FROM `users`
     ```
 
     | Option     | Description                                       |
