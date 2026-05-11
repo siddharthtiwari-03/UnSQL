@@ -534,7 +534,15 @@ async function execMySQL({ sql, values, debug = false, session, config, multiQue
 
     try {
         if (isDebugging) handleQueryDebug(debug, sql, values, typeof client.format === 'function' ? client.format(sql, values) : null)
-        if (debug === 'sandbox') return { success: true, result: [{ message: 'UnSQL executed in sandbox mode' }] }
+    } catch (error) {
+        if (releaseClient) client.release()
+        return { success: false, error }
+    }
+
+    if (debug === 'sandbox') return { success: true, result: [{ message: 'UnSQL executed in sandbox mode' }] }
+    
+    try {
+
         const t0 = isBenchmarking ? performance.now() : 0
         const [result, meta] = await client.query(sql, values)
         if (isBenchmarking) {
@@ -643,7 +651,6 @@ async function execSQLite({ sql, values, debug = false, config, session = undefi
     const client = await (session?.pool || config?.pool)
 
     handleQueryDebug(debug, sql, values)
-
     if (debug === 'sandbox') return { success: true, result: [{ message: 'UnSQL executed in sandbox mode' }] }
 
     try {

@@ -59,13 +59,13 @@ export function prepJoin({ alias, join, values, encryption, ctx }: {
 /**
  * prepares sort order
  * @param {Object} params
- * @param {string} [params.alias]
+ * @param {string?} [params.alias]
  * @param {Record<string, 'asc'|'desc'>|Record<string, any>} params.orderBy
  * @param {Array<*>} params.values
  * @param {*} params.ctx
  */
 export function prepOrderBy({ alias, orderBy, values, ctx }: {
-    alias?: string | undefined;
+    alias?: string | null | undefined;
     orderBy: Record<string, "asc" | "desc"> | Record<string, any>;
     values: Array<any>;
     ctx: any;

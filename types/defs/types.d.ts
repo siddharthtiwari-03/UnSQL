@@ -347,6 +347,7 @@ export type PartialQuery = {
  * json base object
  */
 export type JsonObject = {
+    alias?: string | null | undefined;
     value: string | {
         [key: string]: ValuesObject;
     } | Array<any>;

@@ -263,6 +263,7 @@ const prepJoin = ({ alias, join = [], values, encryption = undefined, ctx = unde
 /**
  * prepares sub query that generates json object / array with aggregate wrapper (optional)
  * @param {Object} jsonParam object with different properties that help generate a json object / array
+ * @param {string} [jsonParam.alias] (optional) alias reference for the table name
  * @param {'json'|'array'} [jsonParam.key] (optional) alias reference for the table name
  * @param {import("../defs/types").BaseJson} jsonParam.val accepts values related to sub-query
  * @param {Array<*>} jsonParam.values accepts values related to sub-query
@@ -271,21 +272,23 @@ const prepJoin = ({ alias, join = [], values, encryption = undefined, ctx = unde
  * @param {*} [jsonParam.ctx] context reference to parent class
  * @returns {string} 'sql' with placeholder string to be injected at execution
  */
-const prepJson = ({ val, encryption = undefined, values, named = false, ctx = undefined }) => {
+const prepJson = ({ val, alias, encryption = undefined, values, named = false, ctx = undefined }) => {
 
     const sqlParts = []
-    const { value, aggregate = false, table = null, alias = undefined, join = [], where = {}, groupBy = [], having = {}, orderBy = {}, limit = undefined, offset = undefined, as = null, extract = null, contains = null, ifNull = null, compare = {} } = val
+    const { value, aggregate = false, table = null, alias: jsonAlias = undefined, join = [], where = {}, groupBy = [], having = {}, orderBy = {}, limit = undefined, offset = undefined, as = null, extract = null, contains = null, ifNull = null, compare = {} } = val
 
     const isAggregatedLimit = table && aggregate && (limit || offset)
     const UnSQLJsonAlias = `UNSQL_JSON_ALIAS${table ? `_${table}` : ''}`
+    const jAlias = jsonAlias || alias
+    const activeAlias = isAggregatedLimit ? UnSQLJsonAlias : jAlias
 
     if (table || hasKeys(where) || hasKeys(having)) sqlParts.push(`(SELECT`)
 
     /** @type {*} */
     let jsonSql = ''
     if (typeof value === 'string') {
-        const jsPlaceholder = prepPlaceholder({ value, alias: isAggregatedLimit ? UnSQLJsonAlias : alias, ctx })
-        if (isVariable(jsPlaceholder)) values.push(prepName({ alias: isAggregatedLimit ? UnSQLJsonAlias : alias, value, ctx }))
+        const jsPlaceholder = prepPlaceholder({ value, alias: activeAlias, ctx })
+        if (isVariable(jsPlaceholder)) values.push(prepName({ alias: activeAlias, value, ctx }))
         jsonSql = jsPlaceholder
     } else {
         if (ctx?.isPostgreSQL) {
@@ -294,7 +297,7 @@ const prepJson = ({ val, encryption = undefined, values, named = false, ctx = un
             jsonSql = Object.entries(value).map(([k, v]) => {
                 const kPlaceholder = '?'
                 if (!Array.isArray(value)) values.push(k)
-                const vPlaceholder = handlePlaceholder({ value: v, alias: isAggregatedLimit ? UnSQLJsonAlias : alias, values, encryption, ctx })
+                const vPlaceholder = handlePlaceholder({ value: v, alias: activeAlias, values, encryption, ctx })
                 return (!Array.isArray(value) ? `${kPlaceholder}, ` : '') + vPlaceholder
             }).join(', ')
             if (Array.isArray(value)) jsonSql = `JSON_ARRAY(${jsonSql})`
@@ -307,7 +310,7 @@ const prepJson = ({ val, encryption = undefined, values, named = false, ctx = un
         else if (ctx?.isSQLite) jsonSql = `JSON_GROUP_ARRAY(${jsonSql})`
     }
     jsonSql = prepJsonExtract(jsonSql, extract, values, ctx)
-    jsonSql = prepJsonContains({ jsonRef: jsonSql, contains, values, alias: isAggregatedLimit ? UnSQLJsonAlias : alias, ctx })
+    jsonSql = prepJsonContains({ jsonRef: jsonSql, contains, values, alias: activeAlias, ctx })
 
     sqlParts.push(jsonSql) // finally patching jsonSql (with all wrappers and methods) to main sql
 
@@ -318,16 +321,16 @@ const prepJson = ({ val, encryption = undefined, values, named = false, ctx = un
         sqlParts.push(ctx?.isMySQL ? '??' : `"${table}"`)
         if (ctx.isMySQL) values.push(table)
 
-        if (alias) {
-            if (ctx.isMySQL) values.push(alias)
-            sqlParts.push(ctx.isMySQL ? '??' : `"${alias}"`)
+        if (jsonAlias) {
+            if (ctx.isMySQL) values.push(jsonAlias)
+            sqlParts.push(ctx.isMySQL ? '??' : `"${jsonAlias}"`)
         }
 
-        if (join.length) sqlParts.push(prepJoin({ alias, join, values, encryption, ctx }))
-        if (hasKeys(where)) sqlParts.push(`WHERE ${prepWhere({ alias, where, values, encryption, ctx })}`)
-        if (groupBy.length > 0) sqlParts.push(patchGroupBy({ groupBy, alias, values, ctx }))
-        if (hasKeys(having)) sqlParts.push(`HAVING ${prepWhere({ alias, where: having, values, encryption, ctx })}`)
-        if (hasKeys(orderBy)) sqlParts.push(prepOrderBy({ orderBy, alias, values, ctx }))
+        if (join.length) sqlParts.push(prepJoin({ alias: jsonAlias, join, values, encryption, ctx }))
+        if (hasKeys(where)) sqlParts.push(`WHERE ${prepWhere({ alias: jsonAlias, where, values, encryption, ctx })}`)
+        if (groupBy.length > 0) sqlParts.push(patchGroupBy({ groupBy, alias: jsonAlias, values, ctx }))
+        if (hasKeys(having)) sqlParts.push(`HAVING ${prepWhere({ alias: jsonAlias, where: having, values, encryption, ctx })}`)
+        if (hasKeys(orderBy)) sqlParts.push(prepOrderBy({ orderBy, alias: jsonAlias, values, ctx }))
         if (typeof limit === 'number') sqlParts.push(patchLimit(limit, values, ctx))
         if (typeof offset === 'number') sqlParts.push(patchLimit(offset, values, ctx, 'OFFSET'))
 
@@ -338,18 +341,18 @@ const prepJson = ({ val, encryption = undefined, values, named = false, ctx = un
         }
     }
     let exp = sqlParts.join(' ')
-    if (ifNull) exp = prepNullCheck({ exp, alias, values, ifNull, ctx })
+    if (ifNull) exp = prepNullCheck({ exp, alias: jAlias, values, ifNull, ctx })
 
-    if (as || named) {
+    if (as) {
         if (ctx?.isMySQL) {
             exp += ' AS ?'
-            values.push(as || 'json')
+            values.push(as)
         } else {
-            exp += ` AS ${as || 'json'}`
+            exp += ` AS ${as}`
         }
     }
 
-    if (hasKeys(compare)) return `${exp} ${prepWhere({ alias, where: compare, values, encryption, ctx })}`
+    if (hasKeys(compare)) return `${exp} ${prepWhere({ alias: jAlias, where: compare, values, encryption, ctx })}`
 
     return exp
 }
@@ -1093,12 +1096,12 @@ const orderByExpr = new Set(['sum', 'count', 'min', 'max', 'avg'])
 /**
  * prepares sort order
  * @param {Object} params 
- * @param {string} [params.alias]
+ * @param {string?} [params.alias]
  * @param {Record<string, 'asc'|'desc'>|Record<string, any>} params.orderBy
  * @param {Array<*>} params.values
  * @param {*} params.ctx
  */
-const prepOrderBy = ({ alias = undefined, orderBy, values, ctx }) => {
+const prepOrderBy = ({ alias = null, orderBy, values, ctx }) => {
     if (!hasKeys(orderBy)) return ''
 
     const sqlParts = []

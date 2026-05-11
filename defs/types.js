@@ -248,6 +248,7 @@
 /**
  * json base object
  * @typedef {Object} JsonObject
+ * @prop {string?} [alias]
  * @prop {string|{[key:string]: ValuesObject}|Array<*>} value
  * @prop {boolean} [aggregate]
  * @prop {string} [extract]
