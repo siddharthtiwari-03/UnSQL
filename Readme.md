@@ -1504,7 +1504,7 @@ Used inside `where`, `having`, and `compare` to express conditions beyond simple
 await User.find({
 where: {
     age:    { gtEq: 18, ltEq: 65 },
-    name:   { startLike: 'John' },
+    name:   { startLike: '#John' },
     status: { notEq: 0 },
     role:   { in: ['#admin', '#moderator'] }
 }
@@ -1572,7 +1572,7 @@ router.get('/users', async (req, res) => {
 ```javascript
 router.get('/users/:userId(\\d+)', async (req, res) => {
     const { userId } = req.params
-    const response = await User.find({ where: { userId } })
+    const response = await User.find({ where: { userId }, debug: 'query' })
     return res.json(response)
 })
 ```
@@ -1584,7 +1584,8 @@ router.post('/users/login', async (req, res) => {
     const { loginId } = req.body
     const response = await User.find({
         select: ['userId', 'firstName', 'role'],
-        where: { or: [{ email: `#${loginId}` }, { mobile: `#${loginId}` }] }
+        where: { or: [{ email: `#${loginId}` }, { mobile: `#${loginId}` }] },
+        debug: 'query'
     })
     return res.json(response)
 })
@@ -1610,10 +1611,13 @@ router.get('/users', async (req, res) => {
                     as: 'orders'
                 }
             }
-        ]
+        ],
+        debug: 'query'
     })
     return res.json(response)
 })
+
+// assuming 'orderId', 'amount' and 'createdOn' are the columns inside 'order_history' table
 ```
 
 ### 7.5 User Leaderboard (Sorted by Wallet Balance)
@@ -1633,7 +1637,8 @@ router.get('/users/leaderboard', async (req, res) => {
                 order: 'desc'
             }]
         },
-        limit: 10
+        limit: 10,
+        debug: 'query'
     })
     return res.json(response)
 })
@@ -1643,17 +1648,29 @@ router.get('/users/leaderboard', async (req, res) => {
 
 ```javascript
 router.post('/users', async (req, res) => {
-    const response = await User.save({ data: req.body })
-    return res.json(response)
+
+    const data = req.body  // can single user object {...}
+
+    // your data sanitization/manipulation here
+
+    const response = await User.save({ data, debug:'query' })
+    return res.status(201).json(response)
 })
 ```
 
 ### 7.7 Bulk Insert Users
 
+Format is same as single insert
+
 ```javascript
 router.post('/users/bulk', async (req, res) => {
-    const response = await User.save({ data: req.body })  // array of objects
-    return res.json(response)
+
+    const data = req.body  // array of users [{...}, {...}]
+
+    // your data sanitization/manipulation here
+
+    const response = await User.save({ data, debug:'query' })
+    return res.status(201).json(response)
 })
 ```
 
