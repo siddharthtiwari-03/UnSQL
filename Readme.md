@@ -1219,260 +1219,260 @@ UnSQL provides special *JSON structures* as **Wrapper objects** that generate SQ
 
 - #### Aggregate Wrappers <span id="aggregate-wrapper">(`sum`, `avg`, `count`, `min`, `max`)</span>
 
-    All five share the same interface. Used with `groupBy` / `having`, and in `orderBy.using`. They also support the `over` property to perform Window (Analytical) functions.
+All five share the same interface. Used with `groupBy` / `having`, and in `orderBy.using`. They also support the `over` property to perform Window (Analytical) functions.
 
-    ```javascript
-    await User.find({
-        select: [
-            'department',
-            { sum:   { value: 'salary', ifNull: 0, as: 'totalSalary' } },
-            { avg:   { value: 'salary', cast: 'unsigned', as: 'avgSalary' } },
-            { count: { value: '*', distinct: true, as: 'headCount' } },
-            { min:   { value: 'salary', as: 'lowestSalary' } },
-            { max:   { value: 'salary', as: 'highestSalary' } }
-        ],
-        groupBy: ['department'],
-        having: { avg: { value: 'salary', compare: { gt: 50000 } } }
-    })
-    // SELECT `department`,
-    //   COALESCE(SUM(`salary`), 0) AS 'totalSalary',
-    //   CAST(AVG(`salary`) AS UNSIGNED) AS 'avgSalary',
-    //   COUNT(DISTINCT *) AS 'headCount',
-    //   MIN(`salary`) AS 'lowestSalary',
-    //   MAX(`salary`) AS 'highestSalary'
-    // FROM `users`
-    // GROUP BY `department`
-    // HAVING AVG(`salary`) > 50000
-    ```
+```javascript
+await User.find({
+    select: [
+        'department',
+        { sum:   { value: 'salary', ifNull: 0, as: 'totalSalary' } },
+        { avg:   { value: 'salary', cast: 'unsigned', as: 'avgSalary' } },
+        { count: { value: '*', distinct: true, as: 'headCount' } },
+        { min:   { value: 'salary', as: 'lowestSalary' } },
+        { max:   { value: 'salary', as: 'highestSalary' } }
+    ],
+    groupBy: ['department'],
+    having: { avg: { value: 'salary', compare: { gt: 50000 } } }
+})
+// SELECT `department`,
+//   COALESCE(SUM(`salary`), 0) AS 'totalSalary',
+//   CAST(AVG(`salary`) AS UNSIGNED) AS 'avgSalary',
+//   COUNT(DISTINCT *) AS 'headCount',
+//   MIN(`salary`) AS 'lowestSalary',
+//   MAX(`salary`) AS 'highestSalary'
+// FROM `users`
+// GROUP BY `department`
+// HAVING AVG(`salary`) > 50000
+```
 
-    | Option     | Description                                              |
-    | ---------- | -------------------------------------------------------- |
-    | `value`    | column name or conditional object                        |
-    | `distinct` | ignore duplicate values when `true`                      |
-    | `over`     | [Window Options](#window-options) for analytical queries |
-    | `ifNull`   | fallback value if result is null                         |
-    | `cast`     | same options as `str.cast`                               |
-    | `as`       | output alias                                             |
-    | `compare`  | comparator conditions on the returned value              |
+| Option     | Description                                              |
+| ---------- | -------------------------------------------------------- |
+| `value`    | column name or conditional object                        |
+| `distinct` | ignore duplicate values when `true`                      |
+| `over`     | [Window Options](#window-options) for analytical queries |
+| `ifNull`   | fallback value if result is null                         |
+| `cast`     | same options as `str.cast`                               |
+| `as`       | output alias                                             |
+| `compare`  | comparator conditions on the returned value              |
 
 ---
 
 - #### Offset Wrappers <span id="offset-wrapper">(`lead`, `lag`)</span>
 
-    `lead` and `lag` wrappers can be used to generate allowing you to peek forward or look back at values in neighboring rows within the same result set without using join or sub-queries.
+`lead` and `lag` wrappers can be used to generate allowing you to peek forward or look back at values in neighboring rows within the same result set without using join or sub-queries.
 
-    ```javascript
-    // 1. without any optional parameters
-    await User2.find({
-        select: ['userId', 'w.points',
-            { lead: { value: 'w.points', as: 'leading' } }
-        ], join: [{ table: 'user_wallet', alias: 'w', using: ['userId'] }], limit: 10
-    })
+```javascript
+// 1. without any optional parameters
+await User2.find({
+    select: ['userId', 'w.points',
+        { lead: { value: 'w.points', as: 'leading' } }
+    ], join: [{ table: 'user_wallet', alias: 'w', using: ['userId'] }], limit: 10
+})
 
-  // SELECT `userId`, `w`.`points`, LEAD(`w`.`points`) OVER () AS 'leading' FROM `nitecapp_users` JOIN `nitecapp_user_wallets` `w` USING (`userID`) LIMIT 10
+// SELECT `userId`, `w`.`points`, LEAD(`w`.`points`) OVER () AS 'leading' FROM `nitecapp_users` JOIN `nitecapp_user_wallets` `w` USING (`userID`) LIMIT 10
 
 
-    // 2. with optional parameters
-    await User2.find({
-        select: ['userId', 'w.points',
-            { lead: { value: 'w.points', offset: 1, defaultValue: 0, as: 'leading' } }
-        ], join: [{ table: 'user_wallet', alias: 'w', using: ['userId'] }], limit: 10
-    })
+// 2. with optional parameters
+await User2.find({
+    select: ['userId', 'w.points',
+        { lead: { value: 'w.points', offset: 1, defaultValue: 0, as: 'leading' } }
+    ], join: [{ table: 'user_wallet', alias: 'w', using: ['userId'] }], limit: 10
+})
 
-  // SELECT `userId`, `w`.`points`, LEAD(`w`.`points`, 1, 0) OVER () AS 'leading' FROM `nitecapp_users` JOIN `nitecapp_user_wallets` `w` USING (`userID`) LIMIT 10
+// SELECT `userId`, `w`.`points`, LEAD(`w`.`points`, 1, 0) OVER () AS 'leading' FROM `nitecapp_users` JOIN `nitecapp_user_wallets` `w` USING (`userID`) LIMIT 10
 
-  // 3. with ordering
+// 3. with ordering
 
-  await User2.find({
-    select: [
-        'userId',
-        'w.points',
-        { lag: { value: 'w.points', over: { orderBy: { 'w.points': 'desc' } }, as: 'prev_points' } }
-    ],
-    join: [{ table: 'user_wallet', alias: 'w', using: ['userId'] }]
-  })
+await User2.find({
+select: [
+    'userId',
+    'w.points',
+    { lag: { value: 'w.points', over: { orderBy: { 'w.points': 'desc' } }, as: 'prev_points' } }
+],
+join: [{ table: 'user_wallet', alias: 'w', using: ['userId'] }]
+})
 
-  // SELECT `userId`, `w`.`points`, LAG(`w`.`points`) OVER (ORDER BY `w`.`points` DESC) AS 'prev_points' FROM `users` JOIN `user_wallets` `w` USING (`userId`)
-    ```
+// SELECT `userId`, `w`.`points`, LAG(`w`.`points`) OVER (ORDER BY `w`.`points` DESC) AS 'prev_points' FROM `users` JOIN `user_wallets` `w` USING (`userId`)
+```
 
 - #### Rank Wrappers <span id="rank-wrapper">(`rank`, `denseRank`, `percentRank`, `rowNum`, `nTile`)</span>
 
-    `rank`, `denseRank`, `percentRank`, `rowNum`, `nTile` wrappers can be used to generate ranking window query to access data from other rows relative to the current row without using join or sub-queries.
+`rank`, `denseRank`, `percentRank`, `rowNum`, `nTile` wrappers can be used to generate ranking window query to access data from other rows relative to the current row without using join or sub-queries.
 
-    ```javascript
-     await User2.find({
-        select: ['userId', 'w.points',
-            { rank: { over: { orderBy: { 'w.points': 'desc' } }, as: 'ranking' } }
-        ], join: [{ table: 'user_wallet', alias: 'w', using: ['userId'] }], limit: 10
-    })
+```javascript
+    await User2.find({
+    select: ['userId', 'w.points',
+        { rank: { over: { orderBy: { 'w.points': 'desc' } }, as: 'ranking' } }
+    ], join: [{ table: 'user_wallet', alias: 'w', using: ['userId'] }], limit: 10
+})
 
-    // SELECT `userId`, `w`.`points`, RANK() OVER (ORDER BY `w`.`points` DESC) AS 'ranking' FROM `users` JOIN `user_wallets` `w` USING (`userId`) LIMIT 10
-    ```
+// SELECT `userId`, `w`.`points`, RANK() OVER (ORDER BY `w`.`points` DESC) AS 'ranking' FROM `users` JOIN `user_wallets` `w` USING (`userId`) LIMIT 10
+```
 
 - #### Value Wrappers <span id="value-wrapper">(`firstValue`, `lastValue`, `nthValue`)</span>
 
-    `firstValue`, `lastValue`, `nthValue` wrappers can be used to retrieve a specific column value from a defined set of rows (the window frame) relative to the current row.
+`firstValue`, `lastValue`, `nthValue` wrappers can be used to retrieve a specific column value from a defined set of rows (the window frame) relative to the current row.
 
-    ```javascript
-     await User2.find({
-        select: ['userId', 'w.points',
-            { firstValue: { value:'w.points', over: { orderBy: { 'w.points': 'desc' } }, as: 'highestPoints' } }
-        ], join: [{ table: 'user_wallet', alias: 'w', using: ['userId'] }], limit: 10
-    })
+```javascript
+    await User2.find({
+    select: ['userId', 'w.points',
+        { firstValue: { value:'w.points', over: { orderBy: { 'w.points': 'desc' } }, as: 'highestPoints' } }
+    ], join: [{ table: 'user_wallet', alias: 'w', using: ['userId'] }], limit: 10
+})
 
-    // SELECT `userId`, `w`.`points`, FIRST_VALUE(`w`.`points`) OVER (ORDER BY `w`.`points` DESC) AS 'first' FROM `users` JOIN `user_wallets` `w` USING (`userId`) LIMIT 10
-    ```
+// SELECT `userId`, `w`.`points`, FIRST_VALUE(`w`.`points`) OVER (ORDER BY `w`.`points` DESC) AS 'first' FROM `users` JOIN `user_wallets` `w` USING (`userId`) LIMIT 10
+```
 
 - #### Window Options <span id="window-options">(`over`)</span>
 
-    The `over` property, available inside all **Aggregate Wrappers**, **Offset Wrappers**, **Rank Wrappers** and **Value Rappers**, transforms them into a Window Function. It defines the *partitioning*, *ordering*, and *framing* of the operation via. `partitionBy`, `orderBy` and `frame` properties respectively.
+The `over` property, available inside all **Aggregate Wrappers**, **Offset Wrappers**, **Rank Wrappers** and **Value Rappers**, transforms them into a Window Function. It defines the *partitioning*, *ordering*, and *framing* of the operation via. `partitionBy`, `orderBy` and `frame` properties respectively.
 
-    ```javascript
-    await User.find({
-        select: [
-            'department',
-            'salary',
-            { 
-                sum: { 
-                    value: 'salary', 
-                    over: { 
-                        partitionBy: ['department'], 
-                        orderBy: { salary: 'desc' },
-                        frame: { unit: 'rows', start: 'unboundedPreceding', end: 'currentRow' }
-                    }, 
-                    as: 'runningTotal' 
-                } 
-            }
-        ]
-    })
- 
-    // SELECT `department`, `salary`, SUM(`salary`) OVER (PARTITION BY `department` ORDER BY `salary` DESC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS 'runningTotal' FROM `users`
- 
-    ```
+```javascript
+await User.find({
+    select: [
+        'department',
+        'salary',
+        { 
+            sum: { 
+                value: 'salary', 
+                over: { 
+                    partitionBy: ['department'], 
+                    orderBy: { salary: 'desc' },
+                    frame: { unit: 'rows', start: 'unboundedPreceding', end: 'currentRow' }
+                }, 
+                as: 'runningTotal' 
+            } 
+        }
+    ]
+})
 
-    | Option        | Description                                                                       |
-    | :------------ | :-------------------------------------------------------------------------------- |
-    | `partitionBy` | Array of column names to group the window.                                        |
-    | `orderBy`     | Object mapping columns to `'asc'` or `'desc'` to define the window sort order.    |
-    | `frame`       | Object defining the subset of rows (`unit`, `start`, `end`) within the partition. |
+// SELECT `department`, `salary`, SUM(`salary`) OVER (PARTITION BY `department` ORDER BY `salary` DESC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS 'runningTotal' FROM `users`
 
-    **Frame Unit (`unit`):** `'rows'` (default), `'range'`, or `'groups'`.
+```
 
-    **Frame Bounds (`start` / `end`):**
-    - **Keywords:** `'unboundedPreceding'`, `'currentRow'`, `'unboundedFollowing'`.
-    - **Offsets:** `{ preceding: n }` or `{ following: n }`.
+| Option        | Description                                                                       |
+| :------------ | :-------------------------------------------------------------------------------- |
+| `partitionBy` | Array of column names to group the window.                                        |
+| `orderBy`     | Object mapping columns to `'asc'` or `'desc'` to define the window sort order.    |
+| `frame`       | Object defining the subset of rows (`unit`, `start`, `end`) within the partition. |
+
+**Frame Unit (`unit`):** `'rows'` (default), `'range'`, or `'groups'`.
+
+**Frame Bounds (`start` / `end`):**
+- **Keywords:** `'unboundedPreceding'`, `'currentRow'`, `'unboundedFollowing'`.
+- **Offsets:** `{ preceding: n }` or `{ following: n }`.
 
 - #### Json Wrapper <span id="json-wrapper">(`json`)</span>
 
-    Creates or extracts JSON objects/arrays. Supports inline values, arrays, column references, and full sub-query properties.
+Creates or extracts JSON objects/arrays. Supports inline values, arrays, column references, and full sub-query properties.
 
-    ```javascript
-    // Create a JSON object from a sub-query (one per user, aggregated into array)
-    await User.find({
-        alias: 'u',
-        select: [
-            'userId', 'firstName',
-            {
-                json: {
-                    value: { orderId: 'orderId', total: 'amount', date: 'createdOn' },
-                    table: 'orders',
-                    where: { userId: 'u.userId' },
-                    orderBy: { createdOn: 'desc' },
-                    limit: 10,
-                    aggregate: true, // wrap rows into array
-                    as: 'recentOrders'
-                }
+```javascript
+// Create a JSON object from a sub-query (one per user, aggregated into array)
+await User.find({
+    alias: 'u',
+    select: [
+        'userId', 'firstName',
+        {
+            json: {
+                value: { orderId: 'orderId', total: 'amount', date: 'createdOn' },
+                table: 'orders',
+                where: { userId: 'u.userId' },
+                orderBy: { createdOn: 'desc' },
+                limit: 10,
+                aggregate: true, // wrap rows into array
+                as: 'recentOrders'
             }
-        ]
-    })
+        }
+    ]
+})
 
-    // Extract a value from a JSON column
-    await User.find({
-        select: [{ json: { value: 'address', extract: 'permanent.city', as: 'city' } }]
-    })
-    ```
+// Extract a value from a JSON column
+await User.find({
+    select: [{ json: { value: 'address', extract: 'permanent.city', as: 'city' } }]
+})
+```
 
-    | Option            | Description                                                                                  |
-    | ----------------- | -------------------------------------------------------------------------------------------- |
-    | `value`           | `{}` → JSON object, string → column containing JSON                                          |
-    | `table`           | sub-query source table                                                                       |
-    | `extract`         | path to extract from JSON (e.g. `'address.city'` or index `0`)                               |
-    | `contains`        | check if JSON contains this value                                                            |
-    | `aggregate`       | when `true`, encapsulates multiple values returned by this wrapper into a unified array      |
-    | `ifNull`          | sets a fallback value                                                                        |
-    | `as`              | output alias                                                                                 |
-    | Sub-query options | `alias`, `join`, `where`, `groupBy`, `having`, `orderBy`, `limit`, `offset` - same as `find` |
+| Option            | Description                                                                                  |
+| ----------------- | -------------------------------------------------------------------------------------------- |
+| `value`           | `{}` → JSON object, string → column containing JSON                                          |
+| `table`           | sub-query source table                                                                       |
+| `extract`         | path to extract from JSON (e.g. `'address.city'` or index `0`)                               |
+| `contains`        | check if JSON contains this value                                                            |
+| `aggregate`       | when `true`, encapsulates multiple values returned by this wrapper into a unified array      |
+| `ifNull`          | sets a fallback value                                                                        |
+| `as`              | output alias                                                                                 |
+| Sub-query options | `alias`, `join`, `where`, `groupBy`, `having`, `orderBy`, `limit`, `offset` - same as `find` |
 
 ---
 
 - #### Refer Wrapper <span id="refer-wrapper">(`refer`)</span>
 
-    Generates a correlated subquery that fetches a single value from another table. Works in `select`, `where`, `having`, and `orderBy.using`.
+Generates a correlated subquery that fetches a single value from another table. Works in `select`, `where`, `having`, and `orderBy.using`.
 
-    ```javascript
-    // Fetch department name alongside each user
-    await User.find({
-        alias: 'u',
-        select: [
-            'u.userId', 'u.firstName',
-            {
-                refer: {
-                    alias: 'd',
-                    select: ['name'],
-                    table: 'departments',
-                    where: { deptId: 'u.departmentId' }
-                }
+```javascript
+// Fetch department name alongside each user
+await User.find({
+    alias: 'u',
+    select: [
+        'u.userId', 'u.firstName',
+        {
+            refer: {
+                alias: 'd',
+                select: ['name'],
+                table: 'departments',
+                where: { deptId: 'u.departmentId' }
             }
-        ]
-    })
-    // SELECT `u`.`userId`, `u`.`firstName`,
-    //   (SELECT `d`.`name` FROM `departments` `d` WHERE `d`.`deptId` = `u`.`departmentId`)
-    // FROM `users` `u`
-    ```
+        }
+    ]
+})
+// SELECT `u`.`userId`, `u`.`firstName`,
+//   (SELECT `d`.`name` FROM `departments` `d` WHERE `d`.`deptId` = `u`.`departmentId`)
+// FROM `users` `u`
+```
 
-    | Option      | Description                                                                                                              |
-    | ----------- | ------------------------------------------------------------------------------------------------------------------------ |
-    | `table`     | (required) source table                                                                                                  |
-    | `alias`     | local reference name for table to be used in query                                                                       |
-    | `select`    | column or any nested wrapper objects (must return single value)                                                          |
-    | `join`      | array of json object(s) each one to connect a child table with parent table `using` single or set of common column(s)    |
-    | `where`     | object containing various filter conditions                                                                              |
-    | `groupBy`   | group records based on column(s)                                                                                         |
-    | `having`    | object containing various filter conditions similar to `where` clause but also supports aggregate wrappers as conditions |
-    | `orderBy`   | object containing sorting criteria                                                                                       |
-    | `limit`     | limit the number of record(s)                                                                                            |
-    | `offset`    | set starting offset                                                                                                      |
-    | `cast`      | converts the datatype of the returned value                                                                              |
-    | `decrypt`   | object containing columns specific decryption related configs                                                            |
-    | `ifNull`    | sets default fallback value in case wrapper returns null value                                                           |
-    | `aggregate` | when `true`, encapsulates multiple values returned by this wrapper into a unified array                                  |
-    | `as`        | provide local reference name (derived column name) for the value returned by the wrapper (defaults to str)               |
-    
+| Option      | Description                                                                                                              |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `table`     | (required) source table                                                                                                  |
+| `alias`     | local reference name for table to be used in query                                                                       |
+| `select`    | column or any nested wrapper objects (must return single value)                                                          |
+| `join`      | array of json object(s) each one to connect a child table with parent table `using` single or set of common column(s)    |
+| `where`     | object containing various filter conditions                                                                              |
+| `groupBy`   | group records based on column(s)                                                                                         |
+| `having`    | object containing various filter conditions similar to `where` clause but also supports aggregate wrappers as conditions |
+| `orderBy`   | object containing sorting criteria                                                                                       |
+| `limit`     | limit the number of record(s)                                                                                            |
+| `offset`    | set starting offset                                                                                                      |
+| `cast`      | converts the datatype of the returned value                                                                              |
+| `decrypt`   | object containing columns specific decryption related configs                                                            |
+| `ifNull`    | sets default fallback value in case wrapper returns null value                                                           |
+| `aggregate` | when `true`, encapsulates multiple values returned by this wrapper into a unified array                                  |
+| `as`        | provide local reference name (derived column name) for the value returned by the wrapper (defaults to str)               |
+
 ---
 
 - #### Concat Wrapper <span id="concat-wrapper">(`concat`)<span>
 
-    Combines multiple values into a single string with an optional separator.
+Combines multiple values into a single string with an optional separator.
 
-    ```javascript
-    await User.find({
-        select: [{
-            concat: { value: ['firstName', 'lastName'], pattern: ' ', as: 'fullName' }
-        }]
-    })
-    // SELECT CONCAT_WS(' ', `firstName`, `lastName`) AS 'fullName' FROM `users`
-    ```
+```javascript
+await User.find({
+    select: [{
+        concat: { value: ['firstName', 'lastName'], pattern: ' ', as: 'fullName' }
+    }]
+})
+// SELECT CONCAT_WS(' ', `firstName`, `lastName`) AS 'fullName' FROM `users`
+```
 
-    | Option     | Description                                       |
-    | ---------- | ------------------------------------------------- |
-    | `value`    | array of column names, static values, or wrappers |
-    | `pattern`  | separator string between values                   |
-    | `textCase` | `'upper'` \| `'lower'`                            |
-    | `padding`  | same as `str.padding`                             |
-    | `substr`   | same as `str.substr`                              |
-    | `trim`     | same as `str.trim`                                |
-    | `as`       | output alias                                      |
-    | `compare`  | comparator conditions on the returned value       |
+| Option     | Description                                       |
+| ---------- | ------------------------------------------------- |
+| `value`    | array of column names, static values, or wrappers |
+| `pattern`  | separator string between values                   |
+| `textCase` | `'upper'` \| `'lower'`                            |
+| `padding`  | same as `str.padding`                             |
+| `substr`   | same as `str.substr`                              |
+| `trim`     | same as `str.trim`                                |
+| `as`       | output alias                                      |
+| `compare`  | comparator conditions on the returned value       |
 
 ---
 
@@ -1502,12 +1502,12 @@ Used inside `where`, `having`, and `compare` to express conditions beyond simple
 
 ```javascript
 await User.find({
-    where: {
-        age:    { gtEq: 18, ltEq: 65 },
-        name:   { startLike: 'John' },
-        status: { notEq: 0 },
-        role:   { in: ['#admin', '#moderator'] }
-    }
+where: {
+    age:    { gtEq: 18, ltEq: 65 },
+    name:   { startLike: 'John' },
+    status: { notEq: 0 },
+    role:   { in: ['#admin', '#moderator'] }
+}
 })
 // WHERE `age` >= 18 AND `age` <= 65
 // AND `name` LIKE CONCAT(?, "%")

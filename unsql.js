@@ -535,7 +535,7 @@ async function execMySQL({ sql, values, debug = false, session, config, multiQue
     try {
         if (isDebugging) handleQueryDebug(debug, sql, values, typeof client.format === 'function' ? client.format(sql, values) : null)
     } catch (error) {
-        if (releaseClient) client.release()
+        if (releaseClient) await client.release()
         return { success: false, error }
     }
 
@@ -554,7 +554,7 @@ async function execMySQL({ sql, values, debug = false, session, config, multiQue
     } catch (error) {
         return { success: false, error }
     } finally {
-        if (releaseClient) client.release()
+        if (releaseClient) await client.release()
     }
 }
 
